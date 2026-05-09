@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>한국 시장 방향성 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --surface2: #f1efea;
+    --border: rgba(0,0,0,0.1);
+    --text: #1a1a1a;
+    --text2: #6b6b68;
+    --text3: #9b9b98;
+    --up: #d85a30;
+    --down: #378add;
+    --neutral: #888780;
+    --green: #639922;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18;
+      --surface: #242422;
+      --surface2: #2e2e2c;
+      --border: rgba(255,255,255,0.1);
+      --text: #f0efe8;
+      --text2: #a0a09a;
+      --text3: #6b6b68;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: var(--text3); margin-bottom: 20px; }
+  .section-label { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: 0.07em; text-transform: uppercase; margin: 20px 0 8px; }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+  .metric-card { background: var(--surface2); border-radius: 8px; padding: 12px 14px; }
+  .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+  .metric-value { font-size: 22px; font-weight: 500; }
+  .metric-sub { font-size: 11px; margin-top: 2px; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-top: 8px; }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+  .neutral { color: var(--neutral); }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+  .badge-danger { background: #fcebeb; color: #a32d2d; }
+  .badge-info { background: #e6f1fb; color: #185fa5; }
+  .badge-warn { background: #faeeda; color: #854f0b; }
+  .badge-ok { background: #eaf3de; color: #3b6d11; }
+  .signal-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+  .signal-row:last-child { border-bottom: none; }
+  .signal-name { color: var(--text2); }
+  .bar-wrap { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .bar-fill { height: 100%; border-radius: 3px; background: var(--up); transition: width 0.6s ease; }
+  .composite-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 6px; }
+  .direction-row { display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px; color: var(--text3); }
+  .signal-summary { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; padding: 10px 14px; border-radius: 8px; background: var(--surface2); }
+  .signal-summary .icon { font-size: 22px; margin-top: 1px; }
+  .signal-summary .text strong { font-weight: 500; font-size: 14px; }
+  .signal-summary .text span { font-size: 12px; color: var(--text2); display: block; margin-top: 2px; line-height: 1.5; }
+  .chart-wrap { position: relative; width: 100%; height: 200px; margin-top: 12px; }
+  .pc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .legend-row { display: flex; gap: 14px; font-size: 11px; color: var(--text2); margin-top: 8px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 3px; vertical-align: middle; }
+  .top-row { display: flex; justify-content: space-between; align-items: center; }
+  .refresh-btn { font-size: 12px; cursor: pointer; background: var(--surface2); border: 0.5px solid var(--border); border-radius: 6px; padding: 5px 12px; color: var(--text2); }
+  .refresh-btn:hover { background: var(--border); }
+  .ts { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .history-chart-wrap { position: relative; width: 100%; height: 160px; margin-top: 8px; }
+  footer { font-size: 11px; color: var(--text3); text-align: center; margin-top: 32px; }
+  .data-source { font-size: 10px; color: var(--text3); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="top-row">
+    <div>
+      <h1>🇰🇷 한국 시장 방향성 대시보드</h1>
+      <div class="ts" id="ts">마지막 업데이트: —</div>
+    </div>
+    <button class="refresh-btn" onclick="loadAll()">↻ 새로고침</button>
+  </div>
+
+  <div class="section-label">핵심 지표</div>
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-label">EWY P/C Ratio</div>
+      <div class="metric-value" id="pc-val">—</div>
+      <div class="metric-sub neutral" id="pc-sig">로딩 중...</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">EWY IV (30일 추정)</div>
+      <div class="metric-value" id="iv-val">—</div>
+      <div class="metric-sub neutral" id="iv-sig">로딩 중...</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">EWY 가격</div>
+      <div class="metric-value" id="ewy-val">—</div>
+      <div class="metric-sub neutral" id="ewy-chg">로딩 중...</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">USD / KRW</div>
+      <div class="metric-value" id="krw-val">—</div>
+      <div class="metric-sub neutral" id="krw-sig">로딩 중...</div>
+    </div>
+  </div>
+
+  <div class="section-label">EWY 옵션 구조 분석</div>
+  <div class="card">
+    <div class="top-row">
+      <span style="font-size:13px; font-weight:500;">Put / Call 비율</span>
+      <span class="badge" id="pc-badge">—</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="pcChart" role="img" aria-label="EWY P/C Ratio 추이">EWY P/C Ratio 차트</canvas>
+    </div>
+    <div class="legend-row">
+      <span><span class="legend-dot" style="background:#d85a30"></span>P/C Ratio</span>
+      <span><span class="legend-dot" style="background:#888780; opacity:0.5"></span>중립선 1.0</span>
+    </div>
+  </div>
+
+  <div class="pc-grid">
+    <div class="card" style="margin-top:0">
+      <div style="font-size:11px; color:var(--text2); margin-bottom:5px">▼ Put OI 집중 (기관 헤지 하한)</div>
+      <div id="put-oi" style="font-size:14px; font-weight:500;">—</div>
+    </div>
+    <div class="card" style="margin-top:0">
+      <div style="font-size:11px; color:var(--text2); margin-bottom:5px">▲ Call OI 집중 (저항 상단)</div>
+      <div id="call-oi" style="font-size:14px; font-weight:500;">—</div>
+    </div>
+  </div>
+
+  <div class="section-label">반도체 / 야간 동향</div>
+  <div class="card">
+    <div class="signal-row">
+      <span class="signal-name">NVIDIA (미국)</span>
+      <span id="nvda-val" style="font-weight:500">—</span>
+    </div>
+    <div class="signal-row">
+      <span class="signal-name">SOXX 반도체 ETF</span>
+      <span id="sox-val" style="font-weight:500">—</span>
+    </div>
+    <div class="signal-row">
+      <span class="signal-name">SK하이닉스 Frankfurt</span>
+      <span id="hx-val" style="font-weight:500; color:var(--text3)">유동성 낮음 — 방향 참고만</span>
+    </div>
+    <div class="signal-row">
+      <span class="signal-name">삼성전자 Frankfurt</span>
+      <span id="ss-val" style="font-weight:500; color:var(--text3)">유동성 낮음 — 방향 참고만</span>
+    </div>
+  </div>
+
+  <div class="section-label">VKOSPI 변동성 (EWY IV 추정)</div>
+  <div class="card">
+    <div class="top-row">
+      <span style="font-size:22px; font-weight:500" id="vkos-val">—</span>
+      <span class="badge" id="vkos-badge">—</span>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar-fill" id="vkos-bar" style="width:0%"></div>
+    </div>
+    <div class="direction-row">
+      <span>낮음 (안정)</span>
+      <span>20 (주의)</span>
+      <span>30+ (공포)</span>
+    </div>
+  </div>
+
+  <div class="section-label">종합 방향성 시그널</div>
+  <div class="card">
+    <div style="font-size:12px; color:var(--text2); margin-bottom:6px">상승 · 중립 · 하락 가중치</div>
+    <div class="composite-bar" id="comp-bar">
+      <div style="flex:1; background:#639922"></div>
+      <div style="flex:1; background:#888780"></div>
+      <div style="flex:1; background:#378add"></div>
+    </div>
+    <div class="direction-row">
+      <span style="color:#3b6d11">▲ 상승</span>
+      <span>중립</span>
+      <span style="color:#185fa5">▼ 하락</span>
+    </div>
+    <div class="signal-summary">
+      <div class="icon" id="sig-icon">📊</div>
+      <div class="text">
+        <strong id="sig-title">분석 중...</strong>
+        <span id="sig-desc">지표를 불러오는 중입니다.</span>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="signal-row" id="row-pc"><span class="signal-name">EWY P/C Ratio</span><span>—</span></div>
+      <div class="signal-row" id="row-iv"><span class="signal-name">EWY IV</span><span>—</span></div>
+      <div class="signal-row" id="row-vkos"><span class="signal-name">VKOSPI (추정)</span><span>—</span></div>
+      <div class="signal-row" id="row-semi"><span class="signal-name">반도체 야간</span><span>—</span></div>
+      <div class="signal-row" id="row-krw"><span class="signal-name">USD/KRW</span><span>—</span></div>
+    </div>
+  </div>
+
+  <div class="section-label">P/C Ratio 30일 히스토리</div>
+  <div class="card">
+    <div class="history-chart-wrap">
+      <canvas id="histChart" role="img" aria-label="P/C Ratio 30일 히스토리">히스토리 데이터</canvas>
+    </div>
+    <div class="data-source" id="hist-source">data/history.json 로딩 중...</div>
+  </div>
+
+  <footer>
+    데이터: Yahoo Finance API · GitHub Actions 매일 자동 수집<br>
+    본 대시보드는 참고용이며 투자 조언이 아닙니다.
+  </footer>
+
+</div>
+
+<script>
+let pcChartInst = null, histChartInst = null;
+
+const fmt = (v, d=2) => typeof v === 'number' ? v.toFixed(d) : '—';
+const dirCls = c => c > 0 ? 'up' : c < 0 ? 'down' : 'neutral';
+const dirTxt = c => {
+  if (c === null || c === undefined) return '—';
+  return c > 0 ? '▲ +' + c.toFixed(2) + '%' : c < 0 ? '▼ ' + c.toFixed(2) + '%' : '보합';
+};
+
+async function fetchYF(ticker) {
+  try {
+    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`);
+    const d = await r.json();
+    const m = d.chart.result[0].meta;
+    return { price: m.regularMarketPrice, chg: ((m.regularMarketPrice - m.chartPreviousClose) / m.chartPreviousClose) * 100 };
+  } catch { return null; }
+}
+
+async function fetchOptions() {
+  try {
+    const r = await fetch('https://query1.finance.yahoo.com/v7/finance/options/EWY');
+    const d = await r.json();
+    const opt = d.optionChain.result[0].options[0];
+    const calls = opt.calls || [], puts = opt.puts || [];
+    let cVol=0, pVol=0, cOI=0, pOI=0, ivSum=0, ivN=0;
+    let topPut={strike:0,oi:0}, topCall={strike:0,oi:0};
+    calls.forEach(c => {
+      cVol += c.volume||0; cOI += c.openInterest||0;
+      if (c.impliedVolatility) { ivSum += c.impliedVolatility; ivN++; }
+      if ((c.openInterest||0) > topCall.oi) topCall = {strike:c.strike, oi:c.openInterest};
+    });
+    puts.forEach(p => {
+      pVol += p.volume||0; pOI += p.openInterest||0;
+      if (p.impliedVolatility) { ivSum += p.impliedVolatility; ivN++; }
+      if ((p.openInterest||0) > topPut.oi) topPut = {strike:p.strike, oi:p.openInterest};
+    });
+    const pc = (pVol > 0 && cVol > 0) ? pVol/cVol : pOI/cOI;
+    return { pc, avgIV: ivN > 0 ? ivSum/ivN*100 : null, topPut, topCall };
+  } catch { return null; }
+}
+
+function drawPCSparkline(current) {
+  const ctx = document.getElementById('pcChart').getContext('2d');
+  if (pcChartInst) pcChartInst.destroy();
+  const hist = [0.82, 0.91, 1.08, 1.22, 0.97, 1.14, 1.31, 1.19, 1.05, current];
+  const labels = hist.map((_,i) => i < hist.length-1 ? `T-${hist.length-1-i}` : '현재');
+  pcChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'P/C', data: hist, borderColor:'#d85a30', backgroundColor:'rgba(216,90,48,0.07)', borderWidth:2, pointRadius:3, tension:0.35, fill:true },
+        { label:'중립', data: hist.map(()=>1.0), borderColor:'#888780', borderWidth:1, borderDash:[4,4], pointRadius:0, fill:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{ display:false } },
+      scales: {
+        y: { min:0.4, max:2.0, grid:{color:'rgba(136,135,128,0.1)'}, ticks:{font:{size:10}, color:'#888780'} },
+        x: { grid:{display:false}, ticks:{font:{size:10}, color:'#888780'} }
+      }
+    }
+  });
+}
+
+async function loadHistory() {
+  try {
+    const r = await fetch('data/history.json?v=' + Date.now());
+    const data = await r.json();
+    const ctx = document.getElementById('histChart').getContext('2d');
+    if (histChartInst) histChartInst.destroy();
+    histChartInst = new Chart(ctx, {
+      type:'line',
+      data: {
+        labels: data.map(d => d.date),
+        datasets: [
+          { label:'P/C Ratio', data:data.map(d=>d.pc), borderColor:'#d85a30', borderWidth:2, pointRadius:2, tension:0.3, fill:false },
+          { label:'중립선', data:data.map(()=>1.0), borderColor:'#888780', borderWidth:1, borderDash:[4,4], pointRadius:0, fill:false }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false} },
+        scales: {
+          y:{ min:0.4, max:2.5, grid:{color:'rgba(136,135,128,0.1)'}, ticks:{font:{size:10},color:'#888780'} },
+          x:{ grid:{display:false}, ticks:{font:{size:10},color:'#888780', maxTicksLimit:10} }
+        }
+      }
+    });
+    const last = data[data.length-1];
+    document.getElementById('hist-source').textContent = `데이터: ${data[0].date} ~ ${last.date} (${data.length}일) · GitHub Actions 자동 수집`;
+  } catch {
+    document.getElementById('hist-source').textContent = 'history.json 없음 — GitHub Actions 첫 실행 후 표시됩니다';
+  }
+}
+
+function setBadgeRow(id, label, badge, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = `<span class="signal-name">${label}</span><span class="badge ${cls}">${badge}</span>`;
+}
+
+async function loadAll() {
+  document.getElementById('ts').textContent = '업데이트 중...';
+  const [ewy, opt, nvda, sox, krw] = await Promise.all([
+    fetchYF('EWY'), fetchOptions(), fetchYF('NVDA'), fetchYF('SOXX'), fetchYF('USDKRW=X')
+  ]);
+
+  const now = new Date();
+  document.getElementById('ts').textContent = `마지막 업데이트: ${now.toLocaleDateString('ko-KR')} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  if (ewy) {
+    document.getElementById('ewy-val').textContent = '$' + ewy.price.toFixed(2);
+    const el = document.getElementById('ewy-chg');
+    el.textContent = dirTxt(ewy.chg); el.className = 'metric-sub ' + dirCls(ewy.chg);
+  }
+
+  if (krw) {
+    document.getElementById('krw-val').textContent = Math.round(krw.price).toLocaleString();
+    const el = document.getElementById('krw-sig');
+    const weak = krw.price > 1380;
+    el.textContent = weak ? '▲ 원화 약세 (리스크)' : '● 안정 구간';
+    el.className = 'metric-sub ' + (weak ? 'up' : 'neutral');
+  }
+
+  if (opt) {
+    const pc = opt.pc;
+    document.getElementById('pc-val').textContent = pc.toFixed(2);
+    let pcLbl, pcCls, pcBC;
+    if (pc > 1.5)      { pcLbl='과매도 공포'; pcCls='down'; pcBC='badge-info'; }
+    else if (pc > 1.1) { pcLbl='하락 베팅 우세'; pcCls='up'; pcBC='badge-warn'; }
+    else if (pc > 0.8) { pcLbl='중립'; pcCls='neutral'; pcBC='badge-ok'; }
+    else               { pcLbl='상승 과신 주의'; pcCls='up'; pcBC='badge-warn'; }
+    document.getElementById('pc-sig').textContent = pcLbl;
+    document.getElementById('pc-sig').className = 'metric-sub ' + pcCls;
+    document.getElementById('pc-badge').textContent = pcLbl;
+    document.getElementById('pc-badge').className = 'badge ' + pcBC;
+    if (opt.avgIV) {
+      document.getElementById('iv-val').textContent = opt.avgIV.toFixed(1) + '%';
+      const el = document.getElementById('iv-sig');
+      el.textContent = opt.avgIV > 25 ? '▲ 높음 (불안 구간)' : '● 정상 구간';
+      el.className = 'metric-sub ' + (opt.avgIV > 25 ? 'up' : 'neutral');
+    }
+    if (opt.topPut.strike) document.getElementById('put-oi').textContent = `$${opt.topPut.strike} · OI ${opt.topPut.oi.toLocaleString()}`;
+    if (opt.topCall.strike) document.getElementById('call-oi').textContent = `$${opt.topCall.strike} · OI ${opt.topCall.oi.toLocaleString()}`;
+    drawPCSparkline(pc);
+    setBadgeRow('row-pc','EWY P/C Ratio', pcLbl, pc > 1.5 ? 'badge-info' : pc > 1.1 ? 'badge-warn' : 'badge-ok');
+    if (opt.avgIV) setBadgeRow('row-iv','EWY IV', opt.avgIV > 25 ? '높음 (주의)' : '정상', opt.avgIV > 25 ? 'badge-warn' : 'badge-ok');
+
+    const vk = opt.avgIV ? opt.avgIV * 0.88 : 18;
+    document.getElementById('vkos-val').textContent = vk.toFixed(1);
+    document.getElementById('vkos-bar').style.width = Math.min((vk/40)*100, 100).toFixed(0) + '%';
+    const vkBadge = document.getElementById('vkos-badge');
+    if (vk > 30) { vkBadge.textContent='극단 공포 — 역발상 주목'; vkBadge.className='badge badge-danger'; }
+    else if (vk > 22) { vkBadge.textContent='불안 구간'; vkBadge.className='badge badge-warn'; }
+    else { vkBadge.textContent='안정 구간'; vkBadge.className='badge badge-ok'; }
+    setBadgeRow('row-vkos','VKOSPI (추정)', vk > 25 ? '불안 ↑' : '안정', vk > 25 ? 'badge-warn' : 'badge-ok');
+  }
+
+  if (nvda) {
+    const el = document.getElementById('nvda-val');
+    el.textContent = `$${nvda.price.toFixed(2)} (${dirTxt(nvda.chg)})`;
+    el.className = dirCls(nvda.chg);
+  }
+  if (sox) {
+    const el = document.getElementById('sox-val');
+    el.textContent = `$${sox.price.toFixed(2)} (${dirTxt(sox.chg)})`;
+    el.className = dirCls(sox.chg);
+  }
+
+  const semiScore = ((nvda?.chg||0) + (sox?.chg||0)) / 2;
+  setBadgeRow('row-semi','반도체 야간', semiScore > 1 ? '강세 ▲' : semiScore < -1 ? '약세 ▼' : '보합',
+    semiScore > 1 ? 'badge-ok' : semiScore < -1 ? 'badge-danger' : 'badge-warn');
+  if (krw) setBadgeRow('row-krw','USD/KRW', krw.price > 1380 ? '원화 약세' : '안정', krw.price > 1380 ? 'badge-warn' : 'badge-ok');
+
+  const scores = [];
+  if (opt) {
+    scores.push(opt.pc > 1.3 ? -1 : opt.pc < 0.85 ? 1 : 0);
+    if (opt.avgIV) scores.push(opt.avgIV > 28 ? -1 : opt.avgIV < 18 ? 1 : 0);
+  }
+  scores.push(semiScore > 1 ? 1 : semiScore < -1 ? -1 : 0);
+  if (krw) scores.push(krw.price < 1360 ? 1 : krw.price > 1420 ? -1 : 0);
+
+  const up = scores.filter(s=>s>0).length;
+  const dn = scores.filter(s=>s<0).length;
+  const nt = scores.length - up - dn;
+  document.getElementById('comp-bar').innerHTML =
+    `<div style="flex:${up+0.1};background:#639922"></div><div style="flex:${nt+0.1};background:#888780"></div><div style="flex:${dn+0.1};background:#378add"></div>`;
+
+  const icon = document.getElementById('sig-icon');
+  const title = document.getElementById('sig-title');
+  const desc = document.getElementById('sig-desc');
+  if (up > dn + 1) {
+    icon.textContent='📈'; title.textContent='단기 상승 우위';
+    desc.textContent = `${up}개 상승 시그널 / ${dn}개 하락 — 외국인 헤지 완화 + 반도체 강세 동반`;
+  } else if (dn > up + 1) {
+    icon.textContent='📉'; title.textContent='단기 하락 주의';
+    desc.textContent = `${dn}개 하락 시그널 / ${up}개 상승 — EWY 풋 헤지 확대 또는 반도체 약세`;
+  } else {
+    icon.textContent='📊'; title.textContent='중립 / 혼조';
+    desc.textContent = `상승 ${up} · 중립 ${nt} · 하락 ${dn} — 뚜렷한 방향성 없음`;
+  }
+}
+
+loadAll();
+loadHistory();
+</script>
+</body>
+</html>
