@@ -6,14 +6,14 @@
 <title>한국 시장 방향성 대시보드</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-  :root {
-    --bg:#f7f7f5; --surface:#fff; --surface2:#f1efea;
-    --border:rgba(0,0,0,0.1); --text:#1a1a1a; --text2:#6b6b68; --text3:#9b9b98;
-    --up:#d85a30; --down:#378add; --neutral:#888780; --green:#639922; --radius:10px;
+  :root{
+    --bg:#f7f7f5;--surface:#fff;--surface2:#f1efea;
+    --border:rgba(0,0,0,0.1);--text:#1a1a1a;--text2:#6b6b68;--text3:#9b9b98;
+    --up:#d85a30;--down:#378add;--neutral:#888780;--radius:10px;
   }
   @media(prefers-color-scheme:dark){
-    :root{ --bg:#1a1a18; --surface:#242422; --surface2:#2e2e2c;
-           --border:rgba(255,255,255,0.1); --text:#f0efe8; --text2:#a0a09a; --text3:#6b6b68; }
+    :root{--bg:#1a1a18;--surface:#242422;--surface2:#2e2e2c;
+          --border:rgba(255,255,255,0.1);--text:#f0efe8;--text2:#a0a09a;--text3:#6b6b68;}
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
@@ -24,18 +24,23 @@
   .refresh-btn{font-size:12px;cursor:pointer;background:var(--surface2);border:0.5px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);}
   .lbl{font-size:11px;font-weight:500;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin:18px 0 7px;}
   .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
   .mcard{background:var(--surface2);border-radius:8px;padding:12px 14px;}
   .mlabel{font-size:11px;color:var(--text2);margin-bottom:4px;}
   .mval{font-size:21px;font-weight:500;}
-  .msub{font-size:11px;margin-top:2px;color:var(--text3);}
+  .msub{font-size:11px;margin-top:2px;}
   .up{color:var(--up);} .down{color:var(--down);} .neutral{color:var(--neutral);}
   .card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-top:8px;}
+  .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .card-title{font-size:13px;font-weight:500;}
+  .card-sub{font-size:11px;color:var(--text3);margin-top:2px;}
   .row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:13px;}
   .row:last-child{border-bottom:none;}
   .rname{color:var(--text2);}
   .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;}
   .b-ok{background:#eaf3de;color:#3b6d11;} .b-warn{background:#faeeda;color:#854f0b;}
   .b-info{background:#e6f1fb;color:#185fa5;} .b-danger{background:#fcebeb;color:#a32d2d;}
+  .b-neutral{background:var(--surface2);color:var(--text2);}
   .bar-wrap{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:8px;}
   .bar-fill{height:100%;border-radius:3px;background:var(--up);transition:width .6s;}
   .dir-row{display:flex;justify-content:space-between;font-size:11px;margin-top:4px;color:var(--text3);}
@@ -44,11 +49,15 @@
   .sig-icon{font-size:22px;margin-top:1px;}
   .sig-text strong{font-weight:500;font-size:14px;}
   .sig-text span{font-size:12px;color:var(--text2);display:block;margin-top:2px;line-height:1.5;}
-  .chart-wrap{position:relative;width:100%;height:190px;margin-top:10px;}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
-  .legend{display:flex;gap:14px;font-size:11px;color:var(--text2);margin-top:8px;}
+  .chart-wrap{position:relative;width:100%;height:180px;margin-top:10px;}
+  .legend{display:flex;gap:14px;font-size:11px;color:var(--text2);margin-top:8px;flex-wrap:wrap;}
   .ldot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:3px;vertical-align:middle;}
-  .no-data{font-size:12px;color:var(--text3);padding:20px 0;text-align:center;}
+  .oi-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px;}
+  .oi-item{font-size:12px;padding:6px 8px;background:var(--surface2);border-radius:6px;}
+  .oi-label{font-size:10px;color:var(--text3);margin-bottom:2px;}
+  .tab-row{display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:12px;}
+  .tab{font-size:12px;padding:6px 14px;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);}
+  .tab.active{color:var(--text);border-bottom-color:var(--text);font-weight:500;}
   footer{font-size:11px;color:var(--text3);text-align:center;margin-top:32px;line-height:1.8;}
 </style>
 </head>
@@ -63,49 +72,68 @@
     <button class="refresh-btn" onclick="location.reload()">↻ 새로고침</button>
   </div>
 
+  <!-- 핵심 지표 -->
   <div class="lbl">핵심 지표</div>
   <div class="grid4">
-    <div class="mcard"><div class="mlabel">EWY P/C Ratio</div><div class="mval" id="v-pc">—</div><div class="msub" id="s-pc">—</div></div>
-    <div class="mcard"><div class="mlabel">EWY IV (추정)</div><div class="mval" id="v-iv">—</div><div class="msub" id="s-iv">—</div></div>
     <div class="mcard"><div class="mlabel">EWY 가격</div><div class="mval" id="v-ewy">—</div><div class="msub" id="s-ewy">—</div></div>
     <div class="mcard"><div class="mlabel">USD / KRW</div><div class="mval" id="v-krw">—</div><div class="msub" id="s-krw">—</div></div>
+    <div class="mcard"><div class="mlabel">NVIDIA</div><div class="mval" id="v-nvda">—</div><div class="msub" id="s-nvda">—</div></div>
+    <div class="mcard"><div class="mlabel">SOXX 반도체</div><div class="mval" id="v-sox">—</div><div class="msub" id="s-sox">—</div></div>
   </div>
 
-  <div class="lbl">EWY 옵션 구조</div>
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:13px;font-weight:500">Put / Call 비율 추이 (최근 30일)</span>
-      <span class="badge" id="b-pc">—</span>
-    </div>
-    <div class="chart-wrap"><canvas id="pcChart" aria-label="EWY P/C Ratio 차트"></canvas></div>
-    <div class="legend">
-      <span><span class="ldot" style="background:#d85a30"></span>P/C Ratio</span>
-      <span><span class="ldot" style="background:#888780;opacity:.5"></span>중립선 1.0</span>
-    </div>
-  </div>
+  <!-- 옵션 주간/월간 나란히 -->
+  <div class="lbl">EWY 옵션 — 주간 vs 월간</div>
   <div class="grid2">
-    <div class="card" style="margin-top:0"><div style="font-size:11px;color:var(--text2);margin-bottom:5px">▼ Put OI 집중 (헤지 하한)</div><div id="v-put" style="font-size:14px;font-weight:500">—</div></div>
-    <div class="card" style="margin-top:0"><div style="font-size:11px;color:var(--text2);margin-bottom:5px">▲ Call OI 집중 (저항 상단)</div><div id="v-call" style="font-size:14px;font-weight:500">—</div></div>
-  </div>
 
-  <div class="lbl">반도체 / 전일 동향</div>
-  <div class="card">
-    <div class="row"><span class="rname">NVIDIA</span><span id="v-nvda">—</span></div>
-    <div class="row"><span class="rname">SOXX 반도체 ETF</span><span id="v-sox">—</span></div>
-    <div class="row"><span class="rname">SK하이닉스 Frankfurt</span><span style="color:var(--text3);font-size:12px">유동성 낮음 — 방향 참고만</span></div>
-    <div class="row"><span class="rname">삼성전자 Frankfurt</span><span style="color:var(--text3);font-size:12px">유동성 낮음 — 방향 참고만</span></div>
-  </div>
-
-  <div class="lbl">VKOSPI 변동성 (EWY IV 추정)</div>
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:22px;font-weight:500" id="v-vkos">—</span>
-      <span class="badge" id="b-vkos">—</span>
+    <!-- 주간 -->
+    <div class="card" style="margin-top:0">
+      <div class="card-head">
+        <div>
+          <div class="card-title">📅 주간 옵션</div>
+          <div class="card-sub">단기 센티먼트 · 노이즈 있음</div>
+        </div>
+        <span class="badge" id="b-pc-w">—</span>
+      </div>
+      <div class="row"><span class="rname">P/C Ratio</span><span style="font-weight:500" id="v-pc-w">—</span></div>
+      <div class="row"><span class="rname">IV (이상치 제거)</span><span id="v-iv-w">—</span></div>
+      <div class="row"><span class="rname">VKOSPI 추정</span><span id="v-vk-w">—</span></div>
+      <div class="oi-grid">
+        <div class="oi-item"><div class="oi-label">▼ Put OI 집중</div><div id="v-put-w">—</div></div>
+        <div class="oi-item"><div class="oi-label">▲ Call OI 집중</div><div id="v-call-w">—</div></div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartW" aria-label="주간 P/C 추이"></canvas></div>
+      <div class="legend">
+        <span><span class="ldot" style="background:#d85a30"></span>주간 P/C</span>
+        <span><span class="ldot" style="background:#888780;opacity:.5"></span>중립 1.0</span>
+      </div>
     </div>
-    <div class="bar-wrap"><div class="bar-fill" id="bar-vkos" style="width:0%"></div></div>
-    <div class="dir-row"><span>낮음 (안정)</span><span>20 (주의)</span><span>30+ (공포)</span></div>
+
+    <!-- 월간 -->
+    <div class="card" style="margin-top:0">
+      <div class="card-head">
+        <div>
+          <div class="card-title">📆 월간 옵션</div>
+          <div class="card-sub">기관 헤지 방향 · 안정적</div>
+        </div>
+        <span class="badge" id="b-pc-m">—</span>
+      </div>
+      <div class="row"><span class="rname">P/C Ratio</span><span style="font-weight:500" id="v-pc-m">—</span></div>
+      <div class="row"><span class="rname">IV (이상치 제거)</span><span id="v-iv-m">—</span></div>
+      <div class="row"><span class="rname">VKOSPI 추정</span><span id="v-vk-m">—</span></div>
+      <div class="oi-grid">
+        <div class="oi-item"><div class="oi-label">▼ Put OI 집중</div><div id="v-put-m">—</div></div>
+        <div class="oi-item"><div class="oi-label">▲ Call OI 집중</div><div id="v-call-m">—</div></div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartM" aria-label="월간 P/C 추이"></canvas></div>
+      <div class="legend">
+        <span><span class="ldot" style="background:#185fa5"></span>월간 P/C</span>
+        <span><span class="ldot" style="background:#888780;opacity:.5"></span>중립 1.0</span>
+      </div>
+    </div>
+
   </div>
 
+  <!-- 종합 시그널 -->
   <div class="lbl">종합 방향성 시그널</div>
   <div class="card">
     <div style="font-size:12px;color:var(--text2);margin-bottom:6px">상승 · 중립 · 하락 가중치</div>
@@ -120,17 +148,23 @@
       <div class="sig-text"><strong id="sig-title">로딩 중...</strong><span id="sig-desc"></span></div>
     </div>
     <div style="margin-top:12px">
-      <div class="row" id="row-pc"><span class="rname">EWY P/C Ratio</span><span>—</span></div>
-      <div class="row" id="row-iv"><span class="rname">EWY IV</span><span>—</span></div>
-      <div class="row" id="row-vkos"><span class="rname">VKOSPI (추정)</span><span>—</span></div>
+      <div class="row" id="row-pcw"><span class="rname">P/C 주간</span><span>—</span></div>
+      <div class="row" id="row-pcm"><span class="rname">P/C 월간</span><span>—</span></div>
+      <div class="row" id="row-iv"><span class="rname">IV 월간</span><span>—</span></div>
       <div class="row" id="row-semi"><span class="rname">반도체 전일</span><span>—</span></div>
       <div class="row" id="row-krw"><span class="rname">USD/KRW</span><span>—</span></div>
     </div>
   </div>
 
+  <!-- 히스토리 차트 (탭) -->
   <div class="lbl">P/C Ratio 히스토리</div>
   <div class="card">
-    <div class="chart-wrap"><canvas id="histChart" aria-label="P/C Ratio 히스토리"></canvas></div>
+    <div class="tab-row">
+      <div class="tab active" onclick="switchTab('w',this)">주간 옵션</div>
+      <div class="tab" onclick="switchTab('m',this)">월간 옵션</div>
+      <div class="tab" onclick="switchTab('both',this)">주간+월간</div>
+    </div>
+    <div class="chart-wrap" style="height:200px"><canvas id="histChart" aria-label="P/C 히스토리"></canvas></div>
     <div style="font-size:10px;color:var(--text3);margin-top:6px" id="hist-src">GitHub Actions 매일 수집 · 최대 90일</div>
   </div>
 
@@ -141,52 +175,59 @@
 </div>
 
 <script>
-let pcInst = null, histInst = null;
+let wInst=null, mInst=null, histInst=null;
+let _hLabels=[], _hW=[], _hM=[];
 
-const fmt = (v, d=2) => v != null ? Number(v).toFixed(d) : '—';
-const dirCls = c => c > 0 ? 'up' : c < 0 ? 'down' : 'neutral';
-const dirTxt = c => c == null ? '—' : c > 0 ? '▲ +'+c.toFixed(2)+'%' : c < 0 ? '▼ '+c.toFixed(2)+'%' : '보합';
+const fmt=(v,d=2)=>v!=null?Number(v).toFixed(d):'—';
+const dirCls=c=>c>0?'up':c<0?'down':'neutral';
+const dirTxt=c=>c==null?'—':c>0?'▲ +'+c.toFixed(2)+'%':c<0?'▼ '+c.toFixed(2)+'%':'보합';
 
-function setBadge(id, text, cls) {
-  const el = document.getElementById(id);
-  if(el){ el.textContent = text; el.className = 'badge '+cls; }
+function setBadge(id,text,cls){const el=document.getElementById(id);if(el){el.textContent=text;el.className='badge '+cls;}}
+function setRow(id,label,text,cls){const el=document.getElementById(id);if(el)el.innerHTML=`<span class="rname">${label}</span><span class="badge ${cls}">${text}</span>`;}
+
+function pcBadge(pc){
+  if(pc==null) return ['—','b-neutral'];
+  if(pc>1.5) return ['과매도 공포','b-info'];
+  if(pc>1.1) return ['하락 우세','b-warn'];
+  if(pc>0.8) return ['중립','b-ok'];
+  return ['상승 과신','b-warn'];
 }
 
-function setRow(id, label, text, cls) {
-  const el = document.getElementById(id);
-  if(el) el.innerHTML = `<span class="rname">${label}</span><span class="badge ${cls}">${text}</span>`;
-}
-
-function drawPC(labels, vals) {
-  const ctx = document.getElementById('pcChart').getContext('2d');
-  if(pcInst) pcInst.destroy();
-  pcInst = new Chart(ctx, {
+function drawMini(canvasId, vals, labels, color, inst){
+  const ctx=document.getElementById(canvasId).getContext('2d');
+  if(inst) inst.destroy();
+  return new Chart(ctx,{
     type:'line',
-    data:{ labels, datasets:[
-      {label:'P/C',data:vals,borderColor:'#d85a30',backgroundColor:'rgba(216,90,48,0.07)',borderWidth:2,pointRadius:3,tension:.35,fill:true},
-      {label:'중립',data:vals.map(()=>1.0),borderColor:'#888780',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false}
+    data:{labels,datasets:[
+      {data:vals,borderColor:color,backgroundColor:color.replace(')',',0.07)').replace('rgb','rgba'),borderWidth:2,pointRadius:3,tension:.35,fill:true},
+      {data:vals.map(()=>1.0),borderColor:'#888780',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false}},
       scales:{
         y:{min:.3,max:2.5,grid:{color:'rgba(136,135,128,0.1)'},ticks:{font:{size:10},color:'#888780'}},
-        x:{grid:{display:false},ticks:{font:{size:10},color:'#888780',maxTicksLimit:8}}
+        x:{grid:{display:false},ticks:{font:{size:10},color:'#888780',maxTicksLimit:6}}
       }
     }
   });
 }
 
-function drawHist(labels, vals) {
-  const ctx = document.getElementById('histChart').getContext('2d');
+function drawHist(mode){
+  const ctx=document.getElementById('histChart').getContext('2d');
   if(histInst) histInst.destroy();
-  histInst = new Chart(ctx, {
+  const datasets=[];
+  if(mode==='w'||mode==='both'){
+    datasets.push({label:'주간 P/C',data:_hW,borderColor:'#d85a30',borderWidth:2,pointRadius:2,tension:.3,fill:false});
+  }
+  if(mode==='m'||mode==='both'){
+    datasets.push({label:'월간 P/C',data:_hM,borderColor:'#185fa5',borderWidth:2,pointRadius:2,tension:.3,fill:false});
+  }
+  datasets.push({label:'중립',data:_hLabels.map(()=>1.0),borderColor:'#888780',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false});
+  histInst=new Chart(ctx,{
     type:'line',
-    data:{ labels, datasets:[
-      {label:'P/C',data:vals,borderColor:'#d85a30',borderWidth:2,pointRadius:2,tension:.3,fill:false},
-      {label:'중립',data:vals.map(()=>1.0),borderColor:'#888780',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false}
-    ]},
+    data:{labels:_hLabels,datasets},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
+      plugins:{legend:{display:mode==='both',labels:{font:{size:11},boxWidth:10}}},
       scales:{
         y:{min:.3,max:2.5,grid:{color:'rgba(136,135,128,0.1)'},ticks:{font:{size:10},color:'#888780'}},
         x:{grid:{display:false},ticks:{font:{size:10},color:'#888780',maxTicksLimit:10}}
@@ -195,138 +236,123 @@ function drawHist(labels, vals) {
   });
 }
 
-async function loadData() {
-  let history = [];
-  try {
-    const r = await fetch('data/history.json?v=' + Date.now());
-    history = await r.json();
-  } catch(e) {
-    console.warn('history.json 로드 실패:', e);
-  }
+function switchTab(mode, el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  drawHist(mode);
+}
 
-  if(!history || history.length === 0) {
-    document.getElementById('ts').textContent = 'history.json 비어있음 — Actions 탭에서 수동 실행 필요';
-    document.getElementById('sig-title').textContent = '데이터 없음';
-    document.getElementById('sig-desc').textContent = 'GitHub Actions → Run workflow 실행 후 새로고침';
+async function loadData(){
+  let history=[];
+  try{
+    const r=await fetch('data/history.json?v='+Date.now());
+    history=await r.json();
+  }catch(e){console.warn('load fail',e);}
+
+  if(!history||history.length===0){
+    document.getElementById('ts').textContent='history.json 비어있음 — Actions 탭에서 수동 실행 필요';
+    document.getElementById('sig-title').textContent='데이터 없음';
+    document.getElementById('sig-desc').textContent='GitHub Actions → Run workflow 실행 후 새로고침';
     return;
   }
 
-  const d = history[history.length - 1];
-  const now = new Date();
-  document.getElementById('ts').textContent =
-    `마지막 수집일: ${d.date} · 페이지 로드: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const d=history[history.length-1];
+  const now=new Date();
+  document.getElementById('ts').textContent=
+    `마지막 수집: ${d.date} · 로드: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-  // 핵심 지표
-  if(d.pc != null) {
-    document.getElementById('v-pc').textContent = fmt(d.pc);
-    const s = document.getElementById('s-pc');
-    if(d.pc > 1.5){ s.textContent='과매도 공포'; s.className='msub down'; }
-    else if(d.pc > 1.1){ s.textContent='하락 베팅 우세'; s.className='msub up'; }
-    else if(d.pc > 0.8){ s.textContent='중립'; s.className='msub neutral'; }
-    else{ s.textContent='상승 과신 주의'; s.className='msub up'; }
+  // 가격 카드
+  if(d.ewy_price!=null){
+    document.getElementById('v-ewy').textContent='$'+fmt(d.ewy_price,2);
+    const s=document.getElementById('s-ewy');
+    s.textContent=dirTxt(d.ewy_chg); s.className='msub '+dirCls(d.ewy_chg);
+  }
+  if(d.krw!=null){
+    document.getElementById('v-krw').textContent=Math.round(d.krw).toLocaleString();
+    const s=document.getElementById('s-krw');
+    s.textContent=d.krw>1380?'원화 약세':'안정 구간';
+    s.className='msub '+(d.krw>1380?'up':'neutral');
+  }
+  if(d.nvda_price!=null){
+    document.getElementById('v-nvda').textContent='$'+fmt(d.nvda_price,2);
+    const s=document.getElementById('s-nvda');
+    s.textContent=dirTxt(d.nvda_chg); s.className='msub '+dirCls(d.nvda_chg);
+  }
+  if(d.sox_price!=null){
+    document.getElementById('v-sox').textContent='$'+fmt(d.sox_price,2);
+    const s=document.getElementById('s-sox');
+    s.textContent=dirTxt(d.sox_chg); s.className='msub '+dirCls(d.sox_chg);
   }
 
-  if(d.avg_iv != null) {
-    document.getElementById('v-iv').textContent = fmt(d.avg_iv,1) + '%';
-    const s = document.getElementById('s-iv');
-    s.textContent = d.avg_iv > 25 ? '높음 (불안)' : '정상 구간';
-    s.className = 'msub ' + (d.avg_iv > 25 ? 'up' : 'neutral');
-  }
+  // 주간 옵션
+  const [wLbl,wBC]=pcBadge(d.pc_weekly);
+  setBadge('b-pc-w',wLbl,wBC);
+  document.getElementById('v-pc-w').textContent=fmt(d.pc_weekly);
+  document.getElementById('v-iv-w').textContent=d.iv_weekly!=null?fmt(d.iv_weekly,1)+'%':'—';
+  const vkw=d.iv_weekly?d.iv_weekly*0.88:null;
+  document.getElementById('v-vk-w').textContent=vkw!=null?fmt(vkw,1):'—';
+  document.getElementById('v-put-w').textContent=d.put_strike_weekly?'$'+d.put_strike_weekly:'—';
+  document.getElementById('v-call-w').textContent=d.call_strike_weekly?'$'+d.call_strike_weekly:'—';
 
-  if(d.ewy_price != null) {
-    document.getElementById('v-ewy').textContent = '$' + fmt(d.ewy_price,2);
-    const s = document.getElementById('s-ewy');
-    s.textContent = dirTxt(d.ewy_chg);
-    s.className = 'msub ' + dirCls(d.ewy_chg);
-  }
+  // 월간 옵션
+  const [mLbl,mBC]=pcBadge(d.pc_monthly);
+  setBadge('b-pc-m',mLbl,mBC);
+  document.getElementById('v-pc-m').textContent=fmt(d.pc_monthly);
+  document.getElementById('v-iv-m').textContent=d.iv_monthly!=null?fmt(d.iv_monthly,1)+'%':'—';
+  const vkm=d.iv_monthly?d.iv_monthly*0.88:null;
+  document.getElementById('v-vk-m').textContent=vkm!=null?fmt(vkm,1):'—';
+  document.getElementById('v-put-m').textContent=d.put_strike_monthly?'$'+d.put_strike_monthly:'—';
+  document.getElementById('v-call-m').textContent=d.call_strike_monthly?'$'+d.call_strike_monthly:'—';
 
-  if(d.krw != null) {
-    document.getElementById('v-krw').textContent = Math.round(d.krw).toLocaleString();
-    const s = document.getElementById('s-krw');
-    s.textContent = d.krw > 1380 ? '원화 약세' : '안정 구간';
-    s.className = 'msub ' + (d.krw > 1380 ? 'up' : 'neutral');
-  }
+  // 미니 차트 (최근 30일)
+  const recent=history.slice(-30);
+  const labels=recent.map(x=>x.date.slice(5));
+  wInst=drawMini('chartW',recent.map(x=>x.pc_weekly),labels,'rgb(216,90,48)',wInst);
+  mInst=drawMini('chartM',recent.map(x=>x.pc_monthly),labels,'rgb(24,95,165)',mInst);
 
-  // 옵션 구조
-  if(d.pc != null) {
-    let pcLbl, pcBC;
-    if(d.pc > 1.5){ pcLbl='과매도 공포'; pcBC='b-info'; }
-    else if(d.pc > 1.1){ pcLbl='하락 우세'; pcBC='b-warn'; }
-    else if(d.pc > 0.8){ pcLbl='중립'; pcBC='b-ok'; }
-    else{ pcLbl='상승 과신'; pcBC='b-warn'; }
-    setBadge('b-pc', pcLbl, pcBC);
-  }
-
-  // P/C 차트 (최근 30일)
-  const recent = history.slice(-30);
-  const pcVals = recent.map(x => x.pc);
-  const pcLabels = recent.map(x => x.date.slice(5));
-  if(pcVals.some(v => v != null)) drawPC(pcLabels, pcVals);
-
-  // OI 집중
-  if(d.top_put_strike) document.getElementById('v-put').textContent = '$' + d.top_put_strike + (d.put_oi ? ' · OI ' + d.put_oi.toLocaleString() : '');
-  if(d.top_call_strike) document.getElementById('v-call').textContent = '$' + d.top_call_strike + (d.call_oi ? ' · OI ' + d.call_oi.toLocaleString() : '');
-
-  // 반도체
-  if(d.nvda_price != null) {
-    const el = document.getElementById('v-nvda');
-    el.textContent = '$' + fmt(d.nvda_price,2) + ' (' + dirTxt(d.nvda_chg) + ')';
-    el.className = dirCls(d.nvda_chg);
-  }
-  if(d.sox_price != null) {
-    const el = document.getElementById('v-sox');
-    el.textContent = '$' + fmt(d.sox_price,2) + ' (' + dirTxt(d.sox_chg) + ')';
-    el.className = dirCls(d.sox_chg);
-  }
-
-  // VKOSPI
-  const vk = d.avg_iv ? d.avg_iv * 0.88 : null;
-  if(vk != null) {
-    document.getElementById('v-vkos').textContent = fmt(vk,1);
-    document.getElementById('bar-vkos').style.width = Math.min((vk/40)*100,100).toFixed(0)+'%';
-    if(vk > 30) setBadge('b-vkos','극단 공포 — 역발상 주목','b-danger');
-    else if(vk > 22) setBadge('b-vkos','불안 구간','b-warn');
-    else setBadge('b-vkos','안정 구간','b-ok');
+  // 히스토리
+  _hLabels=history.map(x=>x.date.slice(5));
+  _hW=history.map(x=>x.pc_weekly);
+  _hM=history.map(x=>x.pc_monthly);
+  drawHist('w');
+  if(history.length>1){
+    document.getElementById('hist-src').textContent=
+      `${history[0].date} ~ ${d.date} (${history.length}일) · GitHub Actions 자동 수집`;
+  } else {
+    document.getElementById('hist-src').textContent='데이터 1일 — 매일 누적 후 추이 확인 가능';
   }
 
   // 종합 시그널
-  const scores = [];
-  if(d.pc != null) scores.push(d.pc > 1.3 ? -1 : d.pc < 0.85 ? 1 : 0);
-  if(d.avg_iv != null) scores.push(d.avg_iv > 28 ? -1 : d.avg_iv < 18 ? 1 : 0);
-  const semiAvg = ((d.nvda_chg||0) + (d.sox_chg||0)) / 2;
-  scores.push(semiAvg > 1 ? 1 : semiAvg < -1 ? -1 : 0);
-  if(d.krw != null) scores.push(d.krw < 1360 ? 1 : d.krw > 1420 ? -1 : 0);
+  const scores=[];
+  const pc_use = d.pc_monthly ?? d.pc_weekly;
+  const iv_use = d.iv_monthly ?? d.iv_weekly;
+  if(pc_use!=null) scores.push(pc_use>1.3?-1:pc_use<0.85?1:0);
+  if(iv_use!=null) scores.push(iv_use>28?-1:iv_use<18?1:0);
+  const semi=((d.nvda_chg||0)+(d.sox_chg||0))/2;
+  scores.push(semi>1?1:semi<-1?-1:0);
+  if(d.krw!=null) scores.push(d.krw<1360?1:d.krw>1420?-1:0);
 
-  const up = scores.filter(s=>s>0).length;
-  const dn = scores.filter(s=>s<0).length;
-  const nt = scores.length - up - dn;
+  const up=scores.filter(s=>s>0).length;
+  const dn=scores.filter(s=>s<0).length;
+  const nt=scores.length-up-dn;
 
-  document.getElementById('cbar').innerHTML =
+  document.getElementById('cbar').innerHTML=
     `<div style="flex:${up+.1};background:#639922"></div><div style="flex:${nt+.1};background:#888780"></div><div style="flex:${dn+.1};background:#378add"></div>`;
 
-  const icon = document.getElementById('sig-icon');
-  const title = document.getElementById('sig-title');
-  const desc = document.getElementById('sig-desc');
-  if(up > dn+1){ icon.textContent='📈'; title.textContent='단기 상승 우위'; desc.textContent=`${up}개 상승 / ${dn}개 하락 — 외국인 헤지 완화 + 반도체 강세`; }
-  else if(dn > up+1){ icon.textContent='📉'; title.textContent='단기 하락 주의'; desc.textContent=`${dn}개 하락 / ${up}개 상승 — EWY 풋 헤지 확대 또는 반도체 약세`; }
-  else{ icon.textContent='📊'; title.textContent='중립 / 혼조'; desc.textContent=`상승 ${up} · 중립 ${nt} · 하락 ${dn} — 뚜렷한 방향성 없음`; }
+  const icon=document.getElementById('sig-icon');
+  const title=document.getElementById('sig-title');
+  const desc=document.getElementById('sig-desc');
+  if(up>dn+1){icon.textContent='📈';title.textContent='단기 상승 우위';desc.textContent=`${up}개 상승 / ${dn}개 하락`;}
+  else if(dn>up+1){icon.textContent='📉';title.textContent='단기 하락 주의';desc.textContent=`${dn}개 하락 / ${up}개 상승`;}
+  else{icon.textContent='📊';title.textContent='중립 / 혼조';desc.textContent=`상승 ${up} · 중립 ${nt} · 하락 ${dn}`;}
 
-  const pcLbl2 = d.pc > 1.1 ? '하락 우세' : d.pc < 0.85 ? '상승 과신' : '중립';
-  const pcBC2 = d.pc > 1.1 ? 'b-warn' : 'b-ok';
-  setRow('row-pc','EWY P/C Ratio', d.pc != null ? pcLbl2 : '—', d.pc != null ? pcBC2 : '');
-  setRow('row-iv','EWY IV', d.avg_iv != null ? (d.avg_iv>25?'높음':'정상') : '—', d.avg_iv>25?'b-warn':'b-ok');
-  setRow('row-vkos','VKOSPI (추정)', vk != null ? (vk>25?'불안':'안정') : '—', vk>25?'b-warn':'b-ok');
-  setRow('row-semi','반도체 전일', semiAvg>1?'강세 ▲':semiAvg<-1?'약세 ▼':'보합', semiAvg>1?'b-ok':semiAvg<-1?'b-danger':'b-warn');
-  setRow('row-krw','USD/KRW', d.krw!=null?(d.krw>1380?'원화 약세':'안정'):'—', d.krw>1380?'b-warn':'b-ok');
-
-  // 히스토리 차트
-  const hLabels = history.map(x=>x.date.slice(5));
-  const hVals = history.map(x=>x.pc);
-  if(hVals.some(v=>v!=null)) {
-    drawHist(hLabels, hVals);
-    document.getElementById('hist-src').textContent =
-      `데이터: ${history[0].date} ~ ${d.date} (${history.length}일) · GitHub Actions 자동 수집`;
-  }
+  const [wL2,wB2]=pcBadge(d.pc_weekly);
+  const [mL2,mB2]=pcBadge(d.pc_monthly);
+  setRow('row-pcw','P/C 주간',d.pc_weekly!=null?wL2:'—',d.pc_weekly!=null?wB2:'b-neutral');
+  setRow('row-pcm','P/C 월간',d.pc_monthly!=null?mL2:'—',d.pc_monthly!=null?mB2:'b-neutral');
+  setRow('row-iv','IV 월간',iv_use!=null?(iv_use>25?'높음':'정상'):'—',iv_use!=null&&iv_use>25?'b-warn':'b-ok');
+  setRow('row-semi','반도체 전일',semi>1?'강세 ▲':semi<-1?'약세 ▼':'보합',semi>1?'b-ok':semi<-1?'b-danger':'b-warn');
+  setRow('row-krw','USD/KRW',d.krw!=null?(d.krw>1380?'원화 약세':'안정'):'—',d.krw!=null&&d.krw>1380?'b-warn':'b-ok');
 }
 
 loadData();
