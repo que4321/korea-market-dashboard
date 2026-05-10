@@ -5,9 +5,13 @@
     "avg_iv": 151.36,
     "top_put_strike": 105.0,
     "top_call_strike": 160.0,
+    "call_oi": 75591,
+    "put_oi": 78819,
     "ewy_price": 190.2,
     "ewy_chg": 7.61,
+    "nvda_price": 215.2,
     "nvda_chg": 1.749,
+    "sox_price": 520.3,
     "sox_chg": 5.675,
     "krw": 1461.48,
     "krw_chg": 1.179
