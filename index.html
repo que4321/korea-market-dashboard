@@ -348,6 +348,11 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <div class="mval" id="liq-sp" style="color:#34d399">—</div>
       <div class="msub" id="liq-sp-chg">—</div>
     </div>
+    <div class="mcard" style="flex:1;min-width:130px">
+      <div class="mlabel">순유동성↔S&P500 상관</div>
+      <div class="mval" id="liq-corr" style="color:#a78bfa">—</div>
+      <div class="msub" id="liq-corr-sub">3년 피어슨</div>
+    </div>
   </div>
 
   <!-- 차트 -->
@@ -376,9 +381,11 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <span style="color:#38bdf8">■</span> <b>TGA</b> — 감소 시 유동성 ↑ (정부 지출 증가) &nbsp;|&nbsp;
     <span style="color:#818cf8">■</span> <b>RRP</b> — 감소 시 유동성 ↑ (MMF→시장 자금 이동) &nbsp;|&nbsp;
     <span style="color:#fbbf24">- -</span> <b>TGA+RRP</b> — 합계 (좌축)<br>
+    <span style="color:#fb923c">- -</span> <b>Fed총자산</b> — QT 감소/QE 증가 확인 &nbsp;|&nbsp;
     <span style="color:#f87171">■</span> <b>순유동성</b> = Fed총자산 − TGA − RRP &nbsp;|&nbsp;
-    <span style="color:#34d399">■</span> <b>S&P500</b> — 우축 기준<br>
-    💡 <b>순유동성↑</b> = 주식시장 상승 압력 &nbsp;|&nbsp; <b>순유동성↓</b> = 하락 압력 &nbsp;|&nbsp; 매주 금요일 오전 8시 업데이트 (H.4.1 기준)
+    <span style="color:#fca5a5">—</span> <b>순유동성 4주MA</b> — 노이즈 제거<br>
+    <span style="color:#34d399">■</span> <b>S&P500</b> — 우축 기준 &nbsp;|&nbsp; <span style="color:#a78bfa">■</span> <b>상관계수</b> — 피어슨 r (3년, 주간)<br>
+    💡 <b>순유동성↑</b> = 상승 압력 &nbsp;|&nbsp; <b>순유동성↓</b> = 하락 압력 &nbsp;|&nbsp; 매주 금요일 오전 8시 업데이트 (H.4.1 기준)
   </div>
 </div>
 
@@ -778,6 +785,7 @@ function renderLiquidityChart(){
     data:{
       labels,
       datasets:[
+        {type:'line',label:'Fed총자산 ($B)',data:alignToLabels(liq.walcl||[],labels).map(v=>v!=null?v/1000:null),borderColor:'#fb923c',backgroundColor:'transparent',borderWidth:1.5,borderDash:[2,2],pointRadius:0,pointHoverRadius:4,fill:false,yAxisID:'y',tension:0.3},
         {type:'line',label:'TGA ($B)',data:tgaV,borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
         {type:'line',label:'RRP ($B)',data:rrpV,borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
         {type:'line',label:'TGA+RRP ($B)',data:tgaV.map((t,i)=>t!=null&&rrpV[i]!=null?+(t+rrpV[i]).toFixed(1):null),borderColor:'#fbbf24',borderDash:[5,3],borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:false,yAxisID:'y',tension:0.3},
@@ -801,12 +809,30 @@ function renderLiquidityChart(){
 
   // ── 차트 2: 순유동성 / S&P500 ──
   const netV = alignToLabels(liq.net_liquidity||[], labels);
+  // ── 상관계수 계산 (피어슨) ──
+  (()=>{
+    const pairs = netV.map((n,i)=>[n,spV[i]]).filter(([n,s])=>n!=null&&s!=null);
+    if(pairs.length < 10) return;
+    const nx=pairs.map(p=>p[0]), sx=pairs.map(p=>p[1]);
+    const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+    const nm=mean(nx), sm=mean(sx);
+    const cov=nx.reduce((s,v,i)=>s+(v-nm)*(sx[i]-sm),0)/nx.length;
+    const sd=a=>Math.sqrt(a.reduce((s,v)=>s+(v-mean(a))**2,0)/a.length);
+    const r=(cov/(sd(nx)*sd(sx))).toFixed(3);
+    const el=document.getElementById('liq-corr');
+    el.textContent=r;
+    el.style.color=r>=0.7?'#34d399':r>=0.4?'#fbbf24':r>=0?'#94a3b8':'#f87171';
+    document.getElementById('liq-corr-sub').textContent=
+      (r>=0.7?'강한 양의 상관':r>=0.4?'보통 양의 상관':r>=0?'약한 양의 상관':'음의 상관')+' ('+pairs.length+'주)';
+  })();
+
   if(liqChartInst2) liqChartInst2.destroy();
   liqChartInst2=new Chart(document.getElementById('liqChart2').getContext('2d'),{
     data:{
       labels,
       datasets:[
-        {type:'line',label:'순유동성 ($B)',data:netV,borderColor:'#f87171',backgroundColor:'rgba(248,113,113,0.08)',borderWidth:2.5,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
+        {type:'line',label:'순유동성 ($B)',data:netV,borderColor:'#f87171',backgroundColor:'rgba(248,113,113,0.06)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
+        {type:'line',label:'순유동성 4주MA',data:netV.map((v,i,a)=>{if(i<3)return null;const sl=a.slice(i-3,i+1).filter(x=>x!=null);return sl.length===4?+(sl.reduce((s,x)=>s+x,0)/4).toFixed(0):null;}),borderColor:'#fca5a5',borderWidth:2.5,borderDash:[0],pointRadius:0,pointHoverRadius:4,fill:false,yAxisID:'y',tension:0.3},
         {type:'line',label:'S&P500',data:spV,borderColor:'#34d399',backgroundColor:'transparent',borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',tension:0.3},
       ]
     },
