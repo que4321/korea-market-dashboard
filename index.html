@@ -374,9 +374,14 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <canvas id="liqChart2"></canvas>
     </div>
     <!-- 변화량: TGA·RRP 월간 변화량 / S&P500 -->
-    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">③ TGA · RRP 월간 변화량 ($B) · S&P500 — 유동성 선행 지표</div>
-    <div style="position:relative;height:300px">
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">③ TGA · RRP 월간 변화량 ($B) · S&P500 — 유동성 선행 지표 (8주MA 추세선)</div>
+    <div style="position:relative;height:300px;margin-bottom:24px">
       <canvas id="liqChart3"></canvas>
+    </div>
+    <!-- 합계 원본 변화량 비교 -->
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">④ TGA+RRP 합계 변화량 원본 ($B) · S&P500 — ③과 비교용</div>
+    <div style="position:relative;height:260px">
+      <canvas id="liqChart4"></canvas>
     </div>
   </div>
 
@@ -696,7 +701,7 @@ async function loadScanner(){try{const url=GIST_URL.replace(/\/raw\/[a-f0-9]+\//
 
 
 /* ══════════════════════ 미국 유동성 ══════════════════════ */
-let liqChartInst=null, liqChartInst2=null, liqChartInst3=null, liqDataCache=null;
+let liqChartInst=null, liqChartInst2=null, liqChartInst3=null, liqChartInst4=null, liqDataCache=null;
 
 function fmtB(v){ return v==null?'—':'$'+(v/1000).toFixed(0)+'B'; }
 function fmtChg(cur,prev,label){
@@ -924,6 +929,50 @@ function renderLiquidityChart(){
           ticks:{color:'#34d399',callback:v=>Number(v).toLocaleString()},
           grid:{drawOnChartArea:false}
         }
+      }
+    }
+  });
+
+  // ── 차트 4: TGA+RRP 합계 변화량 원본 (비교용) ──
+  const totRawV = tgaChgV.map((t,i)=>
+    t!=null && rrpChgV[i]!=null ? +(-(t + rrpChgV[i])).toFixed(1) : null
+  );
+  if(liqChartInst4) liqChartInst4.destroy();
+  liqChartInst4 = new Chart(document.getElementById('liqChart4').getContext('2d'),{
+    data:{
+      labels,
+      datasets:[
+        {type:'bar',label:'합계 변화량 원본 ($B)',data:totRawV,
+          backgroundColor:totRawV.map(v=>v==null?'transparent':v>=0?'rgba(52,211,153,0.45)':'rgba(248,113,113,0.45)'),
+          borderColor:totRawV.map(v=>v==null?'transparent':v>=0?'#34d399':'#f87171'),
+          borderWidth:1, yAxisID:'y'},
+        {type:'line',label:'S&P500',data:spV,
+          borderColor:'#34d399',backgroundColor:'transparent',
+          borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',tension:0.3},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{
+          const v=c.raw;
+          if(v==null) return c.dataset.label+': —';
+          if(c.dataset.yAxisID==='y2') return 'S&P500: '+Number(v).toLocaleString();
+          return '합계 변화량: '+(v>=0?'+':'')+Number(v).toFixed(1)+'B';
+        }}}
+      },
+      scales:{
+        x:xScale,
+        y:{position:'left',
+          title:{display:true,text:'유동성 순공급량 원본 ($B)',color:'#475569',font:{size:11}},
+          ticks:{color:'#94a3b8',callback:v=>(v>0?'+':'')+v.toFixed(0)+'B'},
+          grid:{color:'#1a2840'}},
+        y2:{position:'right',
+          title:{display:true,text:'S&P500',color:'#475569',font:{size:11}},
+          ticks:{color:'#34d399',callback:v=>Number(v).toLocaleString()},
+          grid:{drawOnChartArea:false}}
       }
     }
   });
