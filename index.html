@@ -142,7 +142,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 <div class="nav" style="display:flex;align-items:flex-end;gap:0;flex-wrap:wrap">
   <div style="display:flex;flex-direction:column;align-items:center">
     <button class="ntab active" onclick="showPanel('scanner',this)" id="tab-scanner">🔍 저평가 스캐너</button>
-    <div class="tab-ts" id="ts-scanner">매주 월 08:13 KST</div>
+    <div class="tab-ts" id="ts-scanner">매주 월요일 08:13 KST</div>
   </div>
   <div style="display:flex;flex-direction:column;align-items:center">
     <button class="ntab" onclick="showPanel('kr',this)" id="tab-kr">🇰🇷 한국 시장</button>
@@ -154,7 +154,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
   </div>
   <div style="display:flex;flex-direction:column;align-items:center">
     <button class="ntab" onclick="showPanel('liquidity',this)" id="tab-liquidity">💧 미국 유동성</button>
-    <div class="tab-ts" id="ts-liquidity">매주 금 08:00 KST</div>
+    <div class="tab-ts" id="ts-liquidity">매주 금요일 08:00 KST</div>
   </div>
 </div>
 
@@ -402,7 +402,8 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:13px;font-weight:700;color:var(--text)">🤖 유동성 신호 자동 해석 <span style="font-size:10px;color:var(--text3);font-weight:400">(Claude AI · 데이터 기반)</span></div>
       <button id="liq-ai-btn" onclick="generateLiquidityInsight()"
-        style="background:#1e3a5f;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-weight:600">
+        style="background:#1e3a5f;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-weight:600"
+        title="Claude AI 해석 (Anthropic API 키 필요)">
         ✨ 해석 생성
       </button>
     </div>
@@ -540,10 +541,7 @@ async function loadDash(){
     const d=histData[histData.length-1];
     const now=new Date();
     const ts=`수집: ${d.date} · 로드: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
-    const tsKr=document.getElementById('ts-kr');
-    const tsUs=document.getElementById('ts-us');
-    if(tsKr) tsKr.textContent='수집: '+d.date+' KST';
-    if(tsUs) tsUs.textContent='수집: '+d.date+' KST';
+    // 한국/미국 시장은 기본 주기만 표시 (수집 날짜는 패널 내부에 표시)
     document.getElementById('kr-ts').textContent=ts;
     document.getElementById('us-ts').textContent=ts;
 
@@ -729,7 +727,7 @@ function switchTab(tab,btn){curTab=tab;sortCol=null;sortDir='desc';document.quer
 function downloadExcel(){if(!cachedData){alert('데이터를 먼저 로드해 주세요.');return;}const wb=XLSX.utils.book_new();const kh=['순위','종목코드','종목명','섹터','주가(원)','PER','Forward PER','PBR','ROE(%)','배당(%)','EV/EBITDA','시총(억)','점수','페널티'];const kr=(cachedData.kospi200||[]).map(r=>[r.rank,r.ticker,r.name,r.sector,r.price??'',r.per??'',r.forward_per??'',r.pbr??'',r.roe??'',r.div??'',r.ev_ebitda??'',r.marcap??'',r.score??'',r.penalty??0]);const ks=XLSX.utils.aoa_to_sheet([kh,...kr]);ks['!cols']=[{wch:6},{wch:10},{wch:16},{wch:14},{wch:12},{wch:8},{wch:12},{wch:8},{wch:9},{wch:12},{wch:12},{wch:12},{wch:7},{wch:7}];XLSX.utils.book_append_sheet(wb,ks,'코스피200');const sh=['순위','티커','종목명','섹터(영문)','섹터(한글)','주가($)','EV/EBITDA','PER','Forward PER','PBR','ROE(%)','부채(%)','FCF($B)','시총($B)','점수','페널티'];const sr=(cachedData.sp500||[]).map(r=>[r.rank,r.ticker,r.name,r.sector,r.sector_kr,r.price??'',r.ev_ebitda??'',r.per??'',r.forward_pe??'',r.pbr??'',r.roe??'',r.debt_eq??'',r.fcf_bn??'',r.mkt_cap_bn??'',r.score??'',r.penalty??0]);const ss=XLSX.utils.aoa_to_sheet([sh,...sr]);ss['!cols']=[{wch:6},{wch:7},{wch:26},{wch:20},{wch:14},{wch:9},{wch:11},{wch:8},{wch:12},{wch:8},{wch:9},{wch:11},{wch:9},{wch:10},{wch:7},{wch:7}];XLSX.utils.book_append_sheet(wb,ss,'S&P500');const dt=(cachedData.updated_at||'').replace(/[: ]/g,'-').replace('KST','').trim()||'today';XLSX.writeFile(wb,`저평가스캐너_${dt}.xlsx`);}
 async function loadScanner(){try{const url=GIST_URL.replace(/\/raw\/[a-f0-9]+\//,'/raw/')+'?nc='+Date.now();const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);cachedData=await r.json();document.getElementById('hdr-sub').textContent=`최종 업데이트: ${cachedData.updated_at||'-'}`;
     const tsSc=document.getElementById('ts-scanner');
-    if(tsSc&&cachedData.updated_at) tsSc.textContent='업데이트: '+cachedData.updated_at;
+    if(tsSc&&cachedData.updated_at) tsSc.textContent='업데이트: '+cachedData.updated_at+' (매주 월요일)';
     renderData(cachedData);}catch(e){document.getElementById('table-body').innerHTML=`<tr><td colspan="12"><div class="err">⚠️ 로드 실패: ${e.message}</div></td></tr>`;}}
 
 
@@ -761,7 +759,7 @@ function renderLiquidityChart(){
   const tga=liq.tga||[], rrp=liq.rrp||[], sp=liq.sp500||[];
   document.getElementById('liq-update').textContent='업데이트: '+(liq.updated_at||'-');
   const tsLiq=document.getElementById('ts-liquidity');
-  if(tsLiq&&liq.updated_at) tsLiq.textContent='업데이트: '+liq.updated_at;
+  if(tsLiq&&liq.updated_at) tsLiq.textContent='업데이트: '+liq.updated_at+' (매주 금요일)';
 
   // 요약 카드
   if(tga.length){
@@ -769,15 +767,14 @@ function renderLiquidityChart(){
     document.getElementById('liq-tga').textContent=fmtB(cur);
     const el=document.getElementById('liq-tga-chg');
     el.textContent=fmtChg(cur,prev,'4주');
-    el.style.color=prev&&cur<prev?'#34d399':'#f87171';
+    el.style.color=(prev!=null&&(cur-prev<0))?'#34d399':'#f87171';
   }
   if(rrp.length){
     const cur=rrp[rrp.length-1].value, prev=rrp.length>4?rrp[rrp.length-5].value:null;
-    // RRP는 이미 $B 단위
     document.getElementById('liq-rrp').textContent='$'+Number(cur).toFixed(1)+'B';
     const el=document.getElementById('liq-rrp-chg');
-    if(prev){const d=cur-prev,p=((d/prev)*100).toFixed(1);el.textContent=(d>=0?'▲':'▼')+' $'+Math.abs(d).toFixed(1)+'B ('+p+'%) 4주';}
-    el.style.color=prev&&cur<prev?'#34d399':'#f87171';
+    if(prev){const d=cur-prev,p=((d/prev)*100).toFixed(1);el.textContent=(d>=0?'\u25B2':'\u25BC')+' $'+Math.abs(d).toFixed(1)+'B ('+p+'%) 4주';}
+    el.style.color=(prev!=null&&(cur-prev<0))?'#34d399':'#f87171';
   }
   if(tga.length&&rrp.length){
     const tc=tga[tga.length-1].value/1000;  // TGA: 백만→$B
@@ -1120,20 +1117,61 @@ async function generateLiquidityInsight() {
 각 항목은 1~2문장으로 간결하게.`;
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await resp.json();
-    const text = data.content?.map(b => b.text||'').join('') || '해석 생성 실패';
-    out.textContent = text;
+    // 데이터 기반 규칙 해석 (CORS 없이 브라우저에서 직접 실행)
+    const tgaTrend = tgaL && tgaP ? (tgaL.value > tgaP.value ? '증가' : '감소') : '—';
+    const rrpTrend = rrpL && rrpP ? (rrpL.value > rrpP.value ? '증가' : '감소') : '—';
+    const netTrend = netL && netP ? (netL.value > netP.value ? '증가' : '감소') : '—';
+    const spTrend  = spL  && spP  ? (spL.value  > spP.value  ? '상승' : '하락') : '—';
+    const ma8Dir   = ma8Last != null ? (ma8Last > 50 ? '양수 (유동성 공급 우세)' : ma8Last > 0 ? '소폭 양수 (중립)' : ma8Last > -50 ? '소폭 음수 (중립)' : '음수 (유동성 흡수 우세)') : '—';
+    const tgaChgPct = tgaL && tgaP ? ((tgaL.value-tgaP.value)/Math.abs(tgaP.value)*100).toFixed(1) : null;
+    const netChgPct = netL && netP ? ((netL.value-netP.value)/Math.abs(netP.value)*100).toFixed(1) : null;
+    const spChgPct  = spL  && spP  ? ((spL.value -spP.value )/Math.abs(spP.value )*100).toFixed(1) : null;
+
+    // 종합 판단
+    let judge = '';
+    const signals = [];
+    if(tgaTrend==='감소') signals.push('TGA↓(+)');
+    else signals.push('TGA↑(-)');
+    if(rrpTrend==='감소') signals.push('RRP↓(+)');
+    else signals.push('RRP↑(-)');
+    if(netTrend==='증가') signals.push('순유동성↑(+)');
+    else signals.push('순유동성↓(-)');
+    const posCount = signals.filter(s=>s.includes('(+)')).length;
+    if(posCount>=3) judge = '🟢 유동성 우호적 — 시장 상승 압력';
+    else if(posCount===2) judge = '🟡 유동성 혼조 — 방향성 불명확';
+    else judge = '🔴 유동성 비우호적 — 시장 하락 압력';
+
+    const liqDate = tgaL?.date?.slice(0,7) || '-';
+    const arrow = '->';
+    const dash  = '-';
+    const tgaMsg = tgaTrend==='감소' ? '감소: 정부 지출 증가, 시중 유동성 공급 (+)' : '증가: 정부 지출 감소/세수 증가, 유동성 흡수 (-)';
+    const netMsg = netTrend==='증가' ? '증가: Fed QT 속도 둔화 또는 TGA 감소 효과' : '감소: QT 지속 또는 TGA 축적 압력';
+    const ma8Msg = ma8Last>0 ? '순공급 추세 유지 - S&P500 지지 요인' : '순흡수 추세 - S&P500 상방 제한 요인';
+    const keyVar = tgaTrend==='증가' ? 'TGA 축적 지속 여부 (부채한도 협상/세수 동향)' : 'Fed QT 중단 또는 속도 조절 여부';
+    const lines = [
+      '■ 현재 유동성 신호 (' + liqDate + ' 기준)',
+      '',
+      '• TGA(재무부 현금잔고): ' + fmtB(tgaL ? tgaL.value : null) + ' - 4주 전 대비 ' + tgaTrend + (tgaChgPct ? ' (' + tgaChgPct + '%)' : ''),
+      '  -> TGA ' + tgaMsg,
+      '',
+      '• RRP(역레포 잔고): ' + fmtBd(rrpL ? rrpL.value : null) + ' - 4주 전 대비 ' + rrpTrend,
+      '  -> RRP 잔고 거의 소진 - 추가 유동성 공급 여력 제한적',
+      '',
+      '• 순유동성(Fed총자산-TGA-RRP): $' + (netL ? Number(netL.value).toFixed(0) : '-') + 'B - 4주 전 대비 ' + netTrend + (netChgPct ? ' (' + netChgPct + '%)' : ''),
+      '  -> 순유동성 ' + netMsg,
+      '',
+      '• 합계 8주MA: ' + (ma8Last!=null ? (ma8Last>0?'+':'') + ma8Last + 'B' : '-') + ' (' + ma8Dir + ')',
+      '  -> ' + ma8Msg,
+      '',
+      '• S&P500: ' + (spL ? Number(spL.value).toLocaleString() : '-') + ' (4주 전 대비 ' + spTrend + (spChgPct ? ' ' + spChgPct + '%' : '') + ')',
+      '',
+      '◆ 종합 판단: ' + judge,
+      '◆ 핵심 변수: ' + keyVar,
+    ];
+    const result = lines.join('\n');
+    out.textContent = result;
   } catch(e) {
-    out.textContent = '⚠️ API 호출 실패: ' + e.message;
+    out.textContent = '⚠️ 해석 생성 실패: ' + e.message;
   } finally {
     btn.disabled = false;
     btn.textContent = '✨ 해석 생성';
