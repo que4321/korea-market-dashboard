@@ -727,7 +727,7 @@ function switchTab(tab,btn){curTab=tab;sortCol=null;sortDir='desc';document.quer
 function downloadExcel(){if(!cachedData){alert('데이터를 먼저 로드해 주세요.');return;}const wb=XLSX.utils.book_new();const kh=['순위','종목코드','종목명','섹터','주가(원)','PER','Forward PER','PBR','ROE(%)','배당(%)','EV/EBITDA','시총(억)','점수','페널티'];const kr=(cachedData.kospi200||[]).map(r=>[r.rank,r.ticker,r.name,r.sector,r.price??'',r.per??'',r.forward_per??'',r.pbr??'',r.roe??'',r.div??'',r.ev_ebitda??'',r.marcap??'',r.score??'',r.penalty??0]);const ks=XLSX.utils.aoa_to_sheet([kh,...kr]);ks['!cols']=[{wch:6},{wch:10},{wch:16},{wch:14},{wch:12},{wch:8},{wch:12},{wch:8},{wch:9},{wch:12},{wch:12},{wch:12},{wch:7},{wch:7}];XLSX.utils.book_append_sheet(wb,ks,'코스피200');const sh=['순위','티커','종목명','섹터(영문)','섹터(한글)','주가($)','EV/EBITDA','PER','Forward PER','PBR','ROE(%)','부채(%)','FCF($B)','시총($B)','점수','페널티'];const sr=(cachedData.sp500||[]).map(r=>[r.rank,r.ticker,r.name,r.sector,r.sector_kr,r.price??'',r.ev_ebitda??'',r.per??'',r.forward_pe??'',r.pbr??'',r.roe??'',r.debt_eq??'',r.fcf_bn??'',r.mkt_cap_bn??'',r.score??'',r.penalty??0]);const ss=XLSX.utils.aoa_to_sheet([sh,...sr]);ss['!cols']=[{wch:6},{wch:7},{wch:26},{wch:20},{wch:14},{wch:9},{wch:11},{wch:8},{wch:12},{wch:8},{wch:9},{wch:11},{wch:9},{wch:10},{wch:7},{wch:7}];XLSX.utils.book_append_sheet(wb,ss,'S&P500');const dt=(cachedData.updated_at||'').replace(/[: ]/g,'-').replace('KST','').trim()||'today';XLSX.writeFile(wb,`저평가스캐너_${dt}.xlsx`);}
 async function loadScanner(){try{const url=GIST_URL.replace(/\/raw\/[a-f0-9]+\//,'/raw/')+'?nc='+Date.now();const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);cachedData=await r.json();document.getElementById('hdr-sub').textContent=`최종 업데이트: ${cachedData.updated_at||'-'}`;
     const tsSc=document.getElementById('ts-scanner');
-    if(tsSc&&cachedData.updated_at) tsSc.textContent='업데이트: '+cachedData.updated_at+' (매주 월요일)';
+    if(tsSc&&cachedData.updated_at) tsSc.textContent='업데이트: '+cachedData.updated_at+' (매주 월요일 08:13)';
     renderData(cachedData);}catch(e){document.getElementById('table-body').innerHTML=`<tr><td colspan="12"><div class="err">⚠️ 로드 실패: ${e.message}</div></td></tr>`;}}
 
 
@@ -759,7 +759,7 @@ function renderLiquidityChart(){
   const tga=liq.tga||[], rrp=liq.rrp||[], sp=liq.sp500||[];
   document.getElementById('liq-update').textContent='업데이트: '+(liq.updated_at||'-');
   const tsLiq=document.getElementById('ts-liquidity');
-  if(tsLiq&&liq.updated_at) tsLiq.textContent='업데이트: '+liq.updated_at+' (매주 금요일)';
+  if(tsLiq&&liq.updated_at) tsLiq.textContent='업데이트: '+liq.updated_at+' (매주 금요일 08:00)';
 
   // 요약 카드
   if(tga.length){
