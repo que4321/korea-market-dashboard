@@ -392,7 +392,8 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <span style="color:#34d399">■</span> <b>S&P500</b> — 우축 기준 &nbsp;|&nbsp; <span style="color:#a78bfa">■</span> <b>상관계수</b> — 피어슨 r (3년, 주간)<br>
     💡 <b>순유동성↑</b> = 상승 압력 &nbsp;|&nbsp; <b>순유동성↓</b> = 하락 압력 &nbsp;|&nbsp; 매주 금요일 오전 8시 업데이트 (H.4.1 기준)<br>
     <span style="color:#34d399">■</span> <b>변화량 초록</b> = TGA·RRP 감소 → 유동성 공급 → 상승 압력 &nbsp;|&nbsp;
-    <span style="color:#f87171">■</span> <b>변화량 빨강</b> = TGA·RRP 증가 → 유동성 흡수 → 하락 압력
+    <span style="color:#f87171">■</span> <b>변화량 빨강</b> = TGA·RRP 증가 → 유동성 흡수 → 하락 압력 &nbsp;|&nbsp;
+    <span style="color:#fbbf24">—</span> <b>합계 8주MA</b> = 노이즈 제거한 추세선
   </div>
 </div>
 
@@ -632,7 +633,7 @@ function renderUS(d){
       </div>
       <div class="opt-row"><span class="opt-label">RSI(14)</span><span class="badge ${rc}">${rl}</span></div>
       <div class="opt-row"><span class="opt-label">200일 MA 대비</span><span>${maDir}</span></div>
-      <div class="opt-row"><span class="opt-label">옵션 P/C</span><span class="badge ${pc2}">${pl}</span></div>
+      <div class="opt-row"><span class="opt-label">옵션 P/C</span><span style="display:flex;align-items:center;gap:6px"><span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--text)">${s.opt_pc!=null?f(s.opt_pc,2):'—'}</span><span class="badge ${pc2}">${pl}</span></span></div>
       <div class="opt-row"><span class="opt-label">Put OI 집중</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px">${s.opt_put?'$'+s.opt_put:'—'}</span></div>
       <div class="opt-row"><span class="opt-label">Call OI 집중</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px">${s.opt_call?'$'+s.opt_call:'—'}</span></div>
     </div>`;
@@ -881,9 +882,13 @@ function renderLiquidityChart(){
           borderColor:rrpChgV.map(v=>v==null?'transparent':v>=0?'#f87171':'#34d399'),
           borderWidth:1, yAxisID:'y'},
         // 선: TGA+RRP 합계 변화량
-        {type:'line',label:'합계 변화량 ($B)',data:totChgV,
-          borderColor:'#fbbf24',borderWidth:2,borderDash:[4,2],
-          pointRadius:0,pointHoverRadius:4,fill:false,yAxisID:'y',tension:0.3},
+        {type:'line',label:'합계 8주MA ($B)',
+          data:totChgV.map((v,i,a)=>{
+            const sl=a.slice(Math.max(0,i-7),i+1).filter(x=>x!=null);
+            return sl.length>=4?+(sl.reduce((s,x)=>s+x,0)/sl.length).toFixed(1):null;
+          }),
+          borderColor:'#fbbf24',borderWidth:3,
+          pointRadius:0,pointHoverRadius:5,fill:false,yAxisID:'y',tension:0.4},
         // 선: S&P500 (우축)
         {type:'line',label:'S&P500',data:spV,
           borderColor:'#34d399',backgroundColor:'transparent',
