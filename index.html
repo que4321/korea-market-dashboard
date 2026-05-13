@@ -782,16 +782,21 @@ function renderLiquidityChart(){
   const rrpV=alignToLabels(rrp,labels).map(v=>v!=null?v:null);  // RRP: 이미 $B 단위
   const spV=alignToLabels(sp,labels);
 
-  // ── 월간 변화량 계산 헬퍼 ──
+  // ── 월간 변화량 계산 헬퍼 (nearest-date 매핑) ──
+  function nearestVal(series, targetDate) {
+    // targetDate 이하의 가장 가까운 날짜 값 반환
+    const sorted = series.filter(d => d.date <= targetDate).sort((a,b)=>b.date.localeCompare(a.date));
+    return sorted.length ? sorted[0].value : null;
+  }
   function monthlyChg(series, labels) {
-    // 약 4주(4포인트) 전 대비 변화량
-    const map = {};
-    series.forEach(d => { map[d.date] = d.value; });
-    return labels.map((dt, i, arr) => {
-      if (i < 4) return null;
-      const cur  = map[dt];
-      const prev4= arr[i-4];
-      const prev = map[prev4];
+    // labels 각 날짜 기준으로 약 4주(28일) 전 날짜와 비교
+    return labels.map((dt) => {
+      const cur = nearestVal(series, dt);
+      // 28일 전 날짜 계산
+      const d = new Date(dt);
+      d.setDate(d.getDate() - 28);
+      const prev4dt = d.toISOString().slice(0,10);
+      const prev = nearestVal(series, prev4dt);
       if (cur == null || prev == null) return null;
       return +(cur - prev).toFixed(1);
     });
