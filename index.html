@@ -370,8 +370,13 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     </div>
     <!-- 하단: 순유동성 / S&P500 -->
     <div style="font-size:11px;color:var(--text3);margin-bottom:6px">② 순유동성 (Net Liquidity = Fed총자산 − TGA − RRP) · S&P500</div>
-    <div style="position:relative;height:300px">
+    <div style="position:relative;height:300px;margin-bottom:24px">
       <canvas id="liqChart2"></canvas>
+    </div>
+    <!-- 변화량: TGA·RRP 월간 변화량 / S&P500 -->
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">③ TGA · RRP 월간 변화량 ($B) · S&P500 — 유동성 선행 지표</div>
+    <div style="position:relative;height:300px">
+      <canvas id="liqChart3"></canvas>
     </div>
   </div>
 
@@ -385,7 +390,9 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <span style="color:#f87171">■</span> <b>순유동성</b> = Fed총자산 − TGA − RRP &nbsp;|&nbsp;
     <span style="color:#fca5a5">—</span> <b>순유동성 4주MA</b> — 노이즈 제거<br>
     <span style="color:#34d399">■</span> <b>S&P500</b> — 우축 기준 &nbsp;|&nbsp; <span style="color:#a78bfa">■</span> <b>상관계수</b> — 피어슨 r (3년, 주간)<br>
-    💡 <b>순유동성↑</b> = 상승 압력 &nbsp;|&nbsp; <b>순유동성↓</b> = 하락 압력 &nbsp;|&nbsp; 매주 금요일 오전 8시 업데이트 (H.4.1 기준)
+    💡 <b>순유동성↑</b> = 상승 압력 &nbsp;|&nbsp; <b>순유동성↓</b> = 하락 압력 &nbsp;|&nbsp; 매주 금요일 오전 8시 업데이트 (H.4.1 기준)<br>
+    <span style="color:#34d399">■</span> <b>변화량 초록</b> = TGA·RRP 감소 → 유동성 공급 → 상승 압력 &nbsp;|&nbsp;
+    <span style="color:#f87171">■</span> <b>변화량 빨강</b> = TGA·RRP 증가 → 유동성 흡수 → 하락 압력
   </div>
 </div>
 
@@ -688,7 +695,7 @@ async function loadScanner(){try{const url=GIST_URL.replace(/\/raw\/[a-f0-9]+\//
 
 
 /* ══════════════════════ 미국 유동성 ══════════════════════ */
-let liqChartInst=null, liqChartInst2=null, liqDataCache=null;
+let liqChartInst=null, liqChartInst2=null, liqChartInst3=null, liqDataCache=null;
 
 function fmtB(v){ return v==null?'—':'$'+(v/1000).toFixed(0)+'B'; }
 function fmtChg(cur,prev,label){
@@ -775,6 +782,21 @@ function renderLiquidityChart(){
   const rrpV=alignToLabels(rrp,labels).map(v=>v!=null?v:null);  // RRP: 이미 $B 단위
   const spV=alignToLabels(sp,labels);
 
+  // ── 월간 변화량 계산 헬퍼 ──
+  function monthlyChg(series, labels) {
+    // 약 4주(4포인트) 전 대비 변화량
+    const map = {};
+    series.forEach(d => { map[d.date] = d.value; });
+    return labels.map((dt, i, arr) => {
+      if (i < 4) return null;
+      const cur  = map[dt];
+      const prev4= arr[i-4];
+      const prev = map[prev4];
+      if (cur == null || prev == null) return null;
+      return +(cur - prev).toFixed(1);
+    });
+  }
+
   // ── 공통 옵션 헬퍼 ──
   const xScale = {ticks:{color:'#475569',maxRotation:0,maxTicksLimit:12,callback:function(v){const l=this.getLabelForValue(v);return l?l.slice(0,7):''}},grid:{color:'#1a2840'}};
   const ttBase = {backgroundColor:'#0d1422',borderColor:'#1a2840',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8'};
@@ -825,6 +847,75 @@ function renderLiquidityChart(){
     document.getElementById('liq-corr-sub').textContent=
       (r>=0.7?'강한 양의 상관':r>=0.4?'보통 양의 상관':r>=0?'약한 양의 상관':'음의 상관')+' ('+pairs.length+'주)';
   })();
+
+  // ── 차트 3: TGA·RRP 월간 변화량 / S&P500 ──
+  // TGA: 백만달러 → $B 변환 후 변화량
+  const tgaChgV = monthlyChg(
+    (liq.tga||[]).map(d=>({date:d.date, value:d.value/1000})), labels
+  );
+  // RRP: 이미 $B
+  const rrpChgV = monthlyChg(liq.rrp||[], labels);
+  // 합계 변화량
+  const totChgV = tgaChgV.map((t,i)=>
+    t!=null && rrpChgV[i]!=null ? +(t + rrpChgV[i]).toFixed(1) : null
+  );
+
+  if(liqChartInst3) liqChartInst3.destroy();
+  liqChartInst3 = new Chart(document.getElementById('liqChart3').getContext('2d'),{
+    data:{
+      labels,
+      datasets:[
+        // 막대: TGA 변화량 (양=증가=유동성흡수=빨강, 음=감소=유동성공급=초록)
+        {type:'bar',label:'TGA 변화량 ($B)',data:tgaChgV,
+          backgroundColor:tgaChgV.map(v=>v==null?'transparent':v>=0?'rgba(248,113,113,0.5)':'rgba(52,211,153,0.5)'),
+          borderColor:tgaChgV.map(v=>v==null?'transparent':v>=0?'#f87171':'#34d399'),
+          borderWidth:1, yAxisID:'y'},
+        // 막대: RRP 변화량
+        {type:'bar',label:'RRP 변화량 ($B)',data:rrpChgV,
+          backgroundColor:rrpChgV.map(v=>v==null?'transparent':v>=0?'rgba(248,113,113,0.35)':'rgba(52,211,153,0.35)'),
+          borderColor:rrpChgV.map(v=>v==null?'transparent':v>=0?'#f87171':'#34d399'),
+          borderWidth:1, yAxisID:'y'},
+        // 선: TGA+RRP 합계 변화량
+        {type:'line',label:'합계 변화량 ($B)',data:totChgV,
+          borderColor:'#fbbf24',borderWidth:2,borderDash:[4,2],
+          pointRadius:0,pointHoverRadius:4,fill:false,yAxisID:'y',tension:0.3},
+        // 선: S&P500 (우축)
+        {type:'line',label:'S&P500',data:spV,
+          borderColor:'#34d399',backgroundColor:'transparent',
+          borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',tension:0.3},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{
+          const v=c.raw;
+          if(v==null) return c.dataset.label+': —';
+          if(c.dataset.yAxisID==='y2') return 'S&P500: '+Number(v).toLocaleString();
+          return c.dataset.label+': '+(v>=0?'+':'')+Number(v).toFixed(1)+'B';
+        }}}
+      },
+      scales:{
+        x:xScale,
+        y:{
+          position:'left',
+          title:{display:true,text:'월간 변화량 ($B)',color:'#475569',font:{size:11}},
+          ticks:{color:'#94a3b8',callback:v=>(v>=0?'+':'')+v.toFixed(0)+'B'},
+          grid:{color:'#1a2840'},
+          // 0 기준선 강조
+          border:{color:'#334155'}
+        },
+        y2:{
+          position:'right',
+          title:{display:true,text:'S&P500',color:'#475569',font:{size:11}},
+          ticks:{color:'#34d399',callback:v=>Number(v).toLocaleString()},
+          grid:{drawOnChartArea:false}
+        }
+      }
+    }
+  });
 
   if(liqChartInst2) liqChartInst2.destroy();
   liqChartInst2=new Chart(document.getElementById('liqChart2').getContext('2d'),{
