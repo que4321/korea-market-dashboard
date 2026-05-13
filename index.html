@@ -358,8 +358,15 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         <div class="csub" id="liq-update">데이터 로딩 중...</div>
       </div>
     </div>
-    <div style="position:relative;height:420px">
+    <!-- 상단: TGA / RRP / S&P500 -->
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">① TGA · RRP · S&P500</div>
+    <div style="position:relative;height:340px;margin-bottom:24px">
       <canvas id="liqChart"></canvas>
+    </div>
+    <!-- 하단: 순유동성 / S&P500 -->
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">② 순유동성 (Net Liquidity = Fed총자산 − TGA − RRP) · S&P500</div>
+    <div style="position:relative;height:300px">
+      <canvas id="liqChart2"></canvas>
     </div>
   </div>
 
@@ -674,7 +681,7 @@ async function loadScanner(){try{const url=GIST_URL.replace(/\/raw\/[a-f0-9]+\//
 
 
 /* ══════════════════════ 미국 유동성 ══════════════════════ */
-let liqChartInst=null, liqDataCache=null;
+let liqChartInst=null, liqChartInst2=null, liqDataCache=null;
 
 function fmtB(v){ return v==null?'—':'$'+(v/1000).toFixed(0)+'B'; }
 function fmtChg(cur,prev,label){
@@ -761,33 +768,58 @@ function renderLiquidityChart(){
   const rrpV=alignToLabels(rrp,labels).map(v=>v!=null?v:null);  // RRP: 이미 $B 단위
   const spV=alignToLabels(sp,labels);
 
+  // ── 공통 옵션 헬퍼 ──
+  const xScale = {ticks:{color:'#475569',maxRotation:0,maxTicksLimit:12,callback:function(v){const l=this.getLabelForValue(v);return l?l.slice(0,7):''}},grid:{color:'#1a2840'}};
+  const ttBase = {backgroundColor:'#0d1422',borderColor:'#1a2840',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8'};
+
+  // ── 차트 1: TGA / RRP / TGA+RRP / S&P500 ──
   if(liqChartInst) liqChartInst.destroy();
-  const ctx=document.getElementById('liqChart').getContext('2d');
-  liqChartInst=new Chart(ctx,{
+  liqChartInst=new Chart(document.getElementById('liqChart').getContext('2d'),{
     data:{
       labels,
       datasets:[
-        {type:'line',label:'TGA ($B)',data:tgaV,borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.07)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
-        {type:'line',label:'RRP ($B)',data:rrpV,borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.07)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
-        {type:'line',label:'TGA+RRP ($B)',data:tgaV.map((t,i)=>t!=null&&rrpV[i]!=null?+(t+rrpV[i]).toFixed(1):null),borderColor:'#fbbf24',backgroundColor:'rgba(251,191,36,0.06)',borderWidth:2,borderDash:[4,3],pointRadius:0,pointHoverRadius:4,fill:false,yAxisID:'y',tension:0.3},
-        {type:'line',label:'순유동성 ($B)',data:alignToLabels(liq.net_liquidity||[],labels),borderColor:'#f87171',backgroundColor:'rgba(248,113,113,0.08)',borderWidth:2.5,pointRadius:0,pointHoverRadius:4,fill:false,yAxisID:'y',tension:0.3},
-        {type:'line',label:'S&P500',data:spV,borderColor:'#34d399',backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',tension:0.3},
+        {type:'line',label:'TGA ($B)',data:tgaV,borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
+        {type:'line',label:'RRP ($B)',data:rrpV,borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
+        {type:'line',label:'TGA+RRP ($B)',data:tgaV.map((t,i)=>t!=null&&rrpV[i]!=null?+(t+rrpV[i]).toFixed(1):null),borderColor:'#fbbf24',borderDash:[5,3],borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:false,yAxisID:'y',tension:0.3},
+        {type:'line',label:'S&P500',data:spV,borderColor:'#34d399',backgroundColor:'transparent',borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',tension:0.3},
       ]
     },
     options:{
-      responsive:true, maintainAspectRatio:false,
+      responsive:true,maintainAspectRatio:false,
       interaction:{mode:'index',intersect:false},
       plugins:{
-        legend:{labels:{color:'#94a3b8',font:{size:12}}},
-        tooltip:{
-          backgroundColor:'#0d1422',borderColor:'#1a2840',borderWidth:1,
-          titleColor:'#e2e8f0',bodyColor:'#94a3b8',
-          callbacks:{label:ctx=>{const v=ctx.raw;if(v==null)return ctx.dataset.label+': —';if(ctx.dataset.yAxisID==='y2')return'S&P500: '+Number(v).toLocaleString();return ctx.dataset.label+': $'+Number(v).toFixed(0)+'B';}}
-        }
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;if(v==null)return c.dataset.label+': —';return c.dataset.yAxisID==='y2'?'S&P500: '+Number(v).toLocaleString():c.dataset.label+': $'+Number(v).toFixed(0)+'B';}}}
       },
       scales:{
-        x:{ticks:{color:'#475569',maxRotation:0,maxTicksLimit:12,callback:function(v){const l=this.getLabelForValue(v);return l?l.slice(0,7):''}},grid:{color:'#1a2840'}},
+        x:xScale,
         y:{position:'left',title:{display:true,text:'TGA / RRP ($B)',color:'#475569',font:{size:11}},ticks:{color:'#475569',callback:v=>'$'+v.toFixed(0)+'B'},grid:{color:'#1a2840'}},
+        y2:{position:'right',title:{display:true,text:'S&P500',color:'#475569',font:{size:11}},ticks:{color:'#34d399',callback:v=>Number(v).toLocaleString()},grid:{drawOnChartArea:false}}
+      }
+    }
+  });
+
+  // ── 차트 2: 순유동성 / S&P500 ──
+  const netV = alignToLabels(liq.net_liquidity||[], labels);
+  if(liqChartInst2) liqChartInst2.destroy();
+  liqChartInst2=new Chart(document.getElementById('liqChart2').getContext('2d'),{
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'순유동성 ($B)',data:netV,borderColor:'#f87171',backgroundColor:'rgba(248,113,113,0.08)',borderWidth:2.5,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
+        {type:'line',label:'S&P500',data:spV,borderColor:'#34d399',backgroundColor:'transparent',borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',tension:0.3},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;if(v==null)return c.dataset.label+': —';return c.dataset.yAxisID==='y2'?'S&P500: '+Number(v).toLocaleString():'순유동성: $'+Number(v).toFixed(0)+'B';}}}
+      },
+      scales:{
+        x:xScale,
+        y:{position:'left',title:{display:true,text:'순유동성 ($B)',color:'#475569',font:{size:11}},ticks:{color:'#f87171',callback:v=>'$'+Number(v).toFixed(0)+'B'},grid:{color:'#1a2840'}},
         y2:{position:'right',title:{display:true,text:'S&P500',color:'#475569',font:{size:11}},ticks:{color:'#34d399',callback:v=>Number(v).toLocaleString()},grid:{drawOnChartArea:false}}
       }
     }
