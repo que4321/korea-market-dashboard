@@ -391,9 +391,9 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <span style="color:#fca5a5">—</span> <b>순유동성 4주MA</b> — 노이즈 제거<br>
     <span style="color:#34d399">■</span> <b>S&P500</b> — 우축 기준 &nbsp;|&nbsp; <span style="color:#a78bfa">■</span> <b>상관계수</b> — 피어슨 r (3년, 주간)<br>
     💡 <b>순유동성↑</b> = 상승 압력 &nbsp;|&nbsp; <b>순유동성↓</b> = 하락 압력 &nbsp;|&nbsp; 매주 금요일 오전 8시 업데이트 (H.4.1 기준)<br>
-    <span style="color:#34d399">■</span> <b>변화량 초록</b> = TGA·RRP 감소 → 유동성 공급 → 상승 압력 &nbsp;|&nbsp;
-    <span style="color:#f87171">■</span> <b>변화량 빨강</b> = TGA·RRP 증가 → 유동성 흡수 → 하락 압력 &nbsp;|&nbsp;
-    <span style="color:#fbbf24">—</span> <b>합계 8주MA</b> = 노이즈 제거한 추세선
+    <span style="color:#34d399">■</span> <b>초록(+)</b> = 유동성 순공급 증가 → S&P500 상승 압력 &nbsp;|&nbsp;
+    <span style="color:#f87171">■</span> <b>빨강(-)</b> = 유동성 순공급 감소 → S&P500 하락 압력<br>
+    <span style="color:#fbbf24">—</span> <b>합계 8주MA</b> = 노이즈 제거 추세선 &nbsp;(양수 구간 = S&P500과 동방향)
   </div>
 </div>
 
@@ -862,8 +862,9 @@ function renderLiquidityChart(){
   // RRP: 이미 $B
   const rrpChgV = monthlyChg(liq.rrp||[], labels);
   // 합계 변화량
+  // 부호 반전: 음수(유동성공급)→양수로 변환하여 S&P500과 동방향 시각화
   const totChgV = tgaChgV.map((t,i)=>
-    t!=null && rrpChgV[i]!=null ? +(t + rrpChgV[i]).toFixed(1) : null
+    t!=null && rrpChgV[i]!=null ? +(-(t + rrpChgV[i])).toFixed(1) : null
   );
 
   if(liqChartInst3) liqChartInst3.destroy();
@@ -873,13 +874,13 @@ function renderLiquidityChart(){
       datasets:[
         // 막대: TGA 변화량 (양=증가=유동성흡수=빨강, 음=감소=유동성공급=초록)
         {type:'bar',label:'TGA 변화량 ($B)',data:tgaChgV,
-          backgroundColor:tgaChgV.map(v=>v==null?'transparent':v>=0?'rgba(248,113,113,0.5)':'rgba(52,211,153,0.5)'),
-          borderColor:tgaChgV.map(v=>v==null?'transparent':v>=0?'#f87171':'#34d399'),
+          backgroundColor:tgaChgV.map(v=>v==null?'transparent':v<=0?'rgba(52,211,153,0.5)':'rgba(248,113,113,0.5)'),
+          borderColor:tgaChgV.map(v=>v==null?'transparent':v<=0?'#34d399':'#f87171'),
           borderWidth:1, yAxisID:'y'},
         // 막대: RRP 변화량
         {type:'bar',label:'RRP 변화량 ($B)',data:rrpChgV,
-          backgroundColor:rrpChgV.map(v=>v==null?'transparent':v>=0?'rgba(248,113,113,0.35)':'rgba(52,211,153,0.35)'),
-          borderColor:rrpChgV.map(v=>v==null?'transparent':v>=0?'#f87171':'#34d399'),
+          backgroundColor:rrpChgV.map(v=>v==null?'transparent':v<=0?'rgba(52,211,153,0.35)':'rgba(248,113,113,0.35)'),
+          borderColor:rrpChgV.map(v=>v==null?'transparent':v<=0?'#34d399':'#f87171'),
           borderWidth:1, yAxisID:'y'},
         // 선: TGA+RRP 합계 변화량
         {type:'line',label:'합계 8주MA ($B)',
@@ -911,8 +912,8 @@ function renderLiquidityChart(){
         x:xScale,
         y:{
           position:'left',
-          title:{display:true,text:'월간 변화량 ($B)',color:'#475569',font:{size:11}},
-          ticks:{color:'#94a3b8',callback:v=>(v>=0?'+':'')+v.toFixed(0)+'B'},
+          title:{display:true,text:'유동성 순공급량 ($B, +↑=공급)',color:'#475569',font:{size:11}},
+          ticks:{color:'#94a3b8',callback:v=>(v>0?'+':'')+v.toFixed(0)+'B (유동성'+(v>0?' 공급':(v<0?' 흡수':''))+')'  },
           grid:{color:'#1a2840'},
           // 0 기준선 강조
           border:{color:'#334155'}
