@@ -705,20 +705,23 @@ function renderLiquidityChart(){
   }
   if(rrp.length){
     const cur=rrp[rrp.length-1].value, prev=rrp.length>4?rrp[rrp.length-5].value:null;
-    document.getElementById('liq-rrp').textContent=fmtB(cur);
+    // RRP는 이미 $B 단위
+    document.getElementById('liq-rrp').textContent='$'+Number(cur).toFixed(1)+'B';
     const el=document.getElementById('liq-rrp-chg');
-    el.textContent=fmtChg(cur,prev,'4주');
+    if(prev){const d=cur-prev,p=((d/prev)*100).toFixed(1);el.textContent=(d>=0?'▲':'▼')+' $'+Math.abs(d).toFixed(1)+'B ('+p+'%) 4주';}
     el.style.color=prev&&cur<prev?'#34d399':'#f87171';
   }
   if(tga.length&&rrp.length){
-    const tc=tga[tga.length-1].value, rc=alignToLabels(rrp,[tga[tga.length-1].date])[0]||0;
-    const tp=tga.length>4?tga[tga.length-5].value:null;
+    const tc=tga[tga.length-1].value/1000;  // TGA: 백만→$B
+    const rc=alignToLabels(rrp,[tga[tga.length-1].date])[0]||0;  // RRP: 이미 $B
+    const tp=tga.length>4?tga[tga.length-5].value/1000:null;
     const rp=rrp.length>4?rrp[rrp.length-5].value:null;
-    document.getElementById('liq-total').textContent=fmtB(tc+rc);
-    if(tp&&rp){
-      const d=(tc+rc)-(tp+rp),p=((d/(tp+rp))*100).toFixed(1);
+    const total=tc+rc;
+    document.getElementById('liq-total').textContent='$'+total.toFixed(0)+'B';
+    if(tp!=null&&rp!=null){
+      const d=total-(tp+rp),p=((d/(tp+rp))*100).toFixed(1);
       const el=document.getElementById('liq-total-chg');
-      el.textContent=(d>=0?'▲':'▼')+' '+fmtB(Math.abs(d))+' ('+p+'%) 4주';
+      el.textContent=(d>=0?'▲':'▼')+' $'+Math.abs(d).toFixed(0)+'B ('+p+'%) 4주';
       el.style.color=d<0?'#34d399':'#f87171';
     }
   }
@@ -735,8 +738,8 @@ function renderLiquidityChart(){
 
   // 차트
   const labels=tga.map(d=>d.date);
-  const tgaV=tga.map(d=>d.value/1000);
-  const rrpV=alignToLabels(rrp,labels).map(v=>v!=null?v/1000:null);
+  const tgaV=tga.map(d=>d.value/1000);       // TGA: 백만달러 → $B
+  const rrpV=alignToLabels(rrp,labels).map(v=>v!=null?v:null);  // RRP: 이미 $B 단위
   const spV=alignToLabels(sp,labels);
 
   if(liqChartInst) liqChartInst.destroy();
