@@ -156,6 +156,10 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <button class="ntab" onclick="showPanel('liquidity',this)" id="tab-liquidity">💧 미국 유동성</button>
     <div class="tab-ts" id="ts-liquidity">매주 금요일 08:00 KST</div>
   </div>
+  <div style="display:flex;flex-direction:column;align-items:center">
+    <button class="ntab" onclick="showPanel('investor',this)" id="tab-investor">📈 투자자 분석</button>
+    <div class="tab-ts" id="ts-investor">매일 18:00 KST</div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -429,6 +433,161 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
   </div>
 </div>
 
+<!-- ══════════════════════════════════════
+     패널 5 : 투자자 분석 (기관·외국인·개인 평균매입단가)
+══════════════════════════════════════ -->
+<div id="panel-investor" class="panel">
+
+  <!-- 상단 컨트롤 바 -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div class="ts" id="inv-ts">데이터 로딩 중...</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <!-- 종목 선택 -->
+      <select id="inv-stock" onchange="loadInvestor()"
+        style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;cursor:pointer">
+        <option value="005930">삼성전자 (005930)</option>
+        <option value="000660">SK하이닉스 (000660)</option>
+        <option value="042700">한미반도체 (042700)</option>
+        <option value="010140">삼성중공업 (010140)</option>
+        <option value="015760">한국전력 (015760)</option>
+        <option value="028050">삼성E&amp;A (028050)</option>
+        <option value="035420">NAVER (035420)</option>
+        <option value="034020">두산에너빌리티 (034020)</option>
+        <option value="033780">KT&amp;G (033780)</option>
+        <option value="111770">영원무역 (111770)</option>
+      </select>
+      <!-- 기간 -->
+      <select id="inv-period" onchange="loadInvestor()"
+        style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;cursor:pointer">
+        <option value="1M">1개월</option>
+        <option value="3M" selected>3개월</option>
+      </select>
+      <!-- 가격 기준 -->
+      <select id="inv-price" onchange="loadInvestor()"
+        style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;cursor:pointer">
+        <option value="close">종가 기준</option>
+        <option value="avg">시가+종가 평균</option>
+      </select>
+      <button onclick="downloadInvExcel()"
+        style="background:#1a7a3c;color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer">
+        📥 엑셀 다운로드
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 핵심 레이아웃 (이미지 배치) ── -->
+  <div style="display:grid;grid-template-columns:138px 1fr;gap:10px;margin-bottom:14px;align-items:stretch">
+
+    <!-- 왼쪽: 현재가 (세로 전체 병합) -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+                padding:14px 10px;display:flex;flex-direction:column;
+                justify-content:center;align-items:center;text-align:center">
+      <div style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em;margin-bottom:6px">현재가</div>
+      <div id="inv-cur-val" style="font-size:21px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)">—</div>
+      <div id="inv-cur-date" style="font-size:10px;color:var(--text3);margin-top:6px">—</div>
+      <div id="inv-cur-mode" style="font-size:10px;color:var(--text3);margin-top:2px">—</div>
+    </div>
+
+    <!-- 오른쪽 블록 -->
+    <div style="display:flex;flex-direction:column;gap:8px">
+
+      <!-- 1행: 평균매입단가 3칸 -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div class="mcard">
+          <div class="mlabel">기관 평균매입단가</div>
+          <div id="inv-inst-avg" class="mval" style="font-size:16px">—</div>
+          <div id="inv-inst-diff" class="msub">—</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">외국인 평균매입단가</div>
+          <div id="inv-fore-avg" class="mval" style="font-size:16px">—</div>
+          <div id="inv-fore-diff" class="msub">—</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">개인 평균매입단가</div>
+          <div id="inv-pers-avg" class="mval" style="font-size:16px">—</div>
+          <div id="inv-pers-diff" class="msub">—</div>
+        </div>
+      </div>
+
+      <!-- 구분선 (한 칸 빈 줄) -->
+      <div style="border-top:1px dashed var(--border2);margin:0 2px"></div>
+
+      <!-- 2행: 누적순매수 3칸 -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div class="mcard">
+          <div class="mlabel">기관 누적순매수</div>
+          <div id="inv-inst-net" class="mval" style="font-size:16px">—</div>
+          <div id="inv-inst-net-amt" class="msub">—</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">외국인 누적순매수</div>
+          <div id="inv-fore-net" class="mval" style="font-size:16px">—</div>
+          <div id="inv-fore-net-amt" class="msub">—</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">개인 누적순매수</div>
+          <div id="inv-pers-net" class="mval" style="font-size:16px">—</div>
+          <div id="inv-pers-net-amt" class="msub">—</div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /핵심 레이아웃 -->
+
+  <!-- 서브탭 -->
+  <div class="htabs" style="margin-bottom:12px">
+    <div class="htab active" onclick="switchInvTab('chart',this)">가격·평균단가 추이</div>
+    <div class="htab" onclick="switchInvTab('bar',this)">일별 순매수</div>
+    <div class="htab" onclick="switchInvTab('table',this)">상세 데이터</div>
+  </div>
+
+  <!-- 차트1: 가격·평균단가 -->
+  <div id="inv-tab-chart">
+    <div class="card" style="margin-bottom:12px">
+      <div class="legend" style="margin-bottom:10px">
+        <span><span class="ldot2" style="background:#38bdf8"></span>현재가</span>
+        <span><span class="ldot2" style="background:#f87171"></span>기관 평균매입단가</span>
+        <span><span class="ldot2" style="background:#34d399"></span>외국인 평균매입단가</span>
+        <span><span class="ldot2" style="background:#fbbf24"></span>개인 평균매입단가</span>
+      </div>
+      <div style="position:relative;height:260px"><canvas id="invChart1"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 차트2: 일별 순매수 -->
+  <div id="inv-tab-bar" style="display:none">
+    <div class="card" style="margin-bottom:12px">
+      <div class="legend" style="margin-bottom:10px">
+        <span><span class="ldot2" style="background:#38bdf8"></span>기관</span>
+        <span><span class="ldot2" style="background:#34d399"></span>외국인</span>
+        <span><span class="ldot2" style="background:#fbbf24"></span>개인</span>
+      </div>
+      <div style="position:relative;height:260px"><canvas id="invChart2"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 상세 테이블 -->
+  <div id="inv-tab-table" style="display:none">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>날짜</th><th>기준가(원)</th>
+          <th>기관 순매수</th><th>기관 누적단가</th>
+          <th>외국인 순매수</th><th>외국인 누적단가</th>
+          <th>개인 순매수</th><th>개인 누적단가</th>
+        </tr></thead>
+        <tbody id="inv-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
+    ※ 평균매입단가 = Σ(일별 순매수량 × 당일 기준가격) / Σ(일별 순매수량). 순매도 구간 제외.<br>
+    ※ 데이터 출처: KRX 정보데이터시스템 — GitHub Actions 매일 18:00 KST 자동 수집.
+  </div>
+</div>
+
 <script>
 /* ══════════════════════ 공통 ══════════════════════ */
 const HIST_URL='https://raw.githubusercontent.com/que4321/korea-market-dashboard/main/data/history.json';
@@ -447,6 +606,7 @@ function showPanel(id,el){
   document.getElementById('panel-'+id).classList.add('active');
   if((id==='kr'||id==='us')&&!dashLoaded) loadDash();
   if(id==='liquidity') renderLiquidityChart();
+  if(id==='investor'&&!invLoaded) loadInvestorData();
 }
 
 const f=(v,d=2)=>v!=null?Number(v).toFixed(d):'—';
@@ -729,6 +889,311 @@ async function loadScanner(){try{const url=GIST_URL.replace(/\/raw\/[a-f0-9]+\//
     const tsSc=document.getElementById('ts-scanner');
     if(tsSc&&cachedData.updated_at) tsSc.textContent='업데이트: '+cachedData.updated_at+' (매주 월요일 08:13)';
     renderData(cachedData);}catch(e){document.getElementById('table-body').innerHTML=`<tr><td colspan="12"><div class="err">⚠️ 로드 실패: ${e.message}</div></td></tr>`;}}
+
+
+/* ══════════════════════════════════════════════════════
+   📈 투자자 분석 — 기관·외국인·개인 평균매입단가
+   데이터: data/investor_data.json (GitHub Actions 매일 수집)
+══════════════════════════════════════════════════════ */
+const INV_DATA_URL = 'https://raw.githubusercontent.com/que4321/korea-market-dashboard/main/data/investor_data.json';
+
+const INV_STOCKS = {
+  '005930':'삼성전자','000660':'SK하이닉스','042700':'한미반도체',
+  '010140':'삼성중공업','015760':'한국전력','028050':'삼성E&A',
+  '035420':'NAVER','034020':'두산에너빌리티','033780':'KT&G','111770':'영원무역'
+};
+
+let invLoaded = false;
+let invRawData = null;   // investor_data.json 전체 캐시
+let invChart1  = null;
+let invChart2  = null;
+
+/* ── JSON 최초 1회 로드 ── */
+async function loadInvestorData() {
+  invLoaded = true;
+  document.getElementById('inv-ts').textContent = '데이터 불러오는 중...';
+  try {
+    const r = await fetch(INV_DATA_URL + '?v=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    invRawData = await r.json();
+    const upd = invRawData.updated_at || '-';
+    document.getElementById('inv-ts').textContent = `업데이트: ${upd}`;
+    const tEl = document.getElementById('ts-investor');
+    if (tEl) tEl.textContent = upd;
+    renderInvestor();
+  } catch(e) {
+    /* JSON 없으면 시뮬레이션 데이터로 대체 */
+    document.getElementById('inv-ts').textContent = '⚠ 실데이터 로드 실패 — 시뮬레이션 표시 중';
+    invRawData = null;
+    renderInvestor();
+  }
+}
+
+/* ── 종목/기간/가격기준 변경 시 재렌더 ── */
+function loadInvestor() { renderInvestor(); }
+
+/* ── 핵심 렌더 함수 ── */
+function renderInvestor() {
+  const ticker    = document.getElementById('inv-stock').value;
+  const period    = document.getElementById('inv-period').value;
+  const priceMode = document.getElementById('inv-price').value;
+  const nDays     = period === '1M' ? 22 : 66;
+  const pKey      = priceMode === 'avg' ? 'avg' : 'close';
+  const pLabel    = priceMode === 'avg' ? '시가+종가 평균' : '종가';
+
+  let daily = [];
+
+  /* 실데이터 우선, 없으면 시뮬레이션 */
+  if (invRawData && invRawData.stocks && invRawData.stocks[ticker] && invRawData.stocks[ticker].daily) {
+    daily = invRawData.stocks[ticker].daily.slice(-nDays);
+  } else {
+    daily = invSimData(ticker, priceMode, nDays);
+  }
+
+  if (!daily.length) return;
+
+  const last  = daily[daily.length - 1];
+  const curP  = last[pKey] || last.close;
+  const labels = daily.map(r => r.date.slice(5));
+  const prices = daily.map(r => r[pKey] || r.close);
+
+  /* 가중평균 계산 */
+  function calcAvg(key) {
+    let cA = 0, cQ = 0, tot = 0;
+    const dAvg = [];
+    daily.forEach(r => {
+      const net = r[key];
+      const px  = r[pKey] || r.close;
+      tot += net;
+      if (net > 0) { cA += net * px; cQ += net; }
+      dAvg.push(cQ > 0 ? Math.round(cA / cQ) : null);
+    });
+    return { avg: cQ > 0 ? Math.round(cA / cQ) : 0, totalNet: tot, dAvg };
+  }
+
+  const inst = calcAvg('inst_net');
+  const fore = calcAvg('fore_net');
+  const pers = calcAvg('pers_net');
+
+  /* ── 현재가 카드 ── */
+  document.getElementById('inv-cur-val').textContent  = curP.toLocaleString() + '원';
+  document.getElementById('inv-cur-date').textContent = last.date;
+  document.getElementById('inv-cur-mode').textContent = pLabel;
+
+  /* ── 평균매입단가 카드 ── */
+  function setAvgCard(idVal, idDiff, avg) {
+    const d   = curP - avg;
+    const pct = avg > 0 ? ((d / avg) * 100).toFixed(1) : '0.0';
+    const el  = document.getElementById(idVal);
+    el.textContent  = avg > 0 ? avg.toLocaleString() + '원' : '—';
+    el.className    = 'mval ' + (d >= 0 ? 'up' : 'down');
+    const sub = document.getElementById(idDiff);
+    sub.textContent = avg > 0
+      ? (d >= 0 ? '▲ +' : '▼ ') + Math.abs(d).toLocaleString() + '원 (' + (d >= 0 ? '+' : '') + pct + '%)'
+      : '—';
+    sub.className = 'msub ' + (d >= 0 ? 'up' : 'down');
+  }
+  setAvgCard('inv-inst-avg', 'inv-inst-diff', inst.avg);
+  setAvgCard('inv-fore-avg', 'inv-fore-diff', fore.avg);
+  setAvgCard('inv-pers-avg', 'inv-pers-diff', pers.avg);
+
+  /* ── 누적순매수 카드 ── */
+  function setNetCard(idNet, idAmt, total) {
+    const el  = document.getElementById(idNet);
+    const abs = Math.abs(Math.round(total / 1000));
+    el.textContent = (total >= 0 ? '▲ +' : '▼ -') + abs.toLocaleString() + '천주';
+    el.className   = 'mval ' + (total >= 0 ? 'up' : 'down');
+    const amt = (total * curP / 1e8).toFixed(0);
+    const sub = document.getElementById(idAmt);
+    sub.textContent = (total >= 0 ? '+' : '') + Number(amt).toLocaleString() + '억원';
+    sub.className   = 'msub ' + (total >= 0 ? 'up' : 'down');
+  }
+  setNetCard('inv-inst-net', 'inv-inst-net-amt', inst.totalNet);
+  setNetCard('inv-fore-net', 'inv-fore-net-amt', fore.totalNet);
+  setNetCard('inv-pers-net', 'inv-pers-net-amt', pers.totalNet);
+
+  /* ── Chart.js 공통 설정 ── */
+  const ttBase = {backgroundColor:'#0d1422',borderColor:'#1a2840',borderWidth:1,
+                  titleColor:'#e2e8f0',bodyColor:'#94a3b8'};
+  const xCfg   = {ticks:{color:'#475569',maxRotation:0,maxTicksLimit:10},grid:{color:'#1a2840'}};
+  const yCfg   = {ticks:{color:'#475569',callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:'#1a2840'}};
+
+  /* ── 차트1: 가격·평균단가 추이 ── */
+  if (invChart1) invChart1.destroy();
+  invChart1 = new Chart(document.getElementById('invChart1'), {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'현재가',      data:prices,      borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.07)',fill:true, tension:0.3,pointRadius:0,borderWidth:2},
+      {label:'기관 평균단가', data:inst.dAvg, borderColor:'#f87171',borderDash:[4,3],pointRadius:0,borderWidth:1.5,fill:false,tension:0.2},
+      {label:'외국인 평균단가',data:fore.dAvg,borderColor:'#34d399',borderDash:[4,3],pointRadius:0,borderWidth:1.5,fill:false,tension:0.2},
+      {label:'개인 평균단가', data:pers.dAvg, borderColor:'#fbbf24',borderDash:[4,3],pointRadius:0,borderWidth:1.5,fill:false,tension:0.2},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{...ttBase}},
+      scales:{x:xCfg, y:yCfg}}
+  });
+
+  /* ── 차트2: 일별 순매수 ── */
+  if (invChart2) invChart2.destroy();
+  invChart2 = new Chart(document.getElementById('invChart2'), {
+    type:'bar',
+    data:{labels, datasets:[
+      {label:'기관',   data:daily.map(r=>r.inst_net), backgroundColor:daily.map(r=>r.inst_net>=0?'rgba(56,189,248,0.7)':'rgba(248,113,113,0.55)'),borderWidth:0},
+      {label:'외국인', data:daily.map(r=>r.fore_net), backgroundColor:daily.map(r=>r.fore_net>=0?'rgba(52,211,153,0.7)':'rgba(248,113,113,0.4)'), borderWidth:0},
+      {label:'개인',   data:daily.map(r=>r.pers_net), backgroundColor:daily.map(r=>r.pers_net>=0?'rgba(251,191,36,0.7)':'rgba(248,113,113,0.3)'),  borderWidth:0},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{...ttBase}},
+      scales:{x:{...xCfg,grid:{display:false}},
+              y:{...yCfg,ticks:{...yCfg.ticks,callback:v=>(v/1000).toFixed(0)+'K'}}}}
+  });
+
+  /* ── 상세 테이블 ── */
+  let cIA=0,cIQ=0, cFA=0,cFQ=0, cPA=0,cPQ=0;
+  document.getElementById('inv-tbody').innerHTML = [...daily].reverse().map(r => {
+    const px = r[pKey] || r.close;
+    if(r.inst_net>0){cIA+=r.inst_net*px;cIQ+=r.inst_net;}
+    if(r.fore_net>0){cFA+=r.fore_net*px;cFQ+=r.fore_net;}
+    if(r.pers_net>0){cPA+=r.pers_net*px;cPQ+=r.pers_net;}
+    const iA = cIQ>0 ? Math.round(cIA/cIQ).toLocaleString()+'원' : '-';
+    const fA = cFQ>0 ? Math.round(cFA/cFQ).toLocaleString()+'원' : '-';
+    const pA = cPQ>0 ? Math.round(cPA/cPQ).toLocaleString()+'원' : '-';
+    return `<tr>
+      <td>${r.date.slice(5)}</td>
+      <td class="num">${px.toLocaleString()}</td>
+      <td class="num ${r.inst_net>=0?'up':'down'}">${r.inst_net>=0?'+':''}${r.inst_net.toLocaleString()}</td>
+      <td class="num">${iA}</td>
+      <td class="num ${r.fore_net>=0?'up':'down'}">${r.fore_net>=0?'+':''}${r.fore_net.toLocaleString()}</td>
+      <td class="num">${fA}</td>
+      <td class="num ${r.pers_net>=0?'up':'down'}">${r.pers_net>=0?'+':''}${r.pers_net.toLocaleString()}</td>
+      <td class="num">${pA}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ── 서브탭 전환 ── */
+function switchInvTab(mode, el) {
+  el.closest('.htabs').querySelectorAll('.htab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('inv-tab-chart').style.display = mode==='chart' ? '' : 'none';
+  document.getElementById('inv-tab-bar').style.display   = mode==='bar'   ? '' : 'none';
+  document.getElementById('inv-tab-table').style.display = mode==='table' ? '' : 'none';
+}
+
+/* ── 엑셀 다운로드 ── */
+function downloadInvExcel() {
+  const ticker    = document.getElementById('inv-stock').value;
+  const period    = document.getElementById('inv-period').value;
+  const priceMode = document.getElementById('inv-price').value;
+  const nDays     = period === '1M' ? 22 : 66;
+  const pKey      = priceMode === 'avg' ? 'avg' : 'close';
+  const pLabel    = priceMode === 'avg' ? '시가+종가 평균' : '종가';
+  const name      = INV_STOCKS[ticker] || ticker;
+
+  let daily = [];
+  if (invRawData && invRawData.stocks && invRawData.stocks[ticker] && invRawData.stocks[ticker].daily) {
+    daily = invRawData.stocks[ticker].daily.slice(-nDays);
+  } else {
+    daily = invSimData(ticker, priceMode, nDays);
+  }
+  if (!daily.length) { alert('데이터가 없습니다. 투자자 분석 탭을 먼저 열어주세요.'); return; }
+
+  const last = daily[daily.length-1];
+  const curP = last[pKey] || last.close;
+
+  function calcAvg(key) {
+    let cA=0,cQ=0,tot=0;
+    daily.forEach(r=>{const net=r[key],px=r[pKey]||r.close;tot+=net;if(net>0){cA+=net*px;cQ+=net;}});
+    return{avg:cQ>0?Math.round(cA/cQ):0, totalNet:tot};
+  }
+  const inst=calcAvg('inst_net'), fore=calcAvg('fore_net'), pers=calcAvg('pers_net');
+  const wb = XLSX.utils.book_new();
+
+  /* 시트1: 요약 (이미지 배치 구조) */
+  const ws1 = XLSX.utils.aoa_to_sheet([
+    [`${name}(${ticker}) 투자자별 분석 — ${last.date} / ${pLabel}`,'','',''],
+    ['','','',''],
+    ['현재가',       '기관 평균매입단가',   '외국인 평균매입단가', '개인 평균매입단가'],
+    [curP,           inst.avg,              fore.avg,              pers.avg],
+    ['현재가 대비(원)','', curP-inst.avg,   curP-fore.avg,         curP-pers.avg],
+    ['수익률(%)',    '', +((curP-inst.avg)/inst.avg*100).toFixed(2),
+                        +((curP-fore.avg)/fore.avg*100).toFixed(2),
+                        +((curP-pers.avg)/pers.avg*100).toFixed(2)],
+    ['','','',''],
+    ['',             '기관 누적순매수',     '외국인 누적순매수',   '개인 누적순매수'],
+    ['수량(주)',     '', inst.totalNet,      fore.totalNet,         pers.totalNet],
+    ['금액(억원)',   '', +(inst.totalNet*curP/1e8).toFixed(1),
+                        +(fore.totalNet*curP/1e8).toFixed(1),
+                        +(pers.totalNet*curP/1e8).toFixed(1)],
+  ]);
+  ws1['!cols']=[{wch:20},{wch:20},{wch:20},{wch:20},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, ws1, '요약');
+
+  /* 시트2: 일별 상세 */
+  let cIA=0,cIQ=0,cFA=0,cFQ=0,cPA=0,cPQ=0;
+  const hdr=['날짜',pLabel,'기관 순매수(주)','기관 누적평균단가','외국인 순매수(주)','외국인 누적평균단가','개인 순매수(주)','개인 누적평균단가'];
+  const rows=daily.map(r=>{
+    const px=r[pKey]||r.close;
+    if(r.inst_net>0){cIA+=r.inst_net*px;cIQ+=r.inst_net;}
+    if(r.fore_net>0){cFA+=r.fore_net*px;cFQ+=r.fore_net;}
+    if(r.pers_net>0){cPA+=r.pers_net*px;cPQ+=r.pers_net;}
+    return[r.date,px,r.inst_net,cIQ>0?Math.round(cIA/cIQ):'',
+           r.fore_net,cFQ>0?Math.round(cFA/cFQ):'',r.pers_net,cPQ>0?Math.round(cPA/cPQ):''];
+  });
+  const ws2=XLSX.utils.aoa_to_sheet([hdr,...rows]);
+  ws2['!cols']=[{wch:12},{wch:14},{wch:16},{wch:20},{wch:16},{wch:20},{wch:14},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws2, '일별 상세');
+
+  /* 시트3: 전종목 비교 */
+  const allH=['종목코드','종목명','현재가','기관 평균단가','기관 수익률%',
+              '외국인 평균단가','외국인 수익률%','개인 평균단가','개인 수익률%',
+              '기관 누적순매수(주)','외국인 누적순매수(주)','개인 누적순매수(주)'];
+  const allD=Object.keys(INV_STOCKS).map(t=>{
+    let d=[];
+    if(invRawData&&invRawData.stocks&&invRawData.stocks[t]&&invRawData.stocks[t].daily)
+      d=invRawData.stocks[t].daily.slice(-nDays);
+    else d=invSimData(t,priceMode,nDays);
+    if(!d.length) return[t,INV_STOCKS[t],'','','','','','','','','',''];
+    const cp=d[d.length-1][pKey]||d[d.length-1].close;
+    function ca(key){let a=0,q=0,tot=0;d.forEach(r=>{const n=r[key],p=r[pKey]||r.close;tot+=n;if(n>0){a+=n*p;q+=n;}});return{avg:q>0?Math.round(a/q):0,tot};}
+    const ia=ca('inst_net'),fa=ca('fore_net'),pa=ca('pers_net');
+    return[t,INV_STOCKS[t],cp,
+           ia.avg,ia.avg?+((cp-ia.avg)/ia.avg*100).toFixed(2):'',
+           fa.avg,fa.avg?+((cp-fa.avg)/fa.avg*100).toFixed(2):'',
+           pa.avg,pa.avg?+((cp-pa.avg)/pa.avg*100).toFixed(2):'',
+           ia.tot,fa.tot,pa.tot];
+  });
+  const ws3=XLSX.utils.aoa_to_sheet([allH,...allD]);
+  ws3['!cols']=[{wch:10},{wch:14},{wch:12},{wch:14},{wch:12},{wch:14},{wch:12},{wch:14},{wch:12},{wch:18},{wch:18},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws3, '전종목 비교');
+
+  XLSX.writeFile(wb, `투자자분석_${name}_${last.date}.xlsx`);
+}
+
+/* ── 시뮬레이션 데이터 (실데이터 없을 때 fallback) ── */
+function invSimData(ticker, priceMode, nDays) {
+  const bases={'005930':73000,'000660':195000,'042700':98000,'010140':12500,
+               '015760':22000,'028050':45000,'035420':210000,'034020':18000,
+               '033780':98000,'111770':87000};
+  const base = bases[ticker] || 50000;
+  const dates = [];
+  const now = new Date(2026,4,14);
+  for(let i=nDays+40;i>=0;i--){const t=new Date(now);t.setDate(t.getDate()-i);if(t.getDay()!==0&&t.getDay()!==6)dates.push(t.toISOString().slice(0,10));}
+  const ds = dates.slice(-nDays);
+  let price=base, seed=parseInt(ticker)%997;
+  function rnd(){seed=(seed*1664525+1013904223)&0xffffffff;return((seed>>>0)/0xffffffff);}
+  return ds.map(dt=>{
+    price=Math.round(price*(1+(rnd()-0.48)*0.025));
+    const open=Math.round(price*(1+(rnd()-0.5)*0.008));
+    const close=Math.round(price*(1+(rnd()-0.5)*0.008));
+    return{date:dt,close,open,avg:Math.round((open+close)/2),
+           inst_net:Math.round(rnd()*800000-200000),
+           fore_net:Math.round(rnd()*600000-150000),
+           pers_net:Math.round(rnd()*400000-200000)};
+  });
+}}
 
 
 /* ══════════════════════ 미국 유동성 ══════════════════════ */
