@@ -2,9 +2,11 @@ name: 투자자 데이터 수집 (매일 18:00 KST)
 
 on:
   schedule:
-    # 한국 장 마감(15:30) 후 여유 있게 18:00 KST = 09:00 UTC
     - cron: '0 9 * * 1-5'
-  workflow_dispatch:   # 수동 실행 허용 (테스트용)
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   collect:
@@ -13,8 +15,6 @@ jobs:
     steps:
       - name: 코드 체크아웃
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Python 설정
         uses: actions/setup-python@v5
@@ -23,7 +23,11 @@ jobs:
 
       - name: 패키지 설치
         run: |
-          pip install requests pytz
+          python -m pip install --upgrade pip
+          python -m pip install pykrx pytz
+
+      - name: pykrx 설치 확인
+        run: python -c "from pykrx import stock; print('pykrx OK')"
 
       - name: 투자자 데이터 수집
         run: |
