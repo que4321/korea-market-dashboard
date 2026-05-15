@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-05-15 12:58 KST",
+  "updated_at": "2026-05-15 13:04 KST",
   "period": {
     "start": "20260204",
     "end": "20260515"
@@ -9,7 +9,7 @@
       "ticker": "005930",
       "name": "삼성전자",
       "last_date": "2026-05-15",
-      "cur_price": 280500,
+      "cur_price": 279500,
       "trading_days": 67,
       "close": {
         "inst": {
@@ -1056,9 +1056,9 @@
         },
         {
           "date": "2026-05-15",
-          "close": 280500,
+          "close": 279500,
           "open": 291000,
-          "avg": 285750,
+          "avg": 285250,
           "inst_net": 0,
           "fore_net": 0,
           "pers_net": 0
@@ -1069,7 +1069,7 @@
       "ticker": "000660",
       "name": "SK하이닉스",
       "last_date": "2026-05-15",
-      "cur_price": 1896000,
+      "cur_price": 1887000,
       "trading_days": 67,
       "close": {
         "inst": {
@@ -2116,9 +2116,9 @@
         },
         {
           "date": "2026-05-15",
-          "close": 1896000,
+          "close": 1887000,
           "open": 1950000,
-          "avg": 1923000,
+          "avg": 1918500,
           "inst_net": 0,
           "fore_net": 0,
           "pers_net": 0
@@ -2129,7 +2129,7 @@
       "ticker": "042700",
       "name": "한미반도체",
       "last_date": "2026-05-15",
-      "cur_price": 390500,
+      "cur_price": 387500,
       "trading_days": 67,
       "close": {
         "inst": {
@@ -3176,9 +3176,9 @@
         },
         {
           "date": "2026-05-15",
-          "close": 390500,
+          "close": 387500,
           "open": 405000,
-          "avg": 397750,
+          "avg": 396250,
           "inst_net": 0,
           "fore_net": 0,
           "pers_net": 0
@@ -3189,7 +3189,7 @@
       "ticker": "010140",
       "name": "삼성중공업",
       "last_date": "2026-05-15",
-      "cur_price": 29900,
+      "cur_price": 29775,
       "trading_days": 67,
       "close": {
         "inst": {
@@ -4236,9 +4236,9 @@
         },
         {
           "date": "2026-05-15",
-          "close": 29900,
+          "close": 29775,
           "open": 30850,
-          "avg": 30375,
+          "avg": 30312,
           "inst_net": 0,
           "fore_net": 0,
           "pers_net": 0
@@ -4249,7 +4249,7 @@
       "ticker": "015760",
       "name": "한국전력",
       "last_date": "2026-05-15",
-      "cur_price": 39500,
+      "cur_price": 39400,
       "trading_days": 67,
       "close": {
         "inst": {
@@ -5296,9 +5296,9 @@
         },
         {
           "date": "2026-05-15",
-          "close": 39500,
+          "close": 39400,
           "open": 39900,
-          "avg": 39700,
+          "avg": 39650,
           "inst_net": 0,
           "fore_net": 0,
           "pers_net": 0
@@ -5309,7 +5309,7 @@
       "ticker": "028050",
       "name": "삼성E&A",
       "last_date": "2026-05-15",
-      "cur_price": 51200,
+      "cur_price": 51100,
       "trading_days": 67,
       "close": {
         "inst": {
@@ -6356,9 +6356,9 @@
         },
         {
           "date": "2026-05-15",
-          "close": 51200,
+          "close": 51100,
           "open": 55500,
-          "avg": 53350,
+          "avg": 53300,
           "inst_net": 0,
           "fore_net": 0,
           "pers_net": 0
@@ -7429,7 +7429,7 @@
       "ticker": "034020",
       "name": "두산에너빌리티",
       "last_date": "2026-05-15",
-      "cur_price": 112200,
+      "cur_price": 111800,
       "trading_days": 67,
       "close": {
         "inst": {
@@ -8476,9 +8476,9 @@
         },
         {
           "date": "2026-05-15",
-          "close": 112200,
+          "close": 111800,
           "open": 118800,
-          "avg": 115500,
+          "avg": 115300,
           "inst_net": 0,
           "fore_net": 0,
           "pers_net": 0
@@ -8489,7 +8489,7 @@
       "ticker": "033780",
       "name": "KT&G",
       "last_date": "2026-05-15",
-      "cur_price": 181150,
+      "cur_price": 181900,
       "trading_days": 67,
       "close": {
         "inst": {
@@ -9536,9 +9536,9 @@
         },
         {
           "date": "2026-05-15",
-          "close": 181150,
+          "close": 181900,
           "open": 187200,
-          "avg": 184175,
+          "avg": 184550,
           "inst_net": 0,
           "fore_net": 0,
           "pers_net": 0
@@ -9549,7 +9549,7 @@
       "ticker": "111770",
       "name": "영원무역",
       "last_date": "2026-05-15",
-      "cur_price": 89300,
+      "cur_price": 90400,
       "trading_days": 67,
       "close": {
         "inst": {
@@ -10596,9 +10596,9 @@
         },
         {
           "date": "2026-05-15",
-          "close": 89300,
+          "close": 90400,
           "open": 85900,
-          "avg": 87600,
+          "avg": 88150,
           "inst_net": 0,
           "fore_net": 0,
           "pers_net": 0
