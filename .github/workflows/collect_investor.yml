@@ -24,7 +24,7 @@ jobs:
       - name: 패키지 설치
         run: |
           python -m pip install --upgrade pip
-          python -m pip install requests pytz
+          python -m pip install requests pytz yfinance
 
       - name: 투자자 데이터 수집
         run: |
