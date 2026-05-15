@@ -1,8 +1,7 @@
 """
-collect_investor.py  v6
-전략: yfinance (Yahoo Finance) + KRX CSV OTP 방식
-- OHLCV: yfinance (GitHub Actions에서 정상 작동)
-- 투자자별 순매수: KRX OTP+CSV (쿠키 기반)
+collect_investor.py  v7
+- OHLCV: yfinance (Series ambiguous 오류 수정)
+- 투자자별 순매수: KRX OTP+CSV
 """
 import requests, json, os, time, re, csv, io
 from datetime import datetime, timedelta
@@ -25,7 +24,6 @@ KST      = pytz.timezone("Asia/Seoul")
 NOW      = datetime.now(KST)
 TODAY    = NOW.strftime("%Y%m%d")
 START    = (NOW - timedelta(days=100)).strftime("%Y%m%d")
-START_DT = datetime.strptime(START, "%Y%m%d")
 
 def to_int(v):
     try: return int(str(v).replace(",","").replace("+","").strip())
@@ -38,51 +36,60 @@ def fmt_date(raw):
     return d if len(d) == 10 else ""
 
 # ══════════════════════════════════════════
-# OHLCV: yfinance 라이브러리
+# OHLCV: yfinance (v7 수정 - Series.item() 사용)
 # ══════════════════════════════════════════
 def get_ohlcv_yf(ticker):
-    """yfinance로 일별 OHLCV 수집 (.KS = KOSPI)"""
     try:
         import yfinance as yf
         symbol = ticker + ".KS"
-        df = yf.download(symbol, start=START[:4]+"-"+START[4:6]+"-"+START[6:],
-                         end=TODAY[:4]+"-"+TODAY[4:6]+"-"+TODAY[6:],
+        start_str = f"{START[:4]}-{START[4:6]}-{START[6:]}"
+        end_str   = f"{TODAY[:4]}-{TODAY[4:6]}-{TODAY[6:]}"
+        df = yf.download(symbol, start=start_str, end=end_str,
                          progress=False, auto_adjust=True)
-        if df.empty:
+        if df is None or df.empty:
+            print(f"    yfinance: 데이터 없음")
             return {}
+
         result = {}
-        for idx, row in df.iterrows():
+        # MultiIndex 컬럼 처리 (yfinance 최신버전)
+        if hasattr(df.columns, 'levels'):
+            df.columns = df.columns.get_level_values(0)
+
+        for idx in df.index:
             d = idx.strftime("%Y-%m-%d")
-            cl = int(row["Close"]) if not _isnan(row["Close"]) else 0
-            op = int(row["Open"])  if not _isnan(row["Open"])  else cl
-            if cl > 0:
-                result[d] = {"close": cl, "open": op, "avg": round((op+cl)/2)}
+            try:
+                cl_val = df.loc[idx, "Close"]
+                op_val = df.loc[idx, "Open"]
+                # Series → scalar 변환
+                if hasattr(cl_val, 'item'): cl_val = cl_val.item()
+                if hasattr(op_val, 'item'): op_val = op_val.item()
+                cl = int(float(cl_val)) if cl_val == cl_val else 0  # NaN 체크
+                op = int(float(op_val)) if op_val == op_val else cl
+                if cl > 0:
+                    result[d] = {"close": cl, "open": op, "avg": round((op+cl)/2)}
+            except Exception as e:
+                continue
+
         print(f"    yfinance: {len(result)}거래일")
         return result
     except Exception as e:
         print(f"    yfinance 오류: {e}")
         return {}
 
-def _isnan(v):
-    try: return v != v
-    except: return True
-
 # ══════════════════════════════════════════
 # 투자자 순매수: KRX OTP + CSV
 # ══════════════════════════════════════════
 def get_krx_session():
-    """KRX 쿠키 세션 생성"""
     s = requests.Session()
     s.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                      "Chrome/124.0.0.0 Safari/537.36",
-        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+        "Accept-Language": "ko-KR,ko;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
     })
     try:
-        # 메인 페이지 방문 → 쿠키 획득
-        s.get("http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020402",
-              timeout=12)
+        s.get("http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/"
+              "index.cmd?menuId=MDC0201020402", timeout=12)
         time.sleep(0.5)
     except:
         pass
@@ -91,7 +98,6 @@ def get_krx_session():
 KRX_SESSION = None
 
 def get_investor_krx_csv(ticker):
-    """KRX OTP+CSV 방식으로 투자자별 일별 순매수 수집"""
     global KRX_SESSION
     if KRX_SESSION is None:
         KRX_SESSION = get_krx_session()
@@ -112,7 +118,8 @@ def get_investor_krx_csv(ticker):
                 "url": "dbms/MDC/STAT/standard/MDCSTAT02302",
             },
             headers={
-                "Referer": "http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020402",
+                "Referer": "http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/"
+                           "index.cmd?menuId=MDC0201020402",
                 "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                 "X-Requested-With": "XMLHttpRequest",
             },
@@ -120,8 +127,9 @@ def get_investor_krx_csv(ticker):
         )
         otp = otp_r.text.strip()
         if not otp or len(otp) > 200:
-            print(f"    KRX OTP 실패: {otp[:50]}")
+            print(f"    KRX OTP 실패: {otp[:60]}")
             return {}
+        print(f"    KRX OTP: {otp[:20]}...")
     except Exception as e:
         print(f"    KRX OTP 오류: {e}")
         return {}
@@ -137,7 +145,9 @@ def get_investor_krx_csv(ticker):
         csv_r.encoding = "euc-kr"
         raw = csv_r.text.strip()
         if not raw or len(raw) < 10:
+            print(f"    KRX CSV 비어있음")
             return {}
+        print(f"    KRX CSV {len(raw)}자 수신")
     except Exception as e:
         print(f"    KRX CSV 오류: {e}")
         return {}
@@ -147,29 +157,34 @@ def get_investor_krx_csv(ticker):
     try:
         reader = csv.DictReader(io.StringIO(raw))
         for row in reader:
-            # 컬럼명 정규화
             keys = {k.strip(): v for k, v in row.items()}
-            raw_date = keys.get("일자", keys.get("날짜", keys.get("TRD_DD", "")))
+            raw_date = (keys.get("일자") or keys.get("날짜") or
+                        keys.get("TRD_DD") or "")
             d = fmt_date(raw_date)
             if not d:
                 continue
-            # 컬럼 탐색 (KRX CSV는 버전마다 컬럼명 다름)
+
             def find(patterns):
                 for p in patterns:
                     for k, v in keys.items():
                         if p in k:
                             return to_int(v)
                 return 0
+
             result[d] = {
-                "inst_net": find(["기관합계_순매수", "기관합계순매수", "기관_순매수", "INST_NET"]),
-                "fore_net": find(["외국인합계_순매수", "외국인_순매수", "외국인순매수", "FRGNR_NET"]),
-                "pers_net": find(["개인_순매수", "개인순매수", "INDV_NET"]),
+                "inst_net": find(["기관합계_순매수","기관합계순매수","기관_순매수","INST_NET"]),
+                "fore_net": find(["외국인합계_순매수","외국인_순매수","외국인순매수","FRGNR_NET"]),
+                "pers_net": find(["개인_순매수","개인순매수","INDV_NET"]),
             }
+        print(f"    KRX CSV 파싱: {len(result)}거래일")
     except Exception as e:
         print(f"    CSV 파싱 오류: {e}")
+        # 헤더 확인용 출력
+        lines = raw.split('\n')
+        if lines:
+            print(f"    헤더: {lines[0][:120]}")
         return {}
 
-    print(f"    KRX CSV: {len(result)}거래일")
     return result
 
 # ══════════════════════════════════════════
@@ -191,11 +206,16 @@ def build_summary(ticker, name, rows):
     last=rows[-1]; cp=last["close"]
     def pct(a): return round((cp-a)/a*100,2) if a else None
     def sec(pk):
-        i=calc_avg(rows,"inst_net",pk); f=calc_avg(rows,"fore_net",pk); p=calc_avg(rows,"pers_net",pk)
+        i=calc_avg(rows,"inst_net",pk)
+        f=calc_avg(rows,"fore_net",pk)
+        p=calc_avg(rows,"pers_net",pk)
         return {
-            "inst":{"avg_cost":i["avg_cost"],"total_net":i["total_net"],"pct":pct(i["avg_cost"]),"daily_avg":i["daily_avg"]},
-            "fore":{"avg_cost":f["avg_cost"],"total_net":f["total_net"],"pct":pct(f["avg_cost"]),"daily_avg":f["daily_avg"]},
-            "pers":{"avg_cost":p["avg_cost"],"total_net":p["total_net"],"pct":pct(p["avg_cost"]),"daily_avg":p["daily_avg"]},
+            "inst":{"avg_cost":i["avg_cost"],"total_net":i["total_net"],
+                    "pct":pct(i["avg_cost"]),"daily_avg":i["daily_avg"]},
+            "fore":{"avg_cost":f["avg_cost"],"total_net":f["total_net"],
+                    "pct":pct(f["avg_cost"]),"daily_avg":f["daily_avg"]},
+            "pers":{"avg_cost":p["avg_cost"],"total_net":p["total_net"],
+                    "pct":pct(p["avg_cost"]),"daily_avg":p["daily_avg"]},
         }
     return {
         "ticker":ticker,"name":name,
@@ -209,7 +229,9 @@ def build_summary(ticker, name, rows):
 # 메인
 # ══════════════════════════════════════════
 def main():
-    print(f"\n{'='*52}\n  📈 투자자 매입단가 수집  {START}~{TODAY}\n{'='*52}\n")
+    print(f"\n{'='*52}")
+    print(f"  📈 투자자 매입단가 수집  {START}~{TODAY}")
+    print(f"{'='*52}\n")
     result = {
         "updated_at": NOW.strftime("%Y-%m-%d %H:%M KST"),
         "period": {"start":START,"end":TODAY},
@@ -219,40 +241,36 @@ def main():
     for ticker, name in WATCH_LIST.items():
         print(f"▶ {name} ({ticker})")
 
-        # OHLCV: yfinance
         ohlcv = get_ohlcv_yf(ticker)
         time.sleep(0.5)
-
-        # 투자자: KRX CSV
         inv = get_investor_krx_csv(ticker)
-        time.sleep(1.2)
+        time.sleep(1.0)
 
-        # 병합
         if ohlcv and inv:
             dates = sorted(set(ohlcv) & set(inv))
             rows = [{
                 "date":d,
-                "close":ohlcv[d]["close"], "open":ohlcv[d]["open"], "avg":ohlcv[d]["avg"],
+                "close":ohlcv[d]["close"], "open":ohlcv[d]["open"],
+                "avg":ohlcv[d]["avg"],
                 "inst_net":inv[d]["inst_net"],
                 "fore_net":inv[d]["fore_net"],
                 "pers_net":inv[d]["pers_net"],
             } for d in dates]
             src = "yfinance+KRX"
         elif ohlcv:
-            # OHLCV만 있고 투자자 없는 경우
             rows = [{"date":d,"close":o["close"],"open":o["open"],"avg":o["avg"],
                      "inst_net":0,"fore_net":0,"pers_net":0}
                     for d,o in sorted(ohlcv.items())]
-            src = "yfinance(투자자데이터없음)"
+            src = "yfinance전용(투자자없음)"
         else:
-            rows = []
-            src = "실패"
+            rows=[]; src="실패"
 
         result["stocks"][ticker] = build_summary(ticker, name, rows)
         if rows:
             r = rows[-1]
-            print(f"  ✅ [{src}] {len(rows)}거래일 | {r['date']} | {r['close']:,}원 "
-                  f"| 기관:{r['inst_net']:+,} 외:{r['fore_net']:+,} 개:{r['pers_net']:+,}")
+            print(f"  ✅ [{src}] {len(rows)}거래일 | {r['date']} | "
+                  f"{r['close']:,}원 | 기관:{r['inst_net']:+,} "
+                  f"외:{r['fore_net']:+,} 개:{r['pers_net']:+,}")
         else:
             print(f"  ❌ 데이터 없음")
 
