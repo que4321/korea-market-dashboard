@@ -1,9 +1,10 @@
 """
-collect_investor.py  v5
-- KRX JSON API (1순위): 기관/외국인/개인 순매수 + OHLCV
-- 네이버 금융 (fallback): 외국인 + 기관 동향 각각 수집
+collect_investor.py  v6
+전략: yfinance (Yahoo Finance) + KRX CSV OTP 방식
+- OHLCV: yfinance (GitHub Actions에서 정상 작동)
+- 투자자별 순매수: KRX OTP+CSV (쿠키 기반)
 """
-import requests, json, os, time, re
+import requests, json, os, time, re, csv, io
 from datetime import datetime, timedelta
 import pytz
 
@@ -20,23 +21,11 @@ WATCH_LIST = {
     "111770": "영원무역",
 }
 
-KST   = pytz.timezone("Asia/Seoul")
-NOW   = datetime.now(KST)
-TODAY = NOW.strftime("%Y%m%d")
-START = (NOW - timedelta(days=100)).strftime("%Y%m%d")
+KST      = pytz.timezone("Asia/Seoul")
+NOW      = datetime.now(KST)
+TODAY    = NOW.strftime("%Y%m%d")
+START    = (NOW - timedelta(days=100)).strftime("%Y%m%d")
 START_DT = datetime.strptime(START, "%Y%m%d")
-
-NAV_HDR = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-    "Referer": "https://finance.naver.com",
-    "Accept-Language": "ko-KR,ko;q=0.9",
-}
-KRX_HDR = {
-    **NAV_HDR,
-    "Origin":  "http://data.krx.co.kr",
-    "Referer": "http://data.krx.co.kr/",
-    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-}
 
 def to_int(v):
     try: return int(str(v).replace(",","").replace("+","").strip())
@@ -49,139 +38,138 @@ def fmt_date(raw):
     return d if len(d) == 10 else ""
 
 # ══════════════════════════════════════════
-# 1순위: KRX JSON API
+# OHLCV: yfinance 라이브러리
 # ══════════════════════════════════════════
-def krx_post(bld, params):
+def get_ohlcv_yf(ticker):
+    """yfinance로 일별 OHLCV 수집 (.KS = KOSPI)"""
     try:
-        r = requests.post(
-            "http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd",
-            data={"bld": bld, "locale": "ko_KR", **params},
-            headers=KRX_HDR, timeout=20
-        )
-        data = r.json()
-        return data.get("output", data.get("OutBlock_1", []))
+        import yfinance as yf
+        symbol = ticker + ".KS"
+        df = yf.download(symbol, start=START[:4]+"-"+START[4:6]+"-"+START[6:],
+                         end=TODAY[:4]+"-"+TODAY[4:6]+"-"+TODAY[6:],
+                         progress=False, auto_adjust=True)
+        if df.empty:
+            return {}
+        result = {}
+        for idx, row in df.iterrows():
+            d = idx.strftime("%Y-%m-%d")
+            cl = int(row["Close"]) if not _isnan(row["Close"]) else 0
+            op = int(row["Open"])  if not _isnan(row["Open"])  else cl
+            if cl > 0:
+                result[d] = {"close": cl, "open": op, "avg": round((op+cl)/2)}
+        print(f"    yfinance: {len(result)}거래일")
+        return result
     except Exception as e:
-        print(f"    KRX 오류: {e}")
-        return []
+        print(f"    yfinance 오류: {e}")
+        return {}
 
-def get_krx_investor(ticker):
-    items = krx_post("dbms/MDC/STAT/standard/MDCSTAT02302", {
-        "ticker": ticker, "fromdate": START, "todate": TODAY,
-        "share": "1", "money": "1", "csvxls_isNo": "false",
-    })
-    result = {}
-    for item in items:
-        d = fmt_date(item.get("TRD_DD",""))
-        if not d: continue
-        result[d] = {
-            "inst_net": to_int(item.get("INST_NETBID_TRDVOL", item.get("INST_NET", 0))),
-            "fore_net": to_int(item.get("FRGNR_NETBID_TRDVOL", item.get("FRGNR_NET", 0))),
-            "pers_net": to_int(item.get("INDV_NETBID_TRDVOL", item.get("INDV_NET", 0))),
-        }
-    return result
-
-def get_krx_ohlcv(ticker):
-    items = krx_post("dbms/MDC/STAT/standard/MDCSTAT01701", {
-        "ticker": ticker, "fromdate": START, "todate": TODAY,
-        "adjStkPrc_check": "Y", "adjStkPrc": "2", "csvxls_isNo": "false",
-    })
-    result = {}
-    for item in items:
-        d = fmt_date(item.get("TRD_DD",""))
-        if not d: continue
-        cl = to_int(item.get("TDD_CLSPRC", item.get("CLSPRC", 0)))
-        op = to_int(item.get("TDD_OPNPRC", item.get("OPNPRC", cl))) or cl
-        result[d] = {"close": cl, "open": op, "avg": round((op+cl)/2)}
-    return result
+def _isnan(v):
+    try: return v != v
+    except: return True
 
 # ══════════════════════════════════════════
-# 2순위: 네이버 금융 (OHLCV + 외국인 + 기관)
+# 투자자 순매수: KRX OTP + CSV
 # ══════════════════════════════════════════
-def nav_get(url):
-    r = requests.get(url, headers=NAV_HDR, timeout=12)
-    r.encoding = "euc-kr"
-    return r.text
+def get_krx_session():
+    """KRX 쿠키 세션 생성"""
+    s = requests.Session()
+    s.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "Chrome/124.0.0.0 Safari/537.36",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    })
+    try:
+        # 메인 페이지 방문 → 쿠키 획득
+        s.get("http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020402",
+              timeout=12)
+        time.sleep(0.5)
+    except:
+        pass
+    return s
 
-def get_naver_ohlcv(ticker):
-    result = {}
-    for page in range(1, 22):
-        try:
-            html = nav_get(f"https://finance.naver.com/item/sise_day.naver?code={ticker}&page={page}")
-            rows = re.findall(
-                r'(\d{4}\.\d{2}\.\d{2})</span>\s*</td>'
-                r'.*?<span[^>]*>([\d,]+)</span>'   # 종가
-                r'.*?<span[^>]*>[^<]*</span>'       # 전일비
-                r'.*?<span[^>]*>([\d,]+)</span>',  # 시가
-                html, re.DOTALL)
-            if not rows: break
-            stop = False
-            for row in rows:
-                dt = datetime.strptime(row[0], "%Y.%m.%d")
-                if dt < START_DT: stop = True; break
-                ds = dt.strftime("%Y-%m-%d")
-                cl = int(row[1].replace(",",""))
-                op = int(row[2].replace(",","")) if row[2] else cl
-                result[ds] = {"close":cl, "open":op, "avg":round((op+cl)/2)}
-            if stop: break
-            time.sleep(0.25)
-        except Exception as e:
-            print(f"    OHLCV page{page}: {e}"); break
-    return result
+KRX_SESSION = None
 
-def get_naver_foreign(ticker):
-    """네이버 외국인 순매수"""
-    result = {}
-    for page in range(1, 18):
-        try:
-            html = nav_get(f"https://finance.naver.com/item/frgn.naver?code={ticker}&page={page}")
-            rows = re.findall(
-                r'<td class="date">(\d{4}\.\d{2}\.\d{2})</td>'
-                r'.*?<td[^>]*>\s*[\d,]+\s*</td>'      # 종가
-                r'.*?<td[^>]*>[^<]*</td>'              # 전일비
-                r'.*?<td[^>]*>\s*([+-]?[\d,]*)\s*</td>',  # 외국인순매수
-                html, re.DOTALL)
-            if not rows: break
-            stop = False
-            for row in rows:
-                dt = datetime.strptime(row[0], "%Y.%m.%d")
-                if dt < START_DT: stop = True; break
-                ds = dt.strftime("%Y-%m-%d")
-                result[ds] = to_int(row[1]) if row[1].strip() else 0
-            if stop: break
-            time.sleep(0.25)
-        except Exception as e:
-            print(f"    외국인 page{page}: {e}"); break
-    return result
+def get_investor_krx_csv(ticker):
+    """KRX OTP+CSV 방식으로 투자자별 일별 순매수 수집"""
+    global KRX_SESSION
+    if KRX_SESSION is None:
+        KRX_SESSION = get_krx_session()
 
-def get_naver_institution(ticker):
-    """네이버 기관 순매수 (기관종합 탭)"""
+    # OTP 발급
+    try:
+        otp_r = KRX_SESSION.post(
+            "http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd",
+            data={
+                "locale": "ko_KR",
+                "ticker": ticker,
+                "fromdate": START,
+                "todate": TODAY,
+                "share": "1",
+                "money": "1",
+                "csvxls_isNo": "false",
+                "name": "fileDown",
+                "url": "dbms/MDC/STAT/standard/MDCSTAT02302",
+            },
+            headers={
+                "Referer": "http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020402",
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            timeout=15
+        )
+        otp = otp_r.text.strip()
+        if not otp or len(otp) > 200:
+            print(f"    KRX OTP 실패: {otp[:50]}")
+            return {}
+    except Exception as e:
+        print(f"    KRX OTP 오류: {e}")
+        return {}
+
+    # CSV 다운로드
+    try:
+        csv_r = KRX_SESSION.post(
+            "http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd",
+            data={"code": otp},
+            headers={"Referer": "http://data.krx.co.kr/"},
+            timeout=20
+        )
+        csv_r.encoding = "euc-kr"
+        raw = csv_r.text.strip()
+        if not raw or len(raw) < 10:
+            return {}
+    except Exception as e:
+        print(f"    KRX CSV 오류: {e}")
+        return {}
+
+    # CSV 파싱
     result = {}
-    for page in range(1, 18):
-        try:
-            html = nav_get(
-                f"https://finance.naver.com/item/sise_investor.naver?code={ticker}&page={page}")
-            # 날짜 | 기관합계순매수 | 외국인순매수 | 개인순매수
-            rows = re.findall(
-                r'<td class="date">(\d{4}\.\d{2}\.\d{2})</td>'
-                r'.*?<td[^>]*>\s*([+-]?[\d,]+)\s*</td>'  # 기관합계순매수
-                r'.*?<td[^>]*>\s*([+-]?[\d,]+)\s*</td>'  # 외국인순매수
-                r'.*?<td[^>]*>\s*([+-]?[\d,]+)\s*</td>', # 개인순매수
-                html, re.DOTALL)
-            if not rows: break
-            stop = False
-            for row in rows:
-                dt = datetime.strptime(row[0], "%Y.%m.%d")
-                if dt < START_DT: stop = True; break
-                ds = dt.strftime("%Y-%m-%d")
-                result[ds] = {
-                    "inst_net": to_int(row[1]),
-                    "fore_net": to_int(row[2]),
-                    "pers_net": to_int(row[3]),
-                }
-            if stop: break
-            time.sleep(0.25)
-        except Exception as e:
-            print(f"    기관 page{page}: {e}"); break
+    try:
+        reader = csv.DictReader(io.StringIO(raw))
+        for row in reader:
+            # 컬럼명 정규화
+            keys = {k.strip(): v for k, v in row.items()}
+            raw_date = keys.get("일자", keys.get("날짜", keys.get("TRD_DD", "")))
+            d = fmt_date(raw_date)
+            if not d:
+                continue
+            # 컬럼 탐색 (KRX CSV는 버전마다 컬럼명 다름)
+            def find(patterns):
+                for p in patterns:
+                    for k, v in keys.items():
+                        if p in k:
+                            return to_int(v)
+                return 0
+            result[d] = {
+                "inst_net": find(["기관합계_순매수", "기관합계순매수", "기관_순매수", "INST_NET"]),
+                "fore_net": find(["외국인합계_순매수", "외국인_순매수", "외국인순매수", "FRGNR_NET"]),
+                "pers_net": find(["개인_순매수", "개인순매수", "INDV_NET"]),
+            }
+    except Exception as e:
+        print(f"    CSV 파싱 오류: {e}")
+        return {}
+
+    print(f"    KRX CSV: {len(result)}거래일")
     return result
 
 # ══════════════════════════════════════════
@@ -231,53 +219,47 @@ def main():
     for ticker, name in WATCH_LIST.items():
         print(f"▶ {name} ({ticker})")
 
-        # ── 1순위: KRX JSON API ──
-        krx_inv  = get_krx_investor(ticker); time.sleep(1.0)
-        krx_ohlcv = get_krx_ohlcv(ticker);  time.sleep(1.0)
+        # OHLCV: yfinance
+        ohlcv = get_ohlcv_yf(ticker)
+        time.sleep(0.5)
 
-        if krx_inv and krx_ohlcv:
-            dates = sorted(set(krx_inv) & set(krx_ohlcv))
+        # 투자자: KRX CSV
+        inv = get_investor_krx_csv(ticker)
+        time.sleep(1.2)
+
+        # 병합
+        if ohlcv and inv:
+            dates = sorted(set(ohlcv) & set(inv))
             rows = [{
                 "date":d,
-                "close":krx_ohlcv[d]["close"], "open":krx_ohlcv[d]["open"],
-                "avg":krx_ohlcv[d]["avg"],
-                "inst_net":krx_inv[d]["inst_net"],
-                "fore_net":krx_inv[d]["fore_net"],
-                "pers_net":krx_inv[d]["pers_net"],
+                "close":ohlcv[d]["close"], "open":ohlcv[d]["open"], "avg":ohlcv[d]["avg"],
+                "inst_net":inv[d]["inst_net"],
+                "fore_net":inv[d]["fore_net"],
+                "pers_net":inv[d]["pers_net"],
             } for d in dates]
-            src = "KRX"
+            src = "yfinance+KRX"
+        elif ohlcv:
+            # OHLCV만 있고 투자자 없는 경우
+            rows = [{"date":d,"close":o["close"],"open":o["open"],"avg":o["avg"],
+                     "inst_net":0,"fore_net":0,"pers_net":0}
+                    for d,o in sorted(ohlcv.items())]
+            src = "yfinance(투자자데이터없음)"
         else:
-            # ── 2순위: 네이버 금융 ──
-            print(f"  → KRX 실패, 네이버 수집 중...")
-            ohlcv = get_naver_ohlcv(ticker);         time.sleep(0.4)
-            inv   = get_naver_institution(ticker);   time.sleep(0.4)
-
-            dates = sorted(set(ohlcv))
             rows = []
-            for d in dates:
-                o  = ohlcv[d]
-                iv = inv.get(d, {"inst_net":0,"fore_net":0,"pers_net":0})
-                rows.append({
-                    "date":d,
-                    "close":o["close"], "open":o["open"], "avg":o["avg"],
-                    "inst_net":iv["inst_net"],
-                    "fore_net":iv["fore_net"],
-                    "pers_net":iv["pers_net"],
-                })
-            src = "네이버"
+            src = "실패"
 
         result["stocks"][ticker] = build_summary(ticker, name, rows)
         if rows:
             r = rows[-1]
             print(f"  ✅ [{src}] {len(rows)}거래일 | {r['date']} | {r['close']:,}원 "
-                  f"| 기관:{r['inst_net']:+,} 외국인:{r['fore_net']:+,} 개인:{r['pers_net']:+,}")
+                  f"| 기관:{r['inst_net']:+,} 외:{r['fore_net']:+,} 개:{r['pers_net']:+,}")
         else:
             print(f"  ❌ 데이터 없음")
 
     os.makedirs("data", exist_ok=True)
     with open("data/investor_data.json","w",encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
-    print(f"\n✅ 저장 완료: data/investor_data.json | {result['updated_at']}\n")
+    print(f"\n✅ 저장: data/investor_data.json | {result['updated_at']}\n")
 
 if __name__ == "__main__":
     main()
