@@ -1378,7 +1378,7 @@ async function loadInvestorData() {
 function loadInvestor() { renderInvestor(); }
 
 function renderInvestor() {
-  const ticker = document.getElementById('inv-stock').value;
+    html += '<tr style="cursor:pointer" onclick="document.getElementById(\'inv-stock\').value=\''+ticker+'\';loadInvestor()">'
   const period = document.getElementById('inv-period').value;
   const priceMode = document.getElementById('inv-price').value;
   const nDays = period === '1M' ? 22 : 66;
@@ -1478,7 +1478,7 @@ function renderAllStocksTable() {
       return '<span class="'+cls+'">'+(tot>=0?'+':'')+v.toLocaleString()+'천주</span>';
     }
 
-    html += '<tr style="cursor:pointer" onclick="document.getElementById('inv-stock').value=''+ticker+'';loadInvestor()">'
+    html += '<tr style="cursor:pointer" onclick="document.getElementById(&quot;inv-stock&quot;).value=&quot;'+ticker+'&quot;;loadInvestor()">'
       +'<td style="text-align:left;padding:7px 10px;font-weight:500">'+name+'</td>'
       +'<td class="num">'+curP.toLocaleString()+'</td>'
       +'<td class="num">'+fmtAvg(inst.avg)+'</td>'
