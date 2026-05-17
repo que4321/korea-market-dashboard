@@ -64,7 +64,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
 .sig-sum{display:flex;align-items:flex-start;gap:10px;margin-top:12px;padding:10px 14px;border-radius:8px;background:var(--bg3);}
 .sig-icon{font-size:22px;}.sig-text strong{font-weight:600;font-size:14px;color:var(--text);}
 .sig-text span{font-size:12px;color:var(--text2);display:block;margin-top:2px;line-height:1.5;}
-.chart-w{position:relative;width:100%;height:220px;margin-top:10px;}
+.chart-w{position:relative;width:100%;height:280px;margin-top:10px;}
 .legend{display:flex;gap:14px;font-size:11px;color:var(--text2);margin-top:8px;flex-wrap:wrap;}
 .ldot2{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:3px;vertical-align:middle;}
 .oi-g{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px;}
@@ -252,7 +252,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <div class="htab" onclick="switchHTab('km',this,'k')">월간</div>
       <div class="htab" onclick="switchHTab('kb',this,'k')">주간+월간</div>
     </div>
-    <div class="chart-w" style="height:260px"><canvas id="chartKH"></canvas></div>
+    <div class="chart-w" style="height:320px"><canvas id="chartKH"></canvas></div>
     <div class="ts" id="k-hsrc" style="margin-top:6px">GitHub Actions 매일 수집</div>
   </div>
 </div>
@@ -324,7 +324,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <div class="htab" onclick="switchHTab('uq',this,'u')">QQQ</div>
       <div class="htab" onclick="switchHTab('ub',this,'u')">SPY+QQQ</div>
     </div>
-    <div class="chart-w" style="height:260px"><canvas id="chartUH"></canvas></div>
+    <div class="chart-w" style="height:320px"><canvas id="chartUH"></canvas></div>
     <div class="ts" id="u-hsrc" style="margin-top:6px">GitHub Actions 매일 수집</div>
   </div>
 </div><!-- /panel-us -->
@@ -647,11 +647,14 @@ function drawMini(cid,vals,labels,color,prev){
   const ctx=document.getElementById(cid)?.getContext('2d');
   if(!ctx)return null;
   if(prev)prev.destroy();
+  const validVals=vals.filter(v=>v!=null&&!isNaN(v));
+  const maxVal=validVals.length?Math.max(...validVals):2.5;
+  const yMax=Math.ceil(Math.max(maxVal*1.1, 2.5));
   return new Chart(ctx,{type:'line',data:{labels,datasets:[
     {data:vals,borderColor:color,backgroundColor:color+'22',borderWidth:2,pointRadius:2,tension:.35,fill:true},
     {data:vals.map(()=>1.0),borderColor:'#475569',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{y:{min:.3,max:2.5,grid:{color:'rgba(26,40,64,.6)'},ticks:{font:{size:10},color:'#475569'}},
+    scales:{y:{min:0,max:yMax,grid:{color:'rgba(26,40,64,.6)'},ticks:{font:{size:10},color:'#475569'}},
             x:{grid:{display:false},ticks:{font:{size:10},color:'#475569',maxTicksLimit:6}}}}});
 }
 
@@ -660,9 +663,12 @@ function drawHist(cid,datasets,labels,showLegend){
   if(!ctx)return null;
   if(chartInstances[cid])chartInstances[cid].destroy();
   const ds=[...datasets,{label:'중립',data:labels.map(()=>1.0),borderColor:'#475569',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false}];
+  const allVals=datasets.flatMap(d=>d.data).filter(v=>v!=null&&!isNaN(v));
+  const maxVal=allVals.length?Math.max(...allVals):2.5;
+  const yMax=Math.ceil(Math.max(maxVal*1.1, 2.5));
   chartInstances[cid]=new Chart(ctx,{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,
     plugins:{legend:{display:showLegend,labels:{font:{size:11},boxWidth:10,color:'#94a3b8'}}},
-    scales:{y:{min:.3,max:2.5,grid:{color:'rgba(26,40,64,.6)'},ticks:{font:{size:10},color:'#475569'}},
+    scales:{y:{min:0,max:yMax,grid:{color:'rgba(26,40,64,.6)'},ticks:{font:{size:10},color:'#475569'}},
             x:{grid:{display:false},ticks:{font:{size:10},color:'#475569',maxTicksLimit:10}}}}});
 }
 
