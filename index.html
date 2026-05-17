@@ -442,29 +442,12 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <div class="ts" id="inv-ts">데이터 로딩 중...</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <!-- 종목 선택 -->
-      <select id="inv-stock" onchange="loadInvestor()"
-        style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;cursor:pointer">
-        <option value="005930">삼성전자 (005930)</option>
-        <option value="000660">SK하이닉스 (000660)</option>
-        <option value="042700">한미반도체 (042700)</option>
-        <option value="010140">삼성중공업 (010140)</option>
-        <option value="015760">한국전력 (015760)</option>
-        <option value="028050">삼성E&amp;A (028050)</option>
-        <option value="035420">NAVER (035420)</option>
-        <option value="034020">두산에너빌리티 (034020)</option>
-        <option value="033780">KT&amp;G (033780)</option>
-        <option value="111770">영원무역 (111770)</option>
-        <option value="002960">한국쉘석유 (002960)</option>
-      </select>
-      <!-- 기간 -->
-      <select id="inv-period" onchange="loadInvestor()"
+      <select id="inv-period" onchange="renderAllStocksTable()"
         style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;cursor:pointer">
         <option value="1M">1개월</option>
         <option value="3M" selected>3개월</option>
       </select>
-      <!-- 가격 기준 -->
-      <select id="inv-price" onchange="loadInvestor()"
+      <select id="inv-price" onchange="renderAllStocksTable()"
         style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;cursor:pointer">
         <option value="close">종가 기준</option>
         <option value="avg">시가+종가 평균</option>
@@ -476,99 +459,66 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     </div>
   </div>
 
-  <!-- ── 핵심 레이아웃 (이미지 배치) ── -->
-  <div style="display:grid;grid-template-columns:200px 1fr;gap:10px;margin-bottom:14px;align-items:stretch">
+  <!-- ── 전체 종목 요약 표 ── -->
+  <div class="table-wrap" style="margin-bottom:16px">
+    <table style="table-layout:fixed;width:100%;font-size:12px">
+      <thead>
+        <tr>
+          <th rowspan="2" style="width:90px;text-align:left;vertical-align:middle;padding:8px 10px">종목명</th>
+          <th rowspan="2" style="width:85px;vertical-align:middle">현재가(원)</th>
+          <th colspan="3" style="text-align:center;padding:6px;border-bottom:0.5px solid var(--border)">평균 매입단가(원)</th>
+          <th colspan="3" style="text-align:center;padding:6px;border-bottom:0.5px solid var(--border)">누적 순매수(천주)</th>
+        </tr>
+        <tr>
+          <th style="width:90px">기관</th>
+          <th style="width:90px">외국인</th>
+          <th style="width:90px">개인</th>
+          <th style="width:72px">기관</th>
+          <th style="width:72px">외국인</th>
+          <th style="width:72px">개인</th>
+        </tr>
+      </thead>
+      <tbody id="inv-all-tbody">
+        <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">데이터 로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-    <!-- 왼쪽: 현재가 (세로 전체 병합) -->
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;
-                padding:14px 16px;display:flex;flex-direction:column;
-                justify-content:center;align-items:center;text-align:center">
-      <div style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em;margin-bottom:6px">현재가</div>
-      <div id="inv-cur-val" style="font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)">—</div>
-      <div id="inv-cur-date" style="font-size:10px;color:var(--text3);margin-top:6px">—</div>
-      <div id="inv-cur-mode" style="font-size:10px;color:var(--text3);margin-top:2px">—</div>
-    </div>
+  <!-- 종목별 상세 -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--text3);font-weight:500">▼ 종목별 상세</span>
+    <select id="inv-stock" onchange="loadInvestor()"
+      style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;color:var(--text);font-size:12px;cursor:pointer">
+      <option value="005930">삼성전자 (005930)</option>
+      <option value="000660">SK하이닉스 (000660)</option>
+      <option value="042700">한미반도체 (042700)</option>
+      <option value="010140">삼성중공업 (010140)</option>
+      <option value="015760">한국전력 (015760)</option>
+      <option value="028050">삼성E&amp;A (028050)</option>
+      <option value="035420">NAVER (035420)</option>
+      <option value="034020">두산에너빌리티 (034020)</option>
+      <option value="033780">KT&amp;G (033780)</option>
+      <option value="111770">영원무역 (111770)</option>
+      <option value="002960">한국쉘석유 (002960)</option>
+    </select>
+  </div>
 
-    <!-- 오른쪽 블록 -->
-    <div style="display:flex;flex-direction:column;gap:5px">
-
-      <!-- 1행: 평균매입단가 3칸 -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
-        <div class="mcard">
-          <div class="mlabel">기관 평균매입단가</div>
-          <div id="inv-inst-avg" class="mval" style="font-size:16px">—</div>
-          <div id="inv-inst-diff" class="msub">—</div>
-        </div>
-        <div class="mcard">
-          <div class="mlabel">외국인 평균매입단가</div>
-          <div id="inv-fore-avg" class="mval" style="font-size:16px">—</div>
-          <div id="inv-fore-diff" class="msub">—</div>
-        </div>
-        <div class="mcard">
-          <div class="mlabel">개인 평균매입단가</div>
-          <div id="inv-pers-avg" class="mval" style="font-size:16px">—</div>
-          <div id="inv-pers-diff" class="msub">—</div>
-        </div>
-      </div>
-
-      <!-- 구분선 -->
-      <div style="border-top:1px dashed var(--border2);margin:0 2px"></div>
-
-      <!-- 2행: 누적순매수 3칸 -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
-        <div class="mcard">
-          <div class="mlabel">기관 누적순매수</div>
-          <div id="inv-inst-net" class="mval" style="font-size:16px">—</div>
-          <div id="inv-inst-net-amt" class="msub">—</div>
-        </div>
-        <div class="mcard">
-          <div class="mlabel">외국인 누적순매수</div>
-          <div id="inv-fore-net" class="mval" style="font-size:16px">—</div>
-          <div id="inv-fore-net-amt" class="msub">—</div>
-        </div>
-        <div class="mcard">
-          <div class="mlabel">개인 누적순매수</div>
-          <div id="inv-pers-net" class="mval" style="font-size:16px">—</div>
-          <div id="inv-pers-net-amt" class="msub">—</div>
-        </div>
-      </div>
-
-    </div>
-  </div><!-- /핵심 레이아웃 -->
-
-  <!-- 서브탭 -->
   <div class="htabs" style="margin-bottom:12px">
-    <div class="htab active" onclick="switchInvTab('chart',this)">가격·평균단가 추이</div>
-    <div class="htab" onclick="switchInvTab('bar',this)">일별 순매수</div>
+    <div class="htab active" onclick="switchInvTab('bar',this)">일별 순매수</div>
     <div class="htab" onclick="switchInvTab('table',this)">상세 데이터</div>
   </div>
 
-  <!-- 차트1: 가격·평균단가 -->
-  <div id="inv-tab-chart">
-    <div class="card" style="margin-bottom:12px">
-      <div class="legend" style="margin-bottom:10px">
-        <span><span class="ldot2" style="background:#38bdf8"></span>현재가</span>
-        <span><span class="ldot2" style="background:#f87171"></span>기관 평균매입단가</span>
-        <span><span class="ldot2" style="background:#34d399"></span>외국인 평균매입단가</span>
-        <span><span class="ldot2" style="background:#fbbf24"></span>개인 평균매입단가</span>
-      </div>
-      <div style="position:relative;height:260px"><canvas id="invChart1"></canvas></div>
-    </div>
-  </div>
-
-  <!-- 차트2: 일별 순매수 -->
-  <div id="inv-tab-bar" style="display:none">
+  <div id="inv-tab-bar">
     <div class="card" style="margin-bottom:12px">
       <div class="legend" style="margin-bottom:10px">
         <span><span class="ldot2" style="background:#38bdf8"></span>기관</span>
         <span><span class="ldot2" style="background:#34d399"></span>외국인</span>
         <span><span class="ldot2" style="background:#fbbf24"></span>개인</span>
       </div>
-      <div style="position:relative;height:260px"><canvas id="invChart2"></canvas></div>
+      <div style="position:relative;height:220px"><canvas id="invChart2"></canvas></div>
     </div>
   </div>
 
-  <!-- 상세 테이블 -->
   <div id="inv-tab-table" style="display:none">
     <div class="table-wrap">
       <table>
@@ -952,7 +902,7 @@ async function convertKrxFiles() {
     invRawData = result;
     const ts = document.getElementById('inv-ts');
     if (ts) ts.textContent = `수동업로드 | ${KST} | ${cnt}종목`;
-    renderInvestor();
+    renderAllStocksTable();
   }
 }
 
@@ -1290,7 +1240,6 @@ const INV_STOCKS = {
 
 let invLoaded = false;
 let invRawData = null;   // investor_data.json 전체 캐시
-let invChart1  = null;
 let invChart2  = null;
 
 /* ── JSON 최초 1회 로드 ── */
@@ -1305,12 +1254,12 @@ async function loadInvestorData() {
     document.getElementById('inv-ts').textContent = `업데이트: ${upd}`;
     const tEl = document.getElementById('ts-investor');
     if (tEl) tEl.textContent = upd;
-    renderInvestor();
+    renderAllStocksTable();
   } catch(e) {
     /* JSON 없으면 시뮬레이션 데이터로 대체 */
     document.getElementById('inv-ts').textContent = '⚠ 실데이터 로드 실패 — 시뮬레이션 표시 중';
     invRawData = null;
-    renderInvestor();
+    renderAllStocksTable();
   }
 }
 
@@ -1403,22 +1352,6 @@ function renderInvestor() {
   const xCfg   = {ticks:{color:'#475569',maxRotation:0,maxTicksLimit:10},grid:{color:'#1a2840'}};
   const yCfg   = {ticks:{color:'#475569',callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:'#1a2840'}};
 
-  /* ── 차트1: 가격·평균단가 추이 ── */
-  if (invChart1) invChart1.destroy();
-  invChart1 = new Chart(document.getElementById('invChart1'), {
-    type:'line',
-    data:{labels, datasets:[
-      {label:'현재가',      data:prices,      borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.07)',fill:true, tension:0.3,pointRadius:0,borderWidth:2},
-      {label:'기관 평균단가', data:inst.dAvg, borderColor:'#f87171',borderDash:[4,3],pointRadius:0,borderWidth:1.5,fill:false,tension:0.2},
-      {label:'외국인 평균단가',data:fore.dAvg,borderColor:'#34d399',borderDash:[4,3],pointRadius:0,borderWidth:1.5,fill:false,tension:0.2},
-      {label:'개인 평균단가', data:pers.dAvg, borderColor:'#fbbf24',borderDash:[4,3],pointRadius:0,borderWidth:1.5,fill:false,tension:0.2},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
-      plugins:{legend:{display:false},tooltip:{...ttBase}},
-      scales:{x:xCfg, y:yCfg}}
-  });
-
   /* ── 차트2: 일별 순매수 ── */
   if (invChart2) invChart2.destroy();
   invChart2 = new Chart(document.getElementById('invChart2'), {
@@ -1462,9 +1395,76 @@ function renderInvestor() {
 function switchInvTab(mode, el) {
   el.closest('.htabs').querySelectorAll('.htab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('inv-tab-chart').style.display = mode==='chart' ? '' : 'none';
   document.getElementById('inv-tab-bar').style.display   = mode==='bar'   ? '' : 'none';
   document.getElementById('inv-tab-table').style.display = mode==='table' ? '' : 'none';
+}
+
+/* ── 전체 종목 요약 표 렌더링 ── */
+function renderAllStocksTable() {
+  const period   = document.getElementById('inv-period').value;
+  const priceMode = document.getElementById('inv-price').value;
+  const nDays    = period === '1M' ? 22 : 66;
+  const pKey     = priceMode === 'avg' ? 'avg' : 'close';
+  const tbody    = document.getElementById('inv-all-tbody');
+  if (!tbody) return;
+
+  const tickers = Object.keys(INV_STOCKS);
+  let html = '';
+
+  for (const ticker of tickers) {
+    const name = INV_STOCKS[ticker];
+    let daily = [];
+    if (invRawData && invRawData.stocks && invRawData.stocks[ticker] && invRawData.stocks[ticker].daily) {
+      daily = invRawData.stocks[ticker].daily.slice(-nDays);
+    } else {
+      daily = invSimData(ticker, priceMode, nDays);
+    }
+
+    if (!daily.length) {
+      html += `<tr><td style="text-align:left;padding:7px 10px">${name}</td><td colspan="7" style="color:var(--text3)">—</td></tr>`;
+      continue;
+    }
+
+    const last = daily[daily.length - 1];
+    const curP = last[pKey] || last.close;
+
+    function calcA(key) {
+      let ca=0,cq=0,tot=0;
+      daily.forEach(r=>{const net=r[key]||0,px=r[pKey]||r.close||0;tot+=net;if(net>0){ca+=net*px;cq+=net;}});
+      return {avg: cq>0?Math.round(ca/cq):null, tot};
+    }
+
+    const inst = calcA('inst_net');
+    const fore = calcA('fore_net');
+    const pers = calcA('pers_net');
+
+    function fmtAvg(avg) {
+      if (!avg) return '<span style="color:var(--text3)">—</span>';
+      const d = curP - avg;
+      const cls = d >= 0 ? 'up' : 'down';
+      return `<span class="${cls}">${avg.toLocaleString()}</span><br><span style="font-size:10px;color:var(--text3)">${d>=0?'+':''}${d.toLocaleString()}(${((d/avg)*100).toFixed(1)}%)</span>`;
+    }
+    function fmtNet(tot) {
+      const v = Math.round(tot/1000);
+      const cls = tot >= 0 ? 'up' : 'down';
+      return `<span class="${cls}">${tot>=0?'+':''}${v.toLocaleString()}</span>`;
+    }
+
+    html += `<tr style="cursor:pointer" onclick="document.getElementById('inv-stock').value='${ticker}';loadInvestor()">
+      <td style="text-align:left;padding:7px 10px;font-weight:500">${name}</td>
+      <td class="num">${curP.toLocaleString()}</td>
+      <td class="num">${fmtAvg(inst.avg)}</td>
+      <td class="num">${fmtAvg(fore.avg)}</td>
+      <td class="num">${fmtAvg(pers.avg)}</td>
+      <td class="num">${fmtNet(inst.tot)}</td>
+      <td class="num">${fmtNet(fore.tot)}</td>
+      <td class="num">${fmtNet(pers.tot)}</td>
+    </tr>`;
+  }
+
+  tbody.innerHTML = html;
+  /* 선택 종목도 같이 갱신 */
+  loadInvestor();
 }
 
 /* ── 엑셀 다운로드 ── */
