@@ -727,44 +727,57 @@ function parseKrxCsv(text) {
   if (lines.length < 2) return [];
 
   const header = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
-  const rows   = [];
+  console.log('KRX CSV 헤더:', header);
+  const rows = [];
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',').map(c => c.trim().replace(/"/g,''));
-    if (cols.length < 4) continue;
+    if (cols.length < 2) continue;
 
     const obj = {};
     header.forEach((h, idx) => { obj[h] = cols[idx] || ''; });
 
-    /* 날짜 컬럼 탐색 */
+    /* ── 날짜 ── */
     const dateKey = Object.keys(obj).find(k =>
-      k.includes('일자') || k.includes('날짜') || k.includes('TRD_DD') || k.includes('일 자'));
+      ['일자','날짜','TRD_DD','일 자','기준일'].some(p => k.includes(p)));
     const d = fmtDate(obj[dateKey] || cols[0]);
     if (!d) continue;
 
-    /* 종가 컬럼 */
+    /* ── 종가 (없으면 0) ── */
     const closeKey = Object.keys(obj).find(k =>
-      k.includes('종가') || k.includes('CLSPRC') || k.includes('close'));
-    const close = toInt(obj[closeKey] || cols[1]);
+      ['종가','CLSPRC','현재가','close'].some(p => k.includes(p)));
+    const close = closeKey ? toInt(obj[closeKey]) : 0;
 
-    /* 시가 컬럼 */
+    /* ── 시가 (없으면 종가) ── */
     const openKey = Object.keys(obj).find(k =>
-      k.includes('시가') || k.includes('OPNPRC') || k.includes('open'));
-    const open = toInt(obj[openKey]) || close;
+      ['시가','OPNPRC','open'].some(p => k.includes(p)));
+    const open = (openKey ? toInt(obj[openKey]) : 0) || close;
 
-    /* 투자자별 순매수 탐색 */
+    /* ── 투자자별 순매수 ──
+       KRX 투자자별 매매현황 CSV 실제 컬럼명 패턴:
+       "기관합계_순매수수량", "외국인합계_순매수수량", "개인_순매수수량"
+       또는 "기관합계", "외국인합계", "개인" (순매수 컬럼)
+    */
     function findNet(patterns) {
+      /* 순매수 포함 컬럼 우선 */
+      for (const p of patterns) {
+        const key = Object.keys(obj).find(k => k.includes(p) && k.includes('순매수'));
+        if (key && obj[key] !== '') return toInt(obj[key]);
+      }
+      /* 없으면 패턴만으로 탐색 */
       for (const p of patterns) {
         const key = Object.keys(obj).find(k => k.includes(p));
-        if (key) return toInt(obj[key]);
+        if (key && obj[key] !== '') return toInt(obj[key]);
       }
       return 0;
     }
-    const inst_net = findNet(['기관합계_순매수','기관합계순매수','기관_순매수','INST_NET','기관합계']);
-    const fore_net = findNet(['외국인합계_순매수','외국인_순매수','외국인순매수','FRGNR_NET','외국인합계']);
-    const pers_net = findNet(['개인_순매수','개인순매수','INDV_NET','개인']);
 
-    rows.push({ date:d, close, open, avg:Math.round((open+close)/2),
+    const inst_net = findNet(['기관합계','기관_합계','INST']);
+    const fore_net = findNet(['외국인합계','외국인_합계','외국인','FRGN']);
+    const pers_net = findNet(['개인','INDV']);
+
+    rows.push({ date:d, close, open,
+                avg: close > 0 ? Math.round((open+close)/2) : 0,
                 inst_net, fore_net, pers_net });
   }
   return rows.sort((a,b) => a.date.localeCompare(b.date));
@@ -832,18 +845,22 @@ async function convertKrxFiles() {
     stocks: {}
   };
 
+  /* 파일별 파싱 결과 수집 */
+  const parsed = {}; // ticker → rows
+
   let log = '';
   for (const file of krxFiles) {
     try {
       let rows = [];
-      if (file.name.endsWith('.csv')) {
-        const text = await file.text();
-        /* EUC-KR 처리 시도 */
-        let decoded = text;
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        /* EUC-KR 우선 시도 */
+        let decoded = '';
         try {
           const buf = await file.arrayBuffer();
           decoded = new TextDecoder('euc-kr').decode(buf);
-        } catch(e) {}
+        } catch(e) {
+          decoded = await file.text();
+        }
         rows = parseKrxCsv(decoded);
       } else {
         const buf = await file.arrayBuffer();
@@ -851,29 +868,80 @@ async function convertKrxFiles() {
       }
 
       const ticker = detectTicker(file.name, rows);
-      const name   = ticker ? KRX_TICKERS[ticker] : '알 수 없음';
+      const name   = ticker ? KRX_TICKERS[ticker] : null;
 
       if (!ticker) {
-        log += `⚠ <b>${file.name}</b>: 종목코드 인식 실패 (파일명에 6자리 코드 포함 필요)<br>`;
+        log += `⚠ <b>${file.name}</b>: 종목코드 인식 실패 — 파일명에 6자리 코드 포함 필요<br>`;
         continue;
       }
       if (!rows.length) {
-        log += `❌ <b>${name}</b>: 데이터 파싱 실패<br>`;
+        log += `❌ <b>${name}(${ticker})</b>: 데이터 파싱 실패<br>`;
         continue;
       }
 
-      result.stocks[ticker] = buildSummary(ticker, name, rows);
-      log += `✅ <b>${name}(${ticker})</b>: ${rows.length}거래일 | 최근 ${rows[rows.length-1].date}<br>`;
+      /* 기존 데이터와 병합 (OHLCV 파일 + 투자자 파일 각각 올릴 수도 있음) */
+      if (!parsed[ticker]) {
+        parsed[ticker] = { name, rows };
+      } else {
+        /* 같은 종목 파일이 여러 개면 날짜 기준으로 병합 */
+        const existing = {};
+        parsed[ticker].rows.forEach(r => { existing[r.date] = r; });
+        rows.forEach(r => {
+          if (existing[r.date]) {
+            /* 종가가 있으면 덮어쓰기, 투자자 데이터 병합 */
+            if (r.close > 0) existing[r.date].close = r.close;
+            if (r.open  > 0) existing[r.date].open  = r.open;
+            if (r.inst_net !== 0) existing[r.date].inst_net = r.inst_net;
+            if (r.fore_net !== 0) existing[r.date].fore_net = r.fore_net;
+            if (r.pers_net !== 0) existing[r.date].pers_net = r.pers_net;
+          } else {
+            existing[r.date] = r;
+          }
+        });
+        parsed[ticker].rows = Object.values(existing).sort((a,b)=>a.date.localeCompare(b.date));
+      }
 
-      /* 기간 업데이트 */
-      if (!result.period.start || rows[0].date < result.period.start)
-        result.period.start = rows[0].date;
-      if (!result.period.end || rows[rows.length-1].date > result.period.end)
-        result.period.end = rows[rows.length-1].date;
+      log += `📄 <b>${name}(${ticker})</b>: ${rows.length}거래일 파싱 완료<br>`;
 
     } catch(e) {
       log += `❌ <b>${file.name}</b>: ${e.message}<br>`;
     }
+  }
+
+  /* 종가 없는 경우 investor_data.json 기존 데이터에서 보완 */
+  for (const [ticker, data] of Object.entries(parsed)) {
+    const hasClose = data.rows.some(r => r.close > 0);
+    if (!hasClose && invRawData && invRawData.stocks && invRawData.stocks[ticker]) {
+      /* 기존 JSON의 OHLCV를 가져와 병합 */
+      const existing = {};
+      (invRawData.stocks[ticker].daily || []).forEach(r => { existing[r.date] = {...r}; });
+      data.rows.forEach(r => {
+        if (existing[r.date]) {
+          if (r.inst_net !== 0) existing[r.date].inst_net = r.inst_net;
+          if (r.fore_net !== 0) existing[r.date].fore_net = r.fore_net;
+          if (r.pers_net !== 0) existing[r.date].pers_net = r.pers_net;
+        } else {
+          existing[r.date] = r;
+        }
+      });
+      data.rows = Object.values(existing).sort((a,b)=>a.date.localeCompare(b.date));
+      log += `🔗 <b>${data.name}</b>: 기존 OHLCV 데이터와 병합<br>`;
+    }
+
+    /* avg 재계산 */
+    data.rows = data.rows.map(r => ({
+      ...r,
+      avg: r.close > 0 ? Math.round(((r.open||r.close)+r.close)/2) : 0
+    }));
+
+    result.stocks[ticker] = buildSummary(ticker, data.name, data.rows);
+    const last = data.rows[data.rows.length-1];
+    log += `✅ <b>${data.name}(${ticker})</b>: ${data.rows.length}거래일 | ${last?.date} | 종가:${last?.close?.toLocaleString()}원<br>`;
+
+    if (!result.period.start || data.rows[0].date < result.period.start)
+      result.period.start = data.rows[0].date;
+    if (!result.period.end || last.date > result.period.end)
+      result.period.end = last.date;
   }
 
   const cnt = Object.keys(result.stocks).length;
@@ -884,8 +952,6 @@ async function convertKrxFiles() {
     krxJsonResult = result;
     document.getElementById('krx-download-btn').style.display = 'inline-block';
     document.getElementById('krx-github-btn').style.display   = 'inline-block';
-
-    /* 변환된 데이터로 즉시 화면 갱신 */
     invRawData = result;
     const ts = document.getElementById('inv-ts');
     if (ts) ts.textContent = `수동업로드 | ${KST} | ${cnt}종목`;
