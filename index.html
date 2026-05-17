@@ -721,15 +721,14 @@ function fmtDate(raw) {
 }
 
 function parseKrxCsv(text) {
-  /* BOM 제거 */
   text = text.replace(/^\uFEFF/,'');
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
 
   const header = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
   console.log('KRX CSV 헤더:', header);
-  const rows = [];
 
+  const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',').map(c => c.trim().replace(/"/g,''));
     if (cols.length < 2) continue;
@@ -739,46 +738,42 @@ function parseKrxCsv(text) {
 
     /* ── 날짜 ── */
     const dateKey = Object.keys(obj).find(k =>
-      ['일자','날짜','TRD_DD','일 자','기준일'].some(p => k.includes(p)));
+      ['일자','날짜','TRD_DD','기준일'].some(p => k.includes(p)));
     const d = fmtDate(obj[dateKey] || cols[0]);
     if (!d) continue;
 
-    /* ── 종가 (없으면 0) ── */
-    const closeKey = Object.keys(obj).find(k =>
-      ['종가','CLSPRC','현재가','close'].some(p => k.includes(p)));
-    const close = closeKey ? toInt(obj[closeKey]) : 0;
+    /* ── OHLCV (Array(11) 구조: 일자,종가,대비,등락률,시가,고가,저가,...) ── */
+    const close = toInt(obj['종가'] || obj['CLSPRC'] || 0);
+    const open  = toInt(obj['시가'] || obj['OPNPRC'] || 0) || close;
 
-    /* ── 시가 (없으면 종가) ── */
-    const openKey = Object.keys(obj).find(k =>
-      ['시가','OPNPRC','open'].some(p => k.includes(p)));
-    const open = (openKey ? toInt(obj[openKey]) : 0) || close;
-
-    /* ── 투자자별 순매수 ──
-       KRX 투자자별 매매현황 CSV 실제 컬럼명 패턴:
-       "기관합계_순매수수량", "외국인합계_순매수수량", "개인_순매수수량"
-       또는 "기관합계", "외국인합계", "개인" (순매수 컬럼)
+    /* ── 투자자별 순매수 (Array(6) 구조 탐색) ──
+       실제 컬럼명 패턴: "기관", "외국인", "개인" 또는
+       "기관합계", "외국인합계" 등
     */
-    function findNet(patterns) {
-      /* 순매수 포함 컬럼 우선 */
-      for (const p of patterns) {
-        const key = Object.keys(obj).find(k => k.includes(p) && k.includes('순매수'));
-        if (key && obj[key] !== '') return toInt(obj[key]);
-      }
-      /* 없으면 패턴만으로 탐색 */
-      for (const p of patterns) {
-        const key = Object.keys(obj).find(k => k.includes(p));
-        if (key && obj[key] !== '') return toInt(obj[key]);
+    function findNet(keys) {
+      for (const k of keys) {
+        /* 정확히 일치 */
+        if (obj[k] !== undefined && obj[k] !== '') return toInt(obj[k]);
+        /* 포함 탐색 - 순매수 우선 */
+        const foundNet = Object.keys(obj).find(ok =>
+          ok.includes(k) && (ok.includes('순매수') || ok.includes('순_매수')));
+        if (foundNet && obj[foundNet] !== '') return toInt(obj[foundNet]);
+        /* 포함 탐색 - 일반 */
+        const found = Object.keys(obj).find(ok => ok === k || ok.startsWith(k));
+        if (found && obj[found] !== '') return toInt(obj[found]);
       }
       return 0;
     }
 
-    const inst_net = findNet(['기관합계','기관_합계','INST']);
-    const fore_net = findNet(['외국인합계','외국인_합계','외국인','FRGN']);
+    const inst_net = findNet(['기관합계','기관_합계','기관','INST']);
+    const fore_net = findNet(['외국인합계','외국인_합계','외국인','FRGN','FRGNR']);
     const pers_net = findNet(['개인','INDV']);
 
-    rows.push({ date:d, close, open,
-                avg: close > 0 ? Math.round((open+close)/2) : 0,
-                inst_net, fore_net, pers_net });
+    rows.push({
+      date:d, close, open,
+      avg: close > 0 ? Math.round(((open||close)+close)/2) : 0,
+      inst_net, fore_net, pers_net
+    });
   }
   return rows.sort((a,b) => a.date.localeCompare(b.date));
 }
