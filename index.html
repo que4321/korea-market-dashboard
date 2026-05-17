@@ -455,6 +455,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         <option value="034020">두산에너빌리티 (034020)</option>
         <option value="033780">KT&amp;G (033780)</option>
         <option value="111770">영원무역 (111770)</option>
+        <option value="002960">한국쉘석유 (002960)</option>
       </select>
       <!-- 기간 -->
       <select id="inv-period" onchange="loadInvestor()"
@@ -673,7 +674,8 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 const KRX_TICKERS = {
   '005930':'삼성전자','000660':'SK하이닉스','042700':'한미반도체',
   '010140':'삼성중공업','015760':'한국전력','028050':'삼성E&A',
-  '035420':'NAVER','034020':'두산에너빌리티','033780':'KT&G','111770':'영원무역'
+  '035420':'NAVER','034020':'두산에너빌리티','033780':'KT&G','111770':'영원무역',
+  '002960':'한국쉘석유'
 };
 
 let krxFiles = [];
@@ -1282,7 +1284,8 @@ const INV_DATA_URL = 'https://raw.githubusercontent.com/que4321/korea-market-das
 const INV_STOCKS = {
   '005930':'삼성전자','000660':'SK하이닉스','042700':'한미반도체',
   '010140':'삼성중공업','015760':'한국전력','028050':'삼성E&A',
-  '035420':'NAVER','034020':'두산에너빌리티','033780':'KT&G','111770':'영원무역'
+  '035420':'NAVER','034020':'두산에너빌리티','033780':'KT&G','111770':'영원무역',
+  '002960':'한국쉘석유'
 };
 
 let invLoaded = false;
@@ -1558,7 +1561,7 @@ function downloadInvExcel() {
 function invSimData(ticker, priceMode, nDays) {
   const bases={'005930':73000,'000660':195000,'042700':98000,'010140':12500,
                '015760':22000,'028050':45000,'035420':210000,'034020':18000,
-               '033780':98000,'111770':87000};
+               '033780':98000,'111770':87000,'002960':280000};
   const base = bases[ticker] || 50000;
   const dates = [];
   const now = new Date(2026,4,14);
