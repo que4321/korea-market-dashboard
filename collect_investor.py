@@ -1,6 +1,6 @@
 """
-collect_investor.py  v7
-- OHLCV: yfinance (Series ambiguous 오류 수정)
+collect_investor.py  v8
+- OHLCV: yfinance (auto_adjust=False → 실제 주가 사용)
 - 투자자별 순매수: KRX OTP+CSV
 """
 import requests, json, os, time, re, csv, io
@@ -21,10 +21,10 @@ WATCH_LIST = {
     "002960": "한국쉘석유",
 }
 
-KST      = pytz.timezone("Asia/Seoul")
-NOW      = datetime.now(KST)
-TODAY    = NOW.strftime("%Y%m%d")
-START    = (NOW - timedelta(days=100)).strftime("%Y%m%d")
+KST   = pytz.timezone("Asia/Seoul")
+NOW   = datetime.now(KST)
+TODAY = NOW.strftime("%Y%m%d")
+START = (NOW - timedelta(days=100)).strftime("%Y%m%d")
 
 def to_int(v):
     try: return int(str(v).replace(",","").replace("+","").strip())
@@ -37,7 +37,7 @@ def fmt_date(raw):
     return d if len(d) == 10 else ""
 
 # ══════════════════════════════════════════
-# OHLCV: yfinance (v7 수정 - Series.item() 사용)
+# OHLCV: yfinance (auto_adjust=False)
 # ══════════════════════════════════════════
 def get_ohlcv_yf(ticker):
     try:
@@ -45,33 +45,36 @@ def get_ohlcv_yf(ticker):
         symbol = ticker + ".KS"
         start_str = f"{START[:4]}-{START[4:6]}-{START[6:]}"
         end_str   = f"{TODAY[:4]}-{TODAY[4:6]}-{TODAY[6:]}"
+
+        # auto_adjust=False → 실제 거래 주가 사용
         df = yf.download(symbol, start=start_str, end=end_str,
-                         progress=False, auto_adjust=True)
+                         progress=False, auto_adjust=False)
         if df is None or df.empty:
             print(f"    yfinance: 데이터 없음")
             return {}
 
-        result = {}
-        # MultiIndex 컬럼 처리 (yfinance 최신버전)
+        # MultiIndex 컬럼 처리
         if hasattr(df.columns, 'levels'):
-            df.columns = df.columns.get_level_values(0)
+            df.columns = [col[0] if isinstance(col, tuple) else col
+                         for col in df.columns]
 
+        result = {}
         for idx in df.index:
             d = idx.strftime("%Y-%m-%d")
             try:
                 cl_val = df.loc[idx, "Close"]
                 op_val = df.loc[idx, "Open"]
-                # Series → scalar 변환
                 if hasattr(cl_val, 'item'): cl_val = cl_val.item()
                 if hasattr(op_val, 'item'): op_val = op_val.item()
-                cl = int(float(cl_val)) if cl_val == cl_val else 0  # NaN 체크
+                cl = int(float(cl_val)) if cl_val == cl_val else 0
                 op = int(float(op_val)) if op_val == op_val else cl
                 if cl > 0:
-                    result[d] = {"close": cl, "open": op, "avg": round((op+cl)/2)}
-            except Exception as e:
+                    result[d] = {"close": cl, "open": op,
+                                 "avg": round((op+cl)/2)}
+            except:
                 continue
 
-        print(f"    yfinance: {len(result)}거래일")
+        print(f"    yfinance: {len(result)}거래일 | 최근종가: {list(result.values())[-1]['close']:,}원")
         return result
     except Exception as e:
         print(f"    yfinance 오류: {e}")
@@ -103,19 +106,14 @@ def get_investor_krx_csv(ticker):
     if KRX_SESSION is None:
         KRX_SESSION = get_krx_session()
 
-    # OTP 발급
     try:
         otp_r = KRX_SESSION.post(
             "http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd",
             data={
-                "locale": "ko_KR",
-                "ticker": ticker,
-                "fromdate": START,
-                "todate": TODAY,
-                "share": "1",
-                "money": "1",
-                "csvxls_isNo": "false",
-                "name": "fileDown",
+                "locale": "ko_KR", "ticker": ticker,
+                "fromdate": START, "todate": TODAY,
+                "share": "1", "money": "1",
+                "csvxls_isNo": "false", "name": "fileDown",
                 "url": "dbms/MDC/STAT/standard/MDCSTAT02302",
             },
             headers={
@@ -130,12 +128,10 @@ def get_investor_krx_csv(ticker):
         if not otp or len(otp) > 200:
             print(f"    KRX OTP 실패: {otp[:60]}")
             return {}
-        print(f"    KRX OTP: {otp[:20]}...")
     except Exception as e:
         print(f"    KRX OTP 오류: {e}")
         return {}
 
-    # CSV 다운로드
     try:
         csv_r = KRX_SESSION.post(
             "http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd",
@@ -146,14 +142,11 @@ def get_investor_krx_csv(ticker):
         csv_r.encoding = "euc-kr"
         raw = csv_r.text.strip()
         if not raw or len(raw) < 10:
-            print(f"    KRX CSV 비어있음")
             return {}
-        print(f"    KRX CSV {len(raw)}자 수신")
     except Exception as e:
         print(f"    KRX CSV 오류: {e}")
         return {}
 
-    # CSV 파싱
     result = {}
     try:
         reader = csv.DictReader(io.StringIO(raw))
@@ -173,17 +166,13 @@ def get_investor_krx_csv(ticker):
                 return 0
 
             result[d] = {
-                "inst_net": find(["기관합계_순매수","기관합계순매수","기관_순매수","INST_NET"]),
-                "fore_net": find(["외국인합계_순매수","외국인_순매수","외국인순매수","FRGNR_NET"]),
-                "pers_net": find(["개인_순매수","개인순매수","INDV_NET"]),
+                "inst_net": find(["기관 합계","기관합계","기관_합계","INST_NET"]),
+                "fore_net": find(["외국인 합계","외국인합계","외국인_합계","FRGNR_NET"]),
+                "pers_net": find(["개인","INDV_NET"]),
             }
-        print(f"    KRX CSV 파싱: {len(result)}거래일")
+        print(f"    KRX CSV: {len(result)}거래일")
     except Exception as e:
         print(f"    CSV 파싱 오류: {e}")
-        # 헤더 확인용 출력
-        lines = raw.split('\n')
-        if lines:
-            print(f"    헤더: {lines[0][:120]}")
         return {}
 
     return result
@@ -241,11 +230,8 @@ def main():
 
     for ticker, name in WATCH_LIST.items():
         print(f"▶ {name} ({ticker})")
-
-        ohlcv = get_ohlcv_yf(ticker)
-        time.sleep(0.5)
-        inv = get_investor_krx_csv(ticker)
-        time.sleep(1.0)
+        ohlcv = get_ohlcv_yf(ticker);          time.sleep(0.5)
+        inv   = get_investor_krx_csv(ticker);  time.sleep(1.0)
 
         if ohlcv and inv:
             dates = sorted(set(ohlcv) & set(inv))
@@ -262,7 +248,7 @@ def main():
             rows = [{"date":d,"close":o["close"],"open":o["open"],"avg":o["avg"],
                      "inst_net":0,"fore_net":0,"pers_net":0}
                     for d,o in sorted(ohlcv.items())]
-            src = "yfinance전용(투자자없음)"
+            src = "yfinance전용"
         else:
             rows=[]; src="실패"
 
