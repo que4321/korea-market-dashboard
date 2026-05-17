@@ -675,10 +675,174 @@ function fmtDate(raw) {
 function parseKrxCsv(text) {
   text = text.replace(/^\uFEFF/,'');
   const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
+  if (lines.length < 2) return {type:'unknown', rows:[]};
 
   const header = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
   console.log('KRX CSV 헤더:', header);
+
+  /* ── 파일 종류 자동 판별 ── */
+  const isSise = header.includes('종가') || header.includes('시가');
+  const isInvestor = header.some(h => h.includes('기관') || h.includes('외국인') || h.includes('개인'));
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',').map(c => c.trim().replace(/"/g,''));
+    if (cols.length < 2 || !cols[0]) continue;
+
+    const obj = {};
+    header.forEach((h,idx) => { obj[h] = cols[idx]||''; });
+
+    /* 날짜 */
+    const dateKey = Object.keys(obj).find(k =>
+      ['일자','날짜','TRD_DD','기준일'].some(p => k.includes(p)));
+    const d = fmtDate(obj[dateKey] || cols[0]);
+    if (!d) continue;
+
+    if (isSise && !isInvestor) {
+      /* 시세 파일: 종가/시가 파싱 */
+      const close = toInt(obj['종가'] || 0);
+      const open  = toInt(obj['시가'] || 0) || close;
+      if (close > 0) rows.push({date:d, close, open, avg:Math.round((open+close)/2)});
+    } else {
+      /* 투자자 파일: 순매수 파싱 */
+      function findNet(keys) {
+        for (const k of keys) {
+          const fk = Object.keys(obj).find(ok => ok===k || (ok.includes(k) && ok.includes('순매수')));
+          if (fk && obj[fk]!=='') return toInt(obj[fk]);
+          const fk2 = Object.keys(obj).find(ok => ok===k || ok.startsWith(k));
+          if (fk2 && obj[fk2]!=='') return toInt(obj[fk2]);
+        }
+        return 0;
+      }
+      rows.push({
+        date:d,
+        inst_net: findNet(['기관 합계','기관합계','기관']),
+        fore_net: findNet(['외국인 합계','외국인합계','외국인']),
+        pers_net: findNet(['개인']),
+      });
+    }
+  }
+
+  const type = (isSise && !isInvestor) ? 'sise' : 'investor';
+  return {type, rows: rows.sort((a,b)=>a.date.localeCompare(b.date))};
+}
+
+function parseKrxExcel(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  return parseKrxCsv(csv);
+}
+
+function detectTicker(filename) {
+  const m = filename.match(/(\d{6})/);
+  if (m && KRX_TICKERS[m[1]]) return m[1];
+  for (const [code, name] of Object.entries(KRX_TICKERS)) {
+    if (filename.includes(name) || filename.includes(code)) return code;
+  }
+  return null;
+}
+
+async function convertKrxFiles() {
+  if (!krxFiles.length) return;
+  setStatus('⏳ 파일 분석 중...', '#fbbf24');
+
+  /* 파일을 시세/투자자 두 종류로 분류 */
+  const siseMap    = {};  // ticker → {date → {close, open, avg}}
+  const investorMap = {}; // ticker → {date → {inst_net, fore_net, pers_net}}
+  let log = '';
+
+  for (const file of krxFiles) {
+    const ticker = detectTicker(file.name);
+    if (!ticker) {
+      log += `⚠ <b>${file.name}</b>: 종목코드 인식 실패<br>`;
+      continue;
+    }
+    const name = KRX_TICKERS[ticker];
+
+    let parsed;
+    try {
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        let decoded = '';
+        try {
+          const buf = await file.arrayBuffer();
+          decoded = new TextDecoder('euc-kr').decode(buf);
+        } catch(e) { decoded = await file.text(); }
+        parsed = parseKrxCsv(decoded);
+      } else {
+        const buf = await file.arrayBuffer();
+        parsed = parseKrxExcel(buf);
+      }
+    } catch(e) {
+      log += `❌ <b>${file.name}</b>: ${e.message}<br>`;
+      continue;
+    }
+
+    if (!parsed.rows.length) {
+      log += `⚠ <b>${name}(${ticker})</b> ${file.name}: 데이터 없음<br>`;
+      continue;
+    }
+
+    if (parsed.type === 'sise') {
+      if (!siseMap[ticker]) siseMap[ticker] = {};
+      parsed.rows.forEach(r => { siseMap[ticker][r.date] = r; });
+      log += `📈 <b>${name}(${ticker})</b> 시세: ${parsed.rows.length}거래일<br>`;
+    } else {
+      if (!investorMap[ticker]) investorMap[ticker] = {};
+      parsed.rows.forEach(r => { investorMap[ticker][r.date] = r; });
+      log += `👥 <b>${name}(${ticker})</b> 투자자: ${parsed.rows.length}거래일<br>`;
+    }
+  }
+
+  /* 병합 */
+  const KST = new Date().toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
+  const result = {
+    updated_at: KST.replace(/\. /g,'-').replace(/\.$/, '') + ' KST (수동업로드)',
+    period: {start:'', end:''},
+    stocks: {}
+  };
+
+  const allTickers = new Set([...Object.keys(siseMap), ...Object.keys(investorMap)]);
+
+  for (const ticker of allTickers) {
+    const name = KRX_TICKERS[ticker];
+    const sise = siseMap[ticker] || {};
+    const inv  = investorMap[ticker] || {};
+    const dates = [...new Set([...Object.keys(sise), ...Object.keys(inv)])].sort();
+
+    const rows = dates.map(d => ({
+      date:     d,
+      close:    sise[d]?.close    || 0,
+      open:     sise[d]?.open     || 0,
+      avg:      sise[d]?.avg      || 0,
+      inst_net: inv[d]?.inst_net  || 0,
+      fore_net: inv[d]?.fore_net  || 0,
+      pers_net: inv[d]?.pers_net  || 0,
+    })).filter(r => r.close > 0 || r.inst_net !== 0);
+
+    if (!rows.length) continue;
+    result.stocks[ticker] = buildSummary(ticker, name, rows);
+
+    const last = rows[rows.length-1];
+    log += `✅ <b>${name}(${ticker})</b>: ${rows.length}거래일 | ${last.date} | 종가:${last.close.toLocaleString()}원 | 기관:${last.inst_net.toLocaleString()}<br>`;
+
+    if (!result.period.start || rows[0].date < result.period.start) result.period.start = rows[0].date;
+    if (!result.period.end   || last.date > result.period.end)      result.period.end   = last.date;
+  }
+
+  const cnt = Object.keys(result.stocks).length;
+  setStatus(`<b style="color:#4ade80">변환 완료: ${cnt}개 종목</b><br><br>` + log, '#94a3b8');
+
+  if (cnt > 0) {
+    krxJsonResult = result;
+    document.getElementById('krx-download-btn').style.display = 'inline-block';
+    document.getElementById('krx-github-btn').style.display   = 'inline-block';
+    invRawData = result;
+    const ts = document.getElementById('inv-ts');
+    if (ts) ts.textContent = `수동업로드 | ${KST} | ${cnt}종목`;
+    renderAllStocksTable();
+  }
+}
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
