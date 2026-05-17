@@ -1447,7 +1447,8 @@ function renderAllStocksTable() {
     function fmtNet(tot) {
       const v = Math.round(tot/1000);
       const cls = tot >= 0 ? 'up' : 'down';
-      return `<span class="${cls}">${tot>=0?'+':''}${v.toLocaleString()}</span>`;
+      const sign = tot >= 0 ? '+' : '';
+      return `<span class="${cls}">${sign}${v.toLocaleString()}천주</span>`;
     }
 
     html += `<tr style="cursor:pointer" onclick="document.getElementById('inv-stock').value='${ticker}';loadInvestor()">
