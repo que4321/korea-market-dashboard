@@ -1336,7 +1336,6 @@ async function loadInvestorData() {
 function loadInvestor() { renderInvestor(); }
 
 function renderInvestor() {
-    html += '<tr style="cursor:pointer" onclick="document.getElementById(\'inv-stock\').value=\''+ticker+'\';loadInvestor()">'
   const period = document.getElementById('inv-period').value;
   const priceMode = document.getElementById('inv-price').value;
   const nDays = period === '1M' ? 22 : 66;
