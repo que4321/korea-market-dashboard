@@ -1611,37 +1611,72 @@ function showGithubUploadGuide() {
 }
 
 function downloadInvExcel() {
-  const ticker=document.getElementById('inv-stock').value;
-  const period=document.getElementById('inv-period').value;
-  const priceMode=document.getElementById('inv-price').value;
-  const nDays=period==='1M'?22:66;
-  const pKey=priceMode==='avg'?'avg':'close';
-  const pLabel=priceMode==='avg'?'시가+종가 평균':'종가';
-  const name=INV_STOCKS[ticker]||ticker;
-  let daily=[];
-  if(invRawData&&invRawData.stocks&&invRawData.stocks[ticker]&&invRawData.stocks[ticker].daily)
-    daily=invRawData.stocks[ticker].daily.slice(-nDays);
-  else daily=invSimData(ticker,priceMode,nDays);
-  if(!daily.length){alert('데이터 없음');return;}
-  const last=daily[daily.length-1],curP=last[pKey]||last.close;
-  function ca(key){let a=0,q=0,tot=0;daily.forEach(function(r){const n=r[key],p=r[pKey]||r.close;tot+=n;if(n>0){a+=n*p;q+=n;}});return{avg:q>0?Math.round(a/q):0,tot:tot};}
-  const inst=ca('inst_net'),fore=ca('fore_net'),pers=ca('pers_net');
-  const wb=XLSX.utils.book_new();
-  const ws1=XLSX.utils.aoa_to_sheet([
-    [name+'('+ticker+') 투자자별 분석 — '+last.date+' / '+pLabel,'','',''],
-    ['','','',''],
-    ['현재가','기관 평균매입단가','외국인 평균매입단가','개인 평균매입단가'],
-    [curP,inst.avg,fore.avg,pers.avg],
-    ['현재가 대비(원)','',curP-inst.avg,curP-fore.avg,curP-pers.avg],
-    ['수익률(%)','',+((curP-inst.avg)/inst.avg*100).toFixed(2),+((curP-fore.avg)/fore.avg*100).toFixed(2),+((curP-pers.avg)/pers.avg*100).toFixed(2)],
-    ['','','',''],
-    ['','기관 누적순매수','외국인 누적순매수','개인 누적순매수'],
-    ['수량(주)','',inst.tot,fore.tot,pers.tot],
-    ['금액(억원)','',+(inst.tot*curP/1e8).toFixed(1),+(fore.tot*curP/1e8).toFixed(1),+(pers.tot*curP/1e8).toFixed(1)],
+  if (!invRawData && !krxJsonResult) { alert('데이터가 없습니다. CSV 변환 후 시도해 주세요.'); return; }
+
+  const period    = document.getElementById('inv-period').value;
+  const priceMode = document.getElementById('inv-price').value;
+  const nDays     = period === '1M' ? 22 : 66;
+  const pKey      = priceMode === 'avg' ? 'avg' : 'close';
+  const pLabel    = priceMode === 'avg' ? '시가+종가 평균' : '종가';
+  const periodLabel = period === '1M' ? '1개월' : '3개월';
+
+  const wb = XLSX.utils.book_new();
+
+  /* ── 시트1: 전체 종목 요약 표 ── */
+  const header = ['종목명','종목코드','현재가(원)',
+    '기관 평균단가','기관 대비(원)','기관 수익률(%)',
+    '외국인 평균단가','외국인 대비(원)','외국인 수익률(%)',
+    '개인 평균단가','개인 대비(원)','개인 수익률(%)',
+    '기관 누적순매수(천주)','외국인 누적순매수(천주)','개인 누적순매수(천주)'];
+
+  const rows = [];
+  Object.keys(INV_STOCKS).forEach(function(ticker) {
+    const name = INV_STOCKS[ticker];
+    let daily = [];
+    if (invRawData && invRawData.stocks && invRawData.stocks[ticker] && invRawData.stocks[ticker].daily)
+      daily = invRawData.stocks[ticker].daily.slice(-nDays);
+    else daily = invSimData(ticker, priceMode, nDays);
+
+    if (!daily.length) { rows.push([name, ticker, '', '', '', '', '', '', '', '', '', '', '', '', '']); return; }
+
+    const last = daily[daily.length-1];
+    const curP = last[pKey] || last.close;
+
+    function ca(key) {
+      let a=0,q=0,tot=0;
+      daily.forEach(function(r){var n=r[key]||0,p=r[pKey]||r.close||0;tot+=n;if(n>0){a+=n*p;q+=n;}});
+      return {avg:q>0?Math.round(a/q):null, tot:tot};
+    }
+    const inst=ca('inst_net'), fore=ca('fore_net'), pers=ca('pers_net');
+
+    function diff(avg) { return avg ? curP - avg : ''; }
+    function pct(avg)  { return avg ? +((curP-avg)/avg*100).toFixed(2) : ''; }
+
+    rows.push([
+      name, ticker, curP,
+      inst.avg||'', diff(inst.avg), pct(inst.avg),
+      fore.avg||'', diff(fore.avg), pct(fore.avg),
+      pers.avg||'', diff(pers.avg), pct(pers.avg),
+      Math.round(inst.tot/1000), Math.round(fore.tot/1000), Math.round(pers.tot/1000)
+    ]);
+  });
+
+  const ws1 = XLSX.utils.aoa_to_sheet([
+    ['투자자별 평균매입단가 분석 — ' + periodLabel + ' / ' + pLabel],
+    ['기준일: ' + (invRawData && invRawData.updated_at ? invRawData.updated_at : new Date().toLocaleDateString('ko-KR'))],
+    [],
+    header,
+    ...rows
   ]);
-  ws1['!cols']=[{wch:20},{wch:20},{wch:20},{wch:20},{wch:18}];
-  XLSX.utils.book_append_sheet(wb,ws1,'요약');
-  XLSX.writeFile(wb,'투자자분석_'+name+'_'+last.date+'.xlsx');
+  ws1['!cols'] = [{wch:14},{wch:8},{wch:12},
+    {wch:14},{wch:12},{wch:10},
+    {wch:14},{wch:12},{wch:10},
+    {wch:14},{wch:12},{wch:10},
+    {wch:16},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws1, '전체 종목 요약');
+
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, '투자자분석_전체종목_' + today + '.xlsx');
 }
 
 function invSimData(ticker, priceMode, nDays) {
