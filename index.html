@@ -206,7 +206,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <div class="mcard"><div class="mlabel">EWY 가격</div><div class="mval" id="k-ewy">—</div><div class="msub" id="k-ewy2">—</div></div>
     <div class="mcard"><div class="mlabel">USD/KRW</div><div class="mval" id="k-krw">—</div><div class="msub" id="k-krw2">—</div></div>
     <div class="mcard"><div class="mlabel">NVIDIA (반도체)</div><div class="mval" id="k-nvda">—</div><div class="msub" id="k-nvda2">—</div></div>
-    <div class="mcard"><div class="mlabel">SOXX 반도체</div><div class="mval" id="k-sox">—</div><div class="msub" id="k-sox2">—</div></div>
+
   </div>
 
   <div class="lbl">EWY 옵션 — 주간 vs 월간</div>
@@ -481,54 +481,6 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">데이터 로딩 중...</td></tr>
       </tbody>
     </table>
-  </div>
-
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-    <span style="font-size:12px;color:var(--text3);font-weight:500">▼ 종목별 상세</span>
-    <select id="inv-stock" onchange="loadInvestor()"
-      style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;color:var(--text);font-size:12px;cursor:pointer">
-      <option value="005930">삼성전자 (005930)</option>
-      <option value="000660">SK하이닉스 (000660)</option>
-      <option value="042700">한미반도체 (042700)</option>
-      <option value="010140">삼성중공업 (010140)</option>
-      <option value="015760">한국전력 (015760)</option>
-      <option value="028050">삼성E&amp;A (028050)</option>
-      <option value="035420">NAVER (035420)</option>
-      <option value="034020">두산에너빌리티 (034020)</option>
-      <option value="033780">KT&amp;G (033780)</option>
-      <option value="111770">영원무역 (111770)</option>
-      <option value="002960">한국쉘석유 (002960)</option>
-    </select>
-  </div>
-
-  <div class="htabs" style="margin-bottom:12px">
-    <div class="htab active" onclick="switchInvTab('bar',this)">일별 순매수</div>
-    <div class="htab" onclick="switchInvTab('table',this)">상세 데이터</div>
-  </div>
-
-  <div id="inv-tab-bar">
-    <div class="card" style="margin-bottom:12px">
-      <div class="legend" style="margin-bottom:10px">
-        <span><span class="ldot2" style="background:#38bdf8"></span>기관</span>
-        <span><span class="ldot2" style="background:#34d399"></span>외국인</span>
-        <span><span class="ldot2" style="background:#fbbf24"></span>개인</span>
-      </div>
-      <div style="position:relative;height:220px"><canvas id="invChart2"></canvas></div>
-    </div>
-  </div>
-
-  <div id="inv-tab-table" style="display:none">
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>날짜</th><th>기준가(원)</th>
-          <th>기관 순매수</th><th>기관 누적단가</th>
-          <th>외국인 순매수</th><th>외국인 누적단가</th>
-          <th>개인 순매수</th><th>개인 누적단가</th>
-        </tr></thead>
-        <tbody id="inv-tbody"></tbody>
-      </table>
-    </div>
   </div>
 
   <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
@@ -1361,7 +1313,7 @@ const INV_STOCKS = {
 };
 const KRX_TICKERS = INV_STOCKS;
 
-let invLoaded=false, invRawData=null, invChart2=null, krxFiles=[], krxJsonResult=null;
+let invLoaded=false, invRawData=null, krxFiles=[], krxJsonResult=null;
 
 async function loadInvestorData() {
   invLoaded = true;
@@ -1406,42 +1358,11 @@ function renderInvestor() {
   const xCfg = {ticks:{color:'#475569',maxRotation:0,maxTicksLimit:10},grid:{color:'#1a2840'}};
   const yCfg = {ticks:{color:'#475569',callback:function(v){return (v/1000).toFixed(0)+'K';}},grid:{color:'#1a2840'}};
 
-  if (invChart2) invChart2.destroy();
-  invChart2 = new Chart(document.getElementById('invChart2'), {
-    type:'bar',
-    data:{labels, datasets:[
-      {label:'기관',   data:daily.map(function(r){return r.inst_net;}), backgroundColor:daily.map(function(r){return r.inst_net>=0?'rgba(56,189,248,0.7)':'rgba(248,113,113,0.55)';}),borderWidth:0},
-      {label:'외국인', data:daily.map(function(r){return r.fore_net;}), backgroundColor:daily.map(function(r){return r.fore_net>=0?'rgba(52,211,153,0.7)':'rgba(248,113,113,0.4)';}), borderWidth:0},
-      {label:'개인',   data:daily.map(function(r){return r.pers_net;}), backgroundColor:daily.map(function(r){return r.pers_net>=0?'rgba(251,191,36,0.7)':'rgba(248,113,113,0.3)';}),  borderWidth:0},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
-      plugins:{legend:{display:false},tooltip:{...ttBase}},
-      scales:{x:{...xCfg,grid:{display:false}},y:yCfg}}
-  });
 
-  let cIA=0,cIQ=0,cFA=0,cFQ=0,cPA=0,cPQ=0;
-  document.getElementById('inv-tbody').innerHTML = daily.slice().reverse().map(function(r) {
-    const px = r[pKey] || r.close;
-    if(r.inst_net>0){cIA+=r.inst_net*px;cIQ+=r.inst_net;}
-    if(r.fore_net>0){cFA+=r.fore_net*px;cFQ+=r.fore_net;}
-    if(r.pers_net>0){cPA+=r.pers_net*px;cPQ+=r.pers_net;}
-    const iA = cIQ>0 ? Math.round(cIA/cIQ).toLocaleString()+'원' : '-';
-    const fA = cFQ>0 ? Math.round(cFA/cFQ).toLocaleString()+'원' : '-';
-    const pA = cPQ>0 ? Math.round(cPA/cPQ).toLocaleString()+'원' : '-';
-    return '<tr><td>'+r.date.slice(5)+'</td><td class="num">'+px.toLocaleString()+'</td>'
-      +'<td class="num '+(r.inst_net>=0?'up':'down')+'">'+(r.inst_net>=0?'+':'')+r.inst_net.toLocaleString()+'</td><td class="num">'+iA+'</td>'
-      +'<td class="num '+(r.fore_net>=0?'up':'down')+'">'+(r.fore_net>=0?'+':'')+r.fore_net.toLocaleString()+'</td><td class="num">'+fA+'</td>'
-      +'<td class="num '+(r.pers_net>=0?'up':'down')+'">'+(r.pers_net>=0?'+':'')+r.pers_net.toLocaleString()+'</td><td class="num">'+pA+'</td></tr>';
-  }).join('');
+
 }
 
-function switchInvTab(mode, el) {
-  el.closest('.htabs').querySelectorAll('.htab').forEach(function(t){t.classList.remove('active');});
-  el.classList.add('active');
-  document.getElementById('inv-tab-bar').style.display   = mode==='bar'   ? '' : 'none';
-  document.getElementById('inv-tab-table').style.display = mode==='table' ? '' : 'none';
-}
+function switchInvTab(mode, el) {}
 
 function renderAllStocksTable() {
   const period = document.getElementById('inv-period').value;
