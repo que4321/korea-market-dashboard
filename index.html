@@ -1270,9 +1270,10 @@ function renderLiquidityChart(){
     }
   });
 
-  // ── 차트 4: TGA+RRP 합계 변화량 원본 (비교용) ──
+  // ── 차트 4: TGA+RRP 합계 변화량 원본 (비교용) — 부호 반전 없는 원본값 ──
+  // TGA+RRP 증가(+) = 유동성 흡수, 감소(-) = 유동성 공급 (원본 그대로)
   const totRawV = tgaChgV.map((t,i)=>
-    t!=null && rrpChgV[i]!=null ? +(-(t + rrpChgV[i])).toFixed(1) : null
+    t!=null && rrpChgV[i]!=null ? +(t + rrpChgV[i]).toFixed(1) : null
   );
   if(liqChartInst4) liqChartInst4.destroy();
   liqChartInst4 = new Chart(document.getElementById('liqChart4').getContext('2d'),{
@@ -1280,8 +1281,9 @@ function renderLiquidityChart(){
       labels,
       datasets:[
         {type:'bar',label:'합계 변화량 원본 ($B)',data:totRawV,
-          backgroundColor:totRawV.map(v=>v==null?'transparent':v>=0?'rgba(52,211,153,0.45)':'rgba(248,113,113,0.45)'),
-          borderColor:totRawV.map(v=>v==null?'transparent':v>=0?'#34d399':'#f87171'),
+          // 원본: 음수(-) = TGA+RRP 감소 = 유동성 공급(초록), 양수(+) = 흡수(빨강)
+          backgroundColor:totRawV.map(v=>v==null?'transparent':v<=0?'rgba(52,211,153,0.45)':'rgba(248,113,113,0.45)'),
+          borderColor:totRawV.map(v=>v==null?'transparent':v<=0?'#34d399':'#f87171'),
           borderWidth:1, yAxisID:'y'},
         {type:'line',label:'S&P500',data:spV,
           borderColor:'#34d399',backgroundColor:'transparent',
@@ -1297,15 +1299,23 @@ function renderLiquidityChart(){
           const v=c.raw;
           if(v==null) return c.dataset.label+': —';
           if(c.dataset.yAxisID==='y2') return 'S&P500: '+Number(v).toLocaleString();
-          return '합계 변화량: '+(v>=0?'+':'')+Number(v).toFixed(1)+'B';
+          const dir = v<=0 ? ' (유동성 공급)' : ' (유동성 흡수)';
+          return '합계 변화량: '+(v>=0?'+':'')+Number(v).toFixed(1)+'B'+dir;
         }}}
       },
       scales:{
         x:xScale,
         y:{position:'left',
-          title:{display:true,text:'유동성 순공급량 원본 ($B)',color:'#475569',font:{size:11}},
-          ticks:{color:'#94a3b8',callback:v=>(v>0?'+':'')+v.toFixed(0)+'B'},
-          grid:{color:'#1a2840'}},
+          title:{display:true,text:'TGA+RRP 변화량 원본 ($B, +=흡수 / -=공급)',color:'#475569',font:{size:11}},
+          ticks:{color:'#94a3b8',callback:v=>{
+            if(v===0) return '0B';
+            const abs = Math.abs(v);
+            const sign = v>0?'+':'-';
+            const tag = v>0?' (유동성 흡수)':' (유동성 공급)';
+            return sign+abs.toFixed(0)+'B'+tag;
+          }},
+          grid:{color:'#1a2840'},
+          border:{color:'#334155'}},
         y2:{position:'right',
           title:{display:true,text:'S&P500',color:'#475569',font:{size:11}},
           ticks:{color:'#34d399',callback:v=>Number(v).toLocaleString()},
