@@ -1520,29 +1520,7 @@ async function loadInvestorData() {
 function loadInvestor() { renderInvestor(); }
 
 function renderInvestor() {
-  const period = document.getElementById('inv-period').value;
-  const priceMode = document.getElementById('inv-price').value;
-  const nDays = period === '1M' ? 22 : 66;
-  const pKey = priceMode === 'avg' ? 'avg' : 'close';
-
-  let daily = [];
-  if (invRawData && invRawData.stocks && invRawData.stocks[ticker] && invRawData.stocks[ticker].daily) {
-    daily = invRawData.stocks[ticker].daily.slice(-nDays);
-  } else {
-    daily = invSimData(ticker, priceMode, nDays);
-  }
-  if (!daily.length) return;
-
-  const last = daily[daily.length-1];
-  const curP = last[pKey] || last.close;
-  const labels = daily.map(r => r.date.slice(5));
-
-  const ttBase = {backgroundColor:'#0d1422',borderColor:'#1a2840',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8'};
-  const xCfg = {ticks:{color:'#475569',maxRotation:0,maxTicksLimit:10},grid:{color:'#1a2840'}};
-  const yCfg = {ticks:{color:'#475569',callback:function(v){return (v/1000).toFixed(0)+'K';}},grid:{color:'#1a2840'}};
-
-
-
+  // 개별 종목 차트는 renderAllStocksTable()에서 처리
 }
 
 function switchInvTab(mode, el) {}
