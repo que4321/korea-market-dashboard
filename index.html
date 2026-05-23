@@ -255,6 +255,52 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <div class="chart-w" style="height:320px"><canvas id="chartKH"></canvas></div>
     <div class="ts" id="k-hsrc" style="margin-top:6px">GitHub Actions 매일 수집</div>
   </div>
+
+  <div class="lbl">EWY vs SPY — 상대 가치 분석</div>
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="ctitle">🇰🇷 한국(EWY) vs 🇺🇸 S&amp;P500(SPY) 가격 추이</div>
+        <div class="csub">100 기준 정규화 · Z-Score: EWY/SPY 비율의 표준편차</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">① 가격 추이 (100 기준 정규화)</div>
+    <div class="chart-w" style="height:260px"><canvas id="chartEwySpy"></canvas></div>
+    <div class="legend" style="margin-bottom:16px">
+      <span><span class="ldot2" style="background:#38bdf8"></span>EWY (한국)</span>
+      <span><span class="ldot2" style="background:#f87171"></span>SPY (미국)</span>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">② Z-Score — EWY/SPY 비율 (±2σ 초과 시 평균 회귀 경향)</div>
+    <div class="chart-w" style="height:220px"><canvas id="chartEwySpyZ"></canvas></div>
+    <div class="legend">
+      <span><span class="ldot2" style="background:#38bdf8"></span>Z-Score</span>
+      <span><span class="ldot2" style="background:#34d399"></span>±1σ</span>
+      <span><span class="ldot2" style="background:#fbbf24"></span>±2σ</span>
+      <span><span class="ldot2" style="background:#f87171"></span>±3σ</span>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <div class="mcard" style="flex:1;min-width:110px;padding:10px 12px">
+        <div class="mlabel">현재 Z-Score</div>
+        <div class="mval" id="ewy-zscore" style="font-size:18px">—</div>
+      </div>
+      <div class="mcard" style="flex:1;min-width:110px;padding:10px 12px">
+        <div class="mlabel">EWY/SPY 비율</div>
+        <div class="mval" id="ewy-ratio" style="font-size:18px;color:var(--text)">—</div>
+      </div>
+      <div class="mcard" style="flex:1;min-width:110px;padding:10px 12px">
+        <div class="mlabel">평균 비율</div>
+        <div class="mval" id="ewy-ratio-avg" style="font-size:18px;color:var(--text2)">—</div>
+      </div>
+      <div class="mcard" style="flex:1;min-width:140px;padding:10px 12px">
+        <div class="mlabel">신호</div>
+        <div id="ewy-signal" style="font-size:13px;font-weight:600;margin-top:4px">—</div>
+      </div>
+    </div>
+    <div class="ts" style="margin-top:10px">
+      ※ Z-Score = (현재 EWY/SPY 비율 − 평균) / 표준편차 &nbsp;|&nbsp; +2σ 초과 시 한국 고평가, -2σ 미만 시 한국 저평가<br>
+      ※ 데이터가 누적될수록 통계적 정확도가 높아집니다 (현재: <span id="ewy-datacount">—</span>일치)
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -729,6 +775,144 @@ function renderKR(d){
   setRow('kr-r3','VKOSPI(추정)',iv_u!=null?(iv_u>25?'불안':'안정'):'—',iv_u!=null&&iv_u>25?'b-warn':'b-ok');
   setRow('kr-r4','반도체 전일',nvdaChg>1?'강세 ▲':nvdaChg<-1?'약세 ▼':'보합',nvdaChg>1?'b-ok':nvdaChg<-1?'b-danger':'b-warn');
   setRow('kr-r5','USD/KRW',d.krw!=null?(d.krw>1380?'원화 약세':'안정'):'—',d.krw!=null&&d.krw>1380?'b-warn':'b-ok');
+
+  // EWY vs SPY 상대가치 차트
+  renderEwySpyChart();
+}
+
+/* ── EWY vs SPY 상대 가치 분석 ── */
+function renderEwySpyChart(){
+  if(!histData||histData.length<2)return;
+
+  // ewy_price, spy_price 둘 다 있는 데이터만 필터
+  const valid=histData.filter(d=>d.ewy_price!=null&&d.spy_price!=null);
+  if(valid.length<2)return;
+
+  const labels=valid.map(d=>d.date.slice(5));
+
+  // 100 기준 정규화
+  const ewyBase=valid[0].ewy_price;
+  const spyBase=valid[0].spy_price;
+  const ewyNorm=valid.map(d=>+(d.ewy_price/ewyBase*100).toFixed(2));
+  const spyNorm=valid.map(d=>+(d.spy_price/spyBase*100).toFixed(2));
+
+  // EWY/SPY 비율 & Z-Score
+  const ratios=valid.map(d=>+(d.ewy_price/d.spy_price).toFixed(5));
+  const mean=ratios.reduce((a,b)=>a+b,0)/ratios.length;
+  const std=Math.sqrt(ratios.map(r=>(r-mean)**2).reduce((a,b)=>a+b,0)/ratios.length);
+  const zScores=ratios.map(r=>std>0?+((r-mean)/std).toFixed(3):0);
+
+  const curZ=zScores[zScores.length-1];
+  const curRatio=ratios[ratios.length-1];
+
+  // 데이터 수 표시
+  const dcEl=document.getElementById('ewy-datacount');
+  if(dcEl)dcEl.textContent=valid.length;
+
+  // Z-Score 요약 카드
+  const zEl=document.getElementById('ewy-zscore');
+  if(zEl){
+    zEl.textContent=(curZ>=0?'+':'')+curZ.toFixed(2)+'σ';
+    zEl.style.color=curZ>2?'var(--red)':curZ<-2?'var(--accent)':'var(--text2)';
+    zEl.style.fontSize='18px';
+  }
+  const rEl=document.getElementById('ewy-ratio');
+  if(rEl){rEl.textContent=curRatio.toFixed(4);rEl.style.fontSize='18px';}
+  const aEl=document.getElementById('ewy-ratio-avg');
+  if(aEl){aEl.textContent=mean.toFixed(4);aEl.style.fontSize='18px';}
+
+  const sEl=document.getElementById('ewy-signal');
+  if(sEl){
+    if(curZ>3)      {sEl.textContent='🔴 극단 고평가 (+3σ 초과)';sEl.style.color='var(--red)';}
+    else if(curZ>2) {sEl.textContent='🟠 고평가 (+2σ 초과)';sEl.style.color='#fb923c';}
+    else if(curZ>1) {sEl.textContent='🟡 소폭 고평가 (+1σ~+2σ)';sEl.style.color='var(--yellow)';}
+    else if(curZ<-3){sEl.textContent='🟢 극단 저평가 (-3σ 미만)';sEl.style.color='var(--green)';}
+    else if(curZ<-2){sEl.textContent='🔵 저평가 (-2σ 미만)';sEl.style.color='var(--accent)';}
+    else if(curZ<-1){sEl.textContent='🟡 소폭 저평가 (-1σ~-2σ)';sEl.style.color='var(--yellow)';}
+    else            {sEl.textContent='⚪ 중립 구간 (±1σ 이내)';sEl.style.color='var(--text2)';}
+  }
+
+  const ttBase={backgroundColor:'#0d1422',borderColor:'#1a2840',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8'};
+
+  // ── 차트1: 가격 추이 ──
+  if(chartInstances.ewySpy)chartInstances.ewySpy.destroy();
+  const ctx1=document.getElementById('chartEwySpy')?.getContext('2d');
+  if(ctx1){
+    chartInstances.ewySpy=new Chart(ctx1,{
+      type:'line',
+      data:{
+        labels,
+        datasets:[
+          {label:'EWY (한국)',data:ewyNorm,borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.07)',borderWidth:2.5,pointRadius:0,pointHoverRadius:4,fill:true,tension:0.3},
+          {label:'SPY (미국)',data:spyNorm,borderColor:'#f87171',backgroundColor:'rgba(248,113,113,0.07)',borderWidth:2.5,pointRadius:0,pointHoverRadius:4,fill:true,tension:0.3},
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{display:false},
+          tooltip:{...ttBase,callbacks:{
+            title:t=>'📅 '+t[0].label,
+            label:c=>'  '+c.dataset.label+': '+c.raw.toFixed(1)
+          }}
+        },
+        scales:{
+          x:{ticks:{color:'#475569',maxTicksLimit:10,maxRotation:0},grid:{color:'rgba(26,40,64,.6)'}},
+          y:{ticks:{color:'#475569',callback:v=>v.toFixed(0)},grid:{color:'rgba(26,40,64,.6)'},
+             title:{display:true,text:'100 기준',color:'#475569',font:{size:10}}}
+        }
+      }
+    });
+  }
+
+  // ── 차트2: Z-Score ──
+  if(chartInstances.ewySpyZ)chartInstances.ewySpyZ.destroy();
+  const ctx2=document.getElementById('chartEwySpyZ')?.getContext('2d');
+  if(!ctx2)return;
+
+  const barColors=zScores.map(z=>
+    Math.abs(z)>3?'rgba(248,113,113,0.75)':
+    Math.abs(z)>2?'rgba(251,191,36,0.65)':
+    z>0?'rgba(56,189,248,0.55)':'rgba(52,211,153,0.55)'
+  );
+
+  chartInstances.ewySpyZ=new Chart(ctx2,{
+    data:{
+      labels,
+      datasets:[
+        {type:'bar',label:'Z-Score',data:zScores,backgroundColor:barColors,borderWidth:0,yAxisID:'y'},
+        {type:'line',label:'+1σ',data:labels.map(()=>1), borderColor:'#34d399',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,yAxisID:'y'},
+        {type:'line',label:'-1σ',data:labels.map(()=>-1),borderColor:'#34d399',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,yAxisID:'y'},
+        {type:'line',label:'+2σ',data:labels.map(()=>2), borderColor:'#fbbf24',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,yAxisID:'y'},
+        {type:'line',label:'-2σ',data:labels.map(()=>-2),borderColor:'#fbbf24',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,yAxisID:'y'},
+        {type:'line',label:'+3σ',data:labels.map(()=>3), borderColor:'#f87171',borderWidth:1.5,borderDash:[3,3],pointRadius:0,fill:false,yAxisID:'y'},
+        {type:'line',label:'-3σ',data:labels.map(()=>-3),borderColor:'#f87171',borderWidth:1.5,borderDash:[3,3],pointRadius:0,fill:false,yAxisID:'y'},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{...ttBase,callbacks:{
+          title:t=>'📅 '+t[0].label,
+          label:c=>{
+            if(c.datasetIndex===0)return '  Z-Score: '+(c.raw>=0?'+':'')+Number(c.raw).toFixed(2)+'σ';
+            return '  '+c.dataset.label;
+          }
+        }}
+      },
+      scales:{
+        x:{ticks:{color:'#475569',maxTicksLimit:10,maxRotation:0},grid:{color:'rgba(26,40,64,.6)'}},
+        y:{
+          ticks:{color:'#94a3b8',callback:v=>(v>=0?'+':'')+v+'σ'},
+          grid:{color:'rgba(26,40,64,.6)'},
+          title:{display:true,text:'Z-Score (EWY/SPY)',color:'#475569',font:{size:10}}
+        }
+      }
+    }
+  });
 }
 
 /* ── 미국 렌더 ── */
