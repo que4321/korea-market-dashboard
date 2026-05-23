@@ -1214,13 +1214,13 @@ function renderLiquidityChart(){
     data:{
       labels,
       datasets:[
-        // 막대: TGA 변화량 (양=증가=유동성흡수=빨강, 음=감소=유동성공급=초록)
-        {type:'bar',label:'TGA 변화량 ($B)',data:tgaChgV,
+        // 막대: TGA 변화량 부호반전 (양=공급=초록, 음=흡수=빨강)
+        {type:'bar',label:'TGA 변화량 ($B)',data:tgaChgV.map(v=>v!=null?-v:null),
           backgroundColor:tgaChgV.map(v=>v==null?'transparent':v<=0?'rgba(52,211,153,0.5)':'rgba(248,113,113,0.5)'),
           borderColor:tgaChgV.map(v=>v==null?'transparent':v<=0?'#34d399':'#f87171'),
           borderWidth:1, yAxisID:'y'},
-        // 막대: RRP 변화량
-        {type:'bar',label:'RRP 변화량 ($B)',data:rrpChgV,
+        // 막대: RRP 변화량 부호반전 (양=공급=초록, 음=흡수=빨강)
+        {type:'bar',label:'RRP 변화량 ($B)',data:rrpChgV.map(v=>v!=null?-v:null),
           backgroundColor:rrpChgV.map(v=>v==null?'transparent':v<=0?'rgba(52,211,153,0.35)':'rgba(248,113,113,0.35)'),
           borderColor:rrpChgV.map(v=>v==null?'transparent':v<=0?'#34d399':'#f87171'),
           borderWidth:1, yAxisID:'y'},
