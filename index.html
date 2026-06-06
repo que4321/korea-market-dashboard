@@ -1263,7 +1263,24 @@ async function loadMacroData(){
   macroLoaded = true;
   document.getElementById('macro-ts').textContent = '데이터 로딩 중...';
   try {
-    // Yahoo Finance 프록시로 실시간 데이터 fetch
+    // 1. Gist에서 macro 데이터 (FRED 수집 결과)
+    let fredData = { cape:null, pmi:null, unemp:null, m2:null, hySpread:null, spread10_2:null, cci:null, eps:null, fg:null, vixFred:null };
+    if(cachedData && cachedData.macro){
+      const m = cachedData.macro;
+      fredData.cape       = m.cape?.value ?? null;
+      fredData.pmi        = m.pmi?.value ?? null;
+      fredData.unemp      = m.unemp?.value ?? null;
+      fredData.m2         = m.m2_yoy?.value ?? null;
+      fredData.hySpread   = m.hy_spread?.value ?? null;
+      fredData.spread10_2 = m.spread_10_2?.value ?? null;
+      fredData.cci        = m.cci?.value ?? null;
+      fredData.eps        = m.eps_growth?.value ?? null;
+      fredData.fg         = m.fg_est?.value ?? null;
+      fredData.vixFred    = m.vix?.value ?? null;
+      fredData.updatedAt  = m.updated_at ?? null;
+    }
+
+    // 2. Yahoo Finance 실시간 데이터
     const tickers = ['^VIX','^TNX','^IRX','CL=F','DX-Y.NYB','^GSPC'];
     const results = {};
     await Promise.all(tickers.map(async t => {
@@ -1271,27 +1288,25 @@ async function loadMacroData(){
         const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=5d`);
         const d = await r.json();
         const meta = d?.chart?.result?.[0]?.meta;
-        if(meta) results[t] = { price: meta.regularMarketPrice, prev: meta.previousClose, chg: ((meta.regularMarketPrice - meta.previousClose)/meta.previousClose*100) };
+        if(meta) results[t] = {
+          price: meta.regularMarketPrice,
+          prev:  meta.previousClose,
+          chg:   ((meta.regularMarketPrice - meta.previousClose)/meta.previousClose*100)
+        };
       } catch(e) {}
     }));
 
-    // FRED 데이터 (정적 추정 - 최신 공개 수치)
-    const fredData = await fetchFredMacro();
-
     renderMacroPanel(results, fredData);
-    document.getElementById('macro-ts').textContent = '업데이트: ' + new Date().toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}) + ' KST';
+    const fredTs = fredData.updatedAt ? ` | FRED: ${fredData.updatedAt}` : '';
+    document.getElementById('macro-ts').textContent =
+      '실시간: ' + new Date().toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}) + ' KST' + fredTs;
   } catch(e) {
     document.getElementById('macro-ts').textContent = '로드 실패: ' + e.message;
   }
 }
 
 async function fetchFredMacro(){
-  // FRED API 직접 접근은 CORS 제한으로 공개 수치 사용
-  // 실제 배포 시 GitHub Actions로 주기적 수집 권장
-  return {
-    cape: null, pmi: null, unemp: null, m2: null,
-    hySpread: null, spread10_2: null, cci: null, eps: null
-  };
+  return { cape:null, pmi:null, unemp:null, m2:null, hySpread:null, spread10_2:null, cci:null, eps:null };
 }
 
 function macroGrade(key, val){
@@ -1439,9 +1454,15 @@ async function loadScanner(){try{const url=GIST_URL.replace(/\/raw\/[a-f0-9]+\//
     if(cachedData.liquidity){
       liqDataCache = cachedData.liquidity;
       console.log('✅ 유동성 데이터 캐싱 완료:', liqDataCache.updated_at);
-      // 이미 유동성 탭이 열려 있으면 즉시 렌더
       if(document.getElementById('panel-liquidity').classList.contains('active')){
         renderLiquidityChart();
+      }
+    }
+    // ★ Gist에 macro 데이터가 있으면 거시경제 탭 즉시 반영
+    if(cachedData.macro){
+      console.log('✅ 거시경제 데이터 캐싱 완료:', cachedData.macro.updated_at);
+      if(document.getElementById('panel-macro').classList.contains('active')){
+        loadMacroData();
       }
     }
     renderData(cachedData);}catch(e){document.getElementById('table-body').innerHTML=`<tr><td colspan="12"><div class="err">⚠️ 로드 실패: ${e.message}</div></td></tr>`;}}
