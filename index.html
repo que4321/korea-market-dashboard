@@ -835,7 +835,7 @@ function showPanel(id,el){
   if((id==='kr'||id==='us')&&!dashLoaded) loadDash();
   if(id==='liquidity') renderLiquidityChart();
   if(id==='investor'&&!invLoaded) loadInvestorData();
-  if(id==='macro') { macroLoaded = false; loadMacroData(); }
+  if(id==='macro') loadMacroData();
 }
 
 const f=(v,d=2)=>v!=null?Number(v).toFixed(d):'—';
@@ -1260,21 +1260,12 @@ function switchTab(tab,btn){curTab=tab;sortCol=null;sortDir='desc';document.quer
 function downloadExcel(){if(!cachedData){alert('데이터를 먼저 로드해 주세요.');return;}const wb=XLSX.utils.book_new();const kh=['순위','종목코드','종목명','섹터','주가(원)','PER','Forward PER','PBR','ROE(%)','배당(%)','EV/EBITDA','시총(억)','점수','페널티'];const kr=(cachedData.kospi200||[]).map(r=>[r.rank,r.ticker,r.name,r.sector,r.price??'',r.per??'',r.forward_per??'',r.pbr??'',r.roe??'',r.div??'',r.ev_ebitda??'',r.marcap??'',r.score??'',r.penalty??0]);const ks=XLSX.utils.aoa_to_sheet([kh,...kr]);ks['!cols']=[{wch:6},{wch:10},{wch:16},{wch:14},{wch:12},{wch:8},{wch:12},{wch:8},{wch:9},{wch:12},{wch:12},{wch:12},{wch:7},{wch:7}];XLSX.utils.book_append_sheet(wb,ks,'코스피200');const sh=['순위','티커','종목명','섹터(영문)','섹터(한글)','주가($)','EV/EBITDA','PER','Forward PER','PBR','ROE(%)','부채(%)','FCF($B)','시총($B)','점수','페널티'];const sr=(cachedData.sp500||[]).map(r=>[r.rank,r.ticker,r.name,r.sector,r.sector_kr,r.price??'',r.ev_ebitda??'',r.per??'',r.forward_pe??'',r.pbr??'',r.roe??'',r.debt_eq??'',r.fcf_bn??'',r.mkt_cap_bn??'',r.score??'',r.penalty??0]);const ss=XLSX.utils.aoa_to_sheet([sh,...sr]);ss['!cols']=[{wch:6},{wch:7},{wch:26},{wch:20},{wch:14},{wch:9},{wch:11},{wch:8},{wch:12},{wch:8},{wch:9},{wch:11},{wch:9},{wch:10},{wch:7},{wch:7}];XLSX.utils.book_append_sheet(wb,ss,'S&P500');const dt=(cachedData.updated_at||'').replace(/[: ]/g,'-').replace('KST','').trim()||'today';XLSX.writeFile(wb,`저평가스캐너_${dt}.xlsx`);}
 
 /* ══════════════════════ 거시경제 지표 ══════════════════════ */
-let macroLoaded = false;
 
 async function loadMacroData(){
-  macroLoaded = true;
   document.getElementById('macro-ts').textContent = '데이터 로딩 중...';
   try {
-    // Gist에서 macro 데이터 (FRED 주간 수집 결과)
     let fred = { unemp:null, m2:null, hySpread:null, spread10_2:null, cci:null,
                  vix:null, t10y:null, wti:null, updatedAt:null };
-
-    // cachedData가 아직 없으면 잠깐 기다렸다가 재시도
-    if(!cachedData) {
-      document.getElementById('macro-ts').textContent = 'Gist 데이터 로딩 대기 중...';
-      await new Promise(r => setTimeout(r, 2000));
-    }
 
     if(cachedData && cachedData.macro){
       const m = cachedData.macro;
@@ -1287,10 +1278,10 @@ async function loadMacroData(){
       fred.t10y       = m.t10y?.value ?? null;
       fred.wti        = m.wti?.value ?? null;
       fred.updatedAt  = m.updated_at ?? null;
-      console.log('✅ macro fred 데이터:', fred);
+      console.log('macro fred 데이터:', fred);
     } else {
-      console.warn('⚠️ cachedData.macro 없음:', cachedData);
-      document.getElementById('macro-ts').textContent = 'Gist 데이터 없음 — 새로고침 후 재시도';
+      document.getElementById('macro-ts').textContent = 'Gist 데이터 없음 — 잠시 후 새로고침';
+      return;
     }
 
     renderMacroPanel(fred);
