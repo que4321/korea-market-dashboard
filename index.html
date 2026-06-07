@@ -607,15 +607,22 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
   <div class="g3">
     <div class="mcard">
       <div class="mlabel">CNN Fear & Greed Index</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-fg-val" style="font-size:26px">—</div>
-        <div id="m-fg-badge" class="badge b-neu">—</div>
+      <div style="margin:10px 0 6px;font-size:13px;color:var(--text3);line-height:1.7">
+        서버 IP 차단으로 자동 수집 불가.<br>아래 링크에서 직접 확인하세요.
       </div>
-      <div style="margin:8px 0 4px;height:8px;background:linear-gradient(90deg,#38bdf8,#34d399,#fbbf24,#fb923c,#f87171);border-radius:4px;position:relative">
-        <div id="m-fg-pointer" style="position:absolute;top:-3px;width:14px;height:14px;background:#fff;border-radius:50%;border:2px solid #0d1422;transform:translateX(-50%);transition:left .6s;left:50%"></div>
+      <a href="https://edition.cnn.com/markets/fear-and-greed" target="_blank"
+         style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;
+                padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;
+                background:var(--accent);color:#fff;text-decoration:none">
+        📊 CNN Fear & Greed ↗
+      </a>
+      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
+        <span style="color:#38bdf8">■</span> 0~25: 극단 공포&nbsp;&nbsp;
+        <span style="color:#34d399">■</span> 25~45: 공포&nbsp;&nbsp;
+        <span style="color:#fbbf24">■</span> 45~55: 중립<br>
+        <span style="color:#fb923c">■</span> 55~75: 탐욕&nbsp;&nbsp;
+        <span style="color:#f87171">■</span> 75~100: 극단 탐욕
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:2px"><span>극단공포(0)</span><span>중립(50)</span><span>극단탐욕(100)</span></div>
-      <div class="msub" id="m-fg-sub" style="margin-top:6px">—</div>
     </div>
     <div class="mcard">
       <div class="mlabel">VIX 변동성 지수</div>
