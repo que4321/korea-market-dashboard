@@ -831,6 +831,7 @@ function showPanel(id,el){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('panel-'+id).classList.add('active');
+  window.scrollTo({top: 0, behavior: 'smooth'});
   if((id==='kr'||id==='us')&&!dashLoaded) loadDash();
   if(id==='liquidity') renderLiquidityChart();
   if(id==='investor'&&!invLoaded) loadInvestorData();
