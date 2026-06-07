@@ -638,19 +638,6 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         <span style="color:#f87171">■</span> 30+: 공포
       </div>
     </div>
-    <div class="mcard">
-      <div class="mlabel">달러인덱스 (DXY)</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-dxy-val" style="font-size:26px">—</div>
-        <div id="m-dxy-badge" class="badge b-neu">—</div>
-      </div>
-      <div class="msub" id="m-dxy-sub" style="margin-top:8px">—</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#f87171">■</span> 105+: 강달러 (신흥국 부담)<br>
-        <span style="color:#fbbf24">■</span> 100~105: 보통 &nbsp;
-        <span style="color:#34d399">■</span> ~100: 약달러
-      </div>
-    </div>
   </div>
 
   <!-- 금리 -->
@@ -1280,7 +1267,7 @@ async function loadMacroData(){
   try {
     // Gist에서 macro 데이터 (FRED 주간 수집 결과)
     let fred = { unemp:null, m2:null, hySpread:null, spread10_2:null, cci:null,
-                 vix:null, t10y:null, wti:null, dxy:null, updatedAt:null };
+                 vix:null, t10y:null, wti:null, updatedAt:null };
     if(cachedData && cachedData.macro){
       const m = cachedData.macro;
       fred.unemp      = m.unemp?.value ?? null;
@@ -1291,7 +1278,6 @@ async function loadMacroData(){
       fred.vix        = m.vix?.value ?? null;
       fred.t10y       = m.t10y?.value ?? null;
       fred.wti        = m.wti?.value ?? null;
-      fred.dxy        = m.dxy?.value ?? null;
       fred.updatedAt  = m.updated_at ?? null;
     }
 
@@ -1321,7 +1307,6 @@ function macroGrade(key, val){
     unemp:   [[4,'완전고용','b-ok'],[5,'주의','b-warn'],[999,'경기둔화','b-danger']],
     m2:      [[-0.01,'과도한 긴축','b-info'],[3,'긴축 효과','b-ok'],[8,'보통','b-warn'],[999,'인플레 압력','b-danger']],
     wti:     [[60,'저유가(호재)','b-ok'],[85,'보통','b-warn'],[999,'고유가(압력)','b-danger']],
-    dxy:     [[100,'약달러','b-ok'],[105,'보통','b-warn'],[999,'강달러','b-danger']],
     cci:     [[80,'소비위축','b-danger'],[100,'보통','b-warn'],[999,'소비낙관','b-ok']],
   };
   const rules = cfg[key];
@@ -1360,8 +1345,6 @@ function renderMacroPanel(fred){
   // WTI
   setMacroCard('m-wti-val','m-wti-badge','m-wti-sub', fred.wti, 'wti', '$', fred.wti ? 'FRED 주간 수집' : '—');
 
-  // DXY
-  setMacroCard('m-dxy-val','m-dxy-badge','m-dxy-sub', fred.dxy, 'dxy', '', fred.dxy ? 'FRED 무역가중달러' : '—');
 
   // FRED 데이터
   setMacroCard('m-unemp-val','m-unemp-badge','m-unemp-sub', fred.unemp, 'unemp', '%', '');
@@ -1370,28 +1353,26 @@ function renderMacroPanel(fred){
   setMacroCard('m-cci-val','m-cci-badge','m-cci-sub', fred.cci, 'cci', '', '');
 
   // 종합 신호
-  renderMacroSignal(fred.vix, fred.t10y, spread, fred.wti, fred.dxy, fred);
+  renderMacroSignal(fred.vix, fred.t10y, spread, fred.wti, fred);
 }
 
-function renderMacroSignal(vix, t10y, spread, wti, dxy, fred){
+function renderMacroSignal(vix, t10y, spread, wti, fred){
   const items = [
-    {label:'VIX', val:vix, key:'vix'},
-    {label:'10년물', val:t10y, key:'t10y'},
-    {label:'장단기 스프레드', val:spread, key:'spread'},
-    {label:'WTI', val:wti, key:'wti'},
-    {label:'DXY', val:dxy, key:'dxy'},
-    {label:'PMI', val:fred.pmi, key:'pmi'},
-    {label:'실업률', val:fred.unemp, key:'unemp'},
-    {label:'M2 증가율', val:fred.m2, key:'m2'},
-    {label:'HY 스프레드', val:fred.hySpread, key:'hy'},
-    {label:'CAPE', val:fred.cape, key:'cape'},
+    {label:'VIX',          val:vix,           key:'vix'},
+    {label:'10년물',        val:t10y,          key:'t10y'},
+    {label:'장단기 스프레드', val:spread,        key:'spread'},
+    {label:'WTI',          val:wti,           key:'wti'},
+    {label:'실업률',        val:fred.unemp,    key:'unemp'},
+    {label:'M2 증가율',     val:fred.m2,       key:'m2'},
+    {label:'HY 스프레드',   val:fred.hySpread, key:'hy'},
+    {label:'소비자신뢰',     val:fred.cci,      key:'cci'},
   ];
 
   const grid = document.getElementById('macro-signal-grid');
   if(grid){
     grid.innerHTML = items.map(it=>{
       const [label, cls] = macroGrade(it.key, it.val);
-      const val = it.val!=null ? it.val.toFixed(it.key==='cape'?1:2) : '—';
+      const val = it.val!=null ? it.val.toFixed(2) : '—';
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:var(--bg3);border-radius:6px">
         <span style="color:var(--text2)">${it.label}</span>
         <span class="badge ${cls}" style="font-size:10px">${it.val!=null?val+' '+label:'—'}</span>
@@ -1402,26 +1383,26 @@ function renderMacroSignal(vix, t10y, spread, wti, dxy, fred){
   // 종합 판단
   const known = items.filter(i=>i.val!=null);
   if(known.length === 0){
-    document.getElementById('macro-overall-title').textContent = 'Yahoo Finance 데이터 로딩 중...';
+    document.getElementById('macro-overall-title').textContent = 'FRED 데이터 로딩 중...';
     return;
   }
 
   let risk=0, ok=0;
-  const signals = { vix: vix, t10y: t10y, spread: spread, wti: wti, dxy: dxy };
-  if(vix!=null){ vix>25?risk++:vix<18?ok++:null; }
-  if(t10y!=null){ t10y>4.5?risk++:t10y<3.5?ok++:null; }
+  if(vix!=null){    vix>25?risk++:vix<18?ok++:null; }
+  if(t10y!=null){   t10y>4.5?risk++:t10y<3.5?ok++:null; }
   if(spread!=null){ spread<0?risk+=2:spread>0.5?ok++:null; }
-  if(wti!=null){ wti>85?risk++:wti<60?ok++:null; }
-  if(dxy!=null){ dxy>105?risk++:dxy<100?ok++:null; }
+  if(wti!=null){    wti>90?risk++:wti<65?ok++:null; }
+  if(fred.unemp!=null){ fred.unemp>5?risk++:fred.unemp<4?ok++:null; }
+  if(fred.hySpread!=null){ fred.hySpread>5?risk++:fred.hySpread<3?ok++:null; }
 
-  const icon = document.getElementById('macro-overall-icon');
+  const icon  = document.getElementById('macro-overall-icon');
   const title = document.getElementById('macro-overall-title');
-  const desc = document.getElementById('macro-overall-desc');
-  if(risk>=3){ icon.textContent='🔴'; title.textContent='위험 신호 다수'; title.style.color='var(--red)'; }
-  else if(risk>=2){ icon.textContent='🟠'; title.textContent='주의 구간'; title.style.color='#fb923c'; }
-  else if(ok>=3){ icon.textContent='🟢'; title.textContent='우호적 환경'; title.style.color='var(--green)'; }
-  else { icon.textContent='🟡'; title.textContent='혼조 / 중립'; title.style.color='var(--yellow)'; }
-  desc.textContent = `위험신호 ${risk}개 / 긍정신호 ${ok}개 (실시간 지표 ${known.length}개 분석)`;
+  const desc  = document.getElementById('macro-overall-desc');
+  if(risk>=3){      icon.textContent='🔴'; title.textContent='위험 신호 다수';  title.style.color='var(--red)'; }
+  else if(risk>=2){ icon.textContent='🟠'; title.textContent='주의 구간';      title.style.color='#fb923c'; }
+  else if(ok>=3){   icon.textContent='🟢'; title.textContent='우호적 환경';    title.style.color='var(--green)'; }
+  else {            icon.textContent='🟡'; title.textContent='혼조 / 중립';    title.style.color='var(--yellow)'; }
+  desc.textContent = `위험신호 ${risk}개 / 긍정신호 ${ok}개 (FRED 지표 ${known.length}개 분석)`;
 }
 
 async function loadScanner(){try{const url=GIST_URL.replace(/\/raw\/[a-f0-9]+\//,'/raw/')+'?nc='+Date.now();const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);cachedData=await r.json();document.getElementById('hdr-sub').textContent=`최종 업데이트: ${cachedData.updated_at||'-'}`;
