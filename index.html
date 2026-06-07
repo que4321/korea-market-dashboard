@@ -649,6 +649,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <div>· <b style="color:var(--text2)">소비자신뢰</b> — FRED CSCICP03USM665S / 월별 발표, 주간 수집</div>
       <div>· <b style="color:var(--text2)">Shiller CAPE</b> — 서버 IP 차단으로 수동 확인 필요</div>
       <div>· <b style="color:var(--text2)">ISM PMI</b> — 서버 IP 차단으로 수동 확인 필요</div>
+      <div>· <b style="color:var(--text2)">한국 CDS 5년물</b> — 서버 IP 차단으로 수동 확인 필요 (Investing.com)</div>
       <div>· <b style="color:var(--text2)">CNN Fear & Greed</b> — 서버 IP 차단으로 수동 확인 필요</div>
     </div>
   </div>
@@ -1203,6 +1204,9 @@ function renderMacroPanel(fred){
       criteria:'~$65: 저유가(호재) / $65~90: 보통 / $90+: 고유가(압력)' },
     { cat:'소비자 신뢰', label:'컨퍼런스보드 소비자신뢰지수', val:fred.cci, key:'cci', unit:'',
       criteria:'~80: 소비위축 / 80~100: 보통 / 100+: 낙관' },
+    { cat:'한국 신용위험', label:'한국 CDS 5년물 (USD)', val:null, key:'kr_cds',
+      criteria:'~50bps: 안정 / 50~100bps: 주의 / 100bps+: 위험',
+      link:'https://kr.investing.com/rates-bonds/south-korea-cds-5-year-usd', linkText:'Investing.com ↗' },
   ];
 
   const tbody = document.getElementById('macro-table-body');
