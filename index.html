@@ -1278,43 +1278,26 @@ async function loadMacroData(){
   macroLoaded = true;
   document.getElementById('macro-ts').textContent = '데이터 로딩 중...';
   try {
-    // 1. Gist에서 macro 데이터 (FRED 수집 결과)
-    let fredData = { cape:null, pmi:null, unemp:null, m2:null, hySpread:null, spread10_2:null, cci:null, eps:null, fg:null, vixFred:null };
+    // Gist에서 macro 데이터 (FRED 주간 수집 결과)
+    let fred = { unemp:null, m2:null, hySpread:null, spread10_2:null, cci:null,
+                 vix:null, t10y:null, wti:null, dxy:null, updatedAt:null };
     if(cachedData && cachedData.macro){
       const m = cachedData.macro;
-      fredData.cape       = m.cape?.value ?? null;
-      fredData.pmi        = m.pmi?.value ?? null;
-      fredData.unemp      = m.unemp?.value ?? null;
-      fredData.m2         = m.m2_yoy?.value ?? null;
-      fredData.hySpread   = m.hy_spread?.value ?? null;
-      fredData.spread10_2 = m.spread_10_2?.value ?? null;
-      fredData.cci        = m.cci?.value ?? null;
-      fredData.eps        = m.eps_growth?.value ?? null;
-      fredData.fg         = m.fg_est?.value ?? null;
-      fredData.vixFred    = m.vix?.value ?? null;
-      fredData.updatedAt  = m.updated_at ?? null;
+      fred.unemp      = m.unemp?.value ?? null;
+      fred.m2         = m.m2_yoy?.value ?? null;
+      fred.hySpread   = m.hy_spread?.value ?? null;
+      fred.spread10_2 = m.spread_10_2?.value ?? null;
+      fred.cci        = m.cci?.value ?? null;
+      fred.vix        = m.vix?.value ?? null;
+      fred.t10y       = m.t10y?.value ?? null;
+      fred.wti        = m.wti?.value ?? null;
+      fred.dxy        = m.dxy?.value ?? null;
+      fred.updatedAt  = m.updated_at ?? null;
     }
 
-    // 2. Yahoo Finance 실시간 데이터
-    const tickers = ['^VIX','^TNX','^IRX','CL=F','DX-Y.NYB','^GSPC'];
-    const results = {};
-    await Promise.all(tickers.map(async t => {
-      try {
-        const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=5d`);
-        const d = await r.json();
-        const meta = d?.chart?.result?.[0]?.meta;
-        if(meta) results[t] = {
-          price: meta.regularMarketPrice,
-          prev:  meta.previousClose,
-          chg:   ((meta.regularMarketPrice - meta.previousClose)/meta.previousClose*100)
-        };
-      } catch(e) {}
-    }));
-
-    renderMacroPanel(results, fredData);
-    const fredTs = fredData.updatedAt ? ` | FRED: ${fredData.updatedAt}` : '';
+    renderMacroPanel(fred);
     document.getElementById('macro-ts').textContent =
-      '실시간: ' + new Date().toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}) + ' KST' + fredTs;
+      'FRED 수집일: ' + (fred.updatedAt ?? '—') + ' (매주 월요일 자동 업데이트)';
   } catch(e) {
     document.getElementById('macro-ts').textContent = '로드 실패: ' + e.message;
   }
@@ -1362,53 +1345,32 @@ function setMacroCard(valId, badgeId, subId, val, key, unit='', subText=''){
   if(sEl)sEl.textContent=subText||label;
 }
 
-function renderMacroPanel(yf, fred){
-  const vix  = yf['^VIX']?.price;
-  const t10y = yf['^TNX']?.price;
-  const t2y  = yf['^IRX']?.price ? yf['^IRX'].price/10 : null; // IRX는 13주물→근사치
-  const wti  = yf['CL=F']?.price;
-  const dxy  = yf['DX-Y.NYB']?.price;
-  const sp   = yf['^GSPC']?.price;
-
-  const spread = (t10y!=null && t2y!=null) ? +(t10y - t2y).toFixed(2) : null;
-
+function renderMacroPanel(fred){
   // VIX
-  setMacroCard('m-vix-val','m-vix-badge','m-vix-sub', vix, 'vix', '',
-    vix ? `전일 대비 ${yf['^VIX'].chg>=0?'+':''}${yf['^VIX'].chg.toFixed(2)}%` : '');
+  setMacroCard('m-vix-val','m-vix-badge','m-vix-sub', fred.vix, 'vix', '', fred.vix ? 'FRED 주간 수집' : '—');
 
   // 10년물
-  setMacroCard('m-t10y-val','m-t10y-badge','m-t10y-sub', t10y, 't10y', '%',
-    t10y ? `전일 대비 ${yf['^TNX'].chg>=0?'+':''}${yf['^TNX'].chg.toFixed(2)}%` : '');
+  setMacroCard('m-t10y-val','m-t10y-badge','m-t10y-sub', fred.t10y, 't10y', '%', fred.t10y ? 'FRED DGS10' : '—');
 
   // 장단기 스프레드
+  const spread = fred.spread10_2;
   setMacroCard('m-spread-val','m-spread-badge','m-spread-sub', spread, 'spread', '%',
-    spread!=null ? (spread<0?'⚠ 수익률 곡선 역전 상태':'정상 기울기') : '');
+    spread!=null ? (spread<0?'⚠ 수익률 곡선 역전 상태':'정상 기울기') : '—');
 
   // WTI
-  setMacroCard('m-wti-val','m-wti-badge','m-wti-sub', wti, 'wti', '$',
-    wti ? `전일 대비 ${yf['CL=F'].chg>=0?'+':''}${yf['CL=F'].chg.toFixed(2)}%` : '');
+  setMacroCard('m-wti-val','m-wti-badge','m-wti-sub', fred.wti, 'wti', '$', fred.wti ? 'FRED 주간 수집' : '—');
 
   // DXY
-  setMacroCard('m-dxy-val','m-dxy-badge','m-dxy-sub', dxy, 'dxy', '',
-    dxy ? `전일 대비 ${yf['DX-Y.NYB'].chg>=0?'+':''}${yf['DX-Y.NYB'].chg.toFixed(2)}%` : '');
+  setMacroCard('m-dxy-val','m-dxy-badge','m-dxy-sub', fred.dxy, 'dxy', '', fred.dxy ? 'FRED 무역가중달러' : '—');
 
-  // FRED 데이터 (정적 표시)
-  setMacroCard('m-fg-val','m-fg-badge','m-fg-sub', null, 'fg', '', 'CNN API 제한 — 별도 확인 필요');
-  setMacroCard('m-cape-val','m-cape-badge','m-cape-sub', fred.cape, 'cape', '', '');
-  setMacroCard('m-pmi-val','m-pmi-badge','m-pmi-sub', fred.pmi, 'pmi', '', '');
-  setMacroCard('m-eps-val','m-eps-badge','m-eps-sub', fred.eps, 'eps', '%', '');
+  // FRED 데이터
   setMacroCard('m-unemp-val','m-unemp-badge','m-unemp-sub', fred.unemp, 'unemp', '%', '');
   setMacroCard('m-m2-val','m-m2-badge','m-m2-sub', fred.m2, 'm2', '%', '');
   setMacroCard('m-hy-val','m-hy-badge','m-hy-sub', fred.hySpread, 'hy', '%', '');
   setMacroCard('m-cci-val','m-cci-badge','m-cci-sub', fred.cci, 'cci', '', '');
 
-  // Fear & Greed 포인터
-  if(document.getElementById('m-fg-pointer')){
-    document.getElementById('m-fg-pointer').style.left = '50%';
-  }
-
   // 종합 신호
-  renderMacroSignal(vix, t10y, spread, wti, dxy, fred);
+  renderMacroSignal(fred.vix, fred.t10y, spread, fred.wti, fred.dxy, fred);
 }
 
 function renderMacroSignal(vix, t10y, spread, wti, dxy, fred){
