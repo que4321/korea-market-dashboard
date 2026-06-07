@@ -141,7 +141,11 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 
 <div class="nav" style="display:flex;align-items:flex-end;gap:0;flex-wrap:wrap">
   <div style="display:flex;flex-direction:column;align-items:center">
-    <button class="ntab active" onclick="showPanel('scanner',this)" id="tab-scanner">🔍 저평가 스캐너</button>
+    <button class="ntab active" onclick="showPanel('macro',this)" id="tab-macro">🌐 거시경제</button>
+    <div class="tab-ts" id="ts-macro">실시간</div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center">
+    <button class="ntab" onclick="showPanel('scanner',this)" id="tab-scanner">🔍 저평가 스캐너</button>
     <div class="tab-ts" id="ts-scanner">매주 월요일 08:13 KST</div>
   </div>
   <div style="display:flex;flex-direction:column;align-items:center">
@@ -160,16 +164,12 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <button class="ntab" onclick="showPanel('investor',this)" id="tab-investor">📈 투자자 분석</button>
     <div class="tab-ts" id="ts-investor">매일 18:00 KST</div>
   </div>
-  <div style="display:flex;flex-direction:column;align-items:center">
-    <button class="ntab" onclick="showPanel('macro',this)" id="tab-macro">🌐 거시경제</button>
-    <div class="tab-ts" id="ts-macro">실시간</div>
-  </div>
 </div>
 
 <!-- ══════════════════════════════════════
      패널 1: 저평가 스캐너
 ══════════════════════════════════════ -->
-<div id="panel-scanner" class="panel active">
+<div id="panel-scanner" class="panel">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:0">
     <div class="sub-tabs" style="margin-bottom:0">
       <button class="stab active" onclick="switchTab('kospi',this)">🇰🇷 코스피200</button>
@@ -596,224 +596,63 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 <!-- ══════════════════════════════════════
      패널 6: 거시경제 지표
 ══════════════════════════════════════ -->
-<div id="panel-macro" class="panel">
+<div id="panel-macro" class="panel active">
 
+  <!-- 헤더 -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
     <div class="ts" id="macro-ts">데이터 로딩 중...</div>
     <button onclick="loadMacroData()" style="font-size:12px;cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);">↻ 새로고침</button>
   </div>
 
-  <!-- 센티먼트 & 변동성 -->
-  <div class="lbl">📊 시장 센티먼트 & 변동성</div>
-  <div class="g3">
-    <div class="mcard">
-      <div class="mlabel">CNN Fear & Greed Index</div>
-      <div style="margin:10px 0 6px;font-size:13px;color:var(--text3);line-height:1.7">
-        서버 IP 차단으로 자동 수집 불가.<br>아래 링크에서 직접 확인하세요.
-      </div>
-      <a href="https://edition.cnn.com/markets/fear-and-greed" target="_blank"
-         style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;
-                padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;
-                background:var(--accent);color:#fff;text-decoration:none">
-        📊 CNN Fear & Greed ↗
-      </a>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#38bdf8">■</span> 0~25: 극단 공포&nbsp;&nbsp;
-        <span style="color:#34d399">■</span> 25~45: 공포&nbsp;&nbsp;
-        <span style="color:#fbbf24">■</span> 45~55: 중립<br>
-        <span style="color:#fb923c">■</span> 55~75: 탐욕&nbsp;&nbsp;
-        <span style="color:#f87171">■</span> 75~100: 극단 탐욕
-      </div>
-    </div>
-    <div class="mcard">
-      <div class="mlabel">VIX 변동성 지수</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-vix-val" style="font-size:26px">—</div>
-        <div id="m-vix-badge" class="badge b-neu">—</div>
-      </div>
-      <div class="msub" id="m-vix-sub" style="margin-top:8px">—</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#34d399">■</span> ~15: 극단 안정 &nbsp;
-        <span style="color:#fbbf24">■</span> 15~20: 보통<br>
-        <span style="color:#fb923c">■</span> 20~30: 불안 &nbsp;
-        <span style="color:#f87171">■</span> 30+: 공포
+  <!-- 1. 종합 신호 박스 -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">■ 종합 거시경제 신호</div>
+    <div id="macro-signal-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:12px;margin-bottom:14px"></div>
+    <div style="padding:12px;background:var(--bg3);border-radius:8px;display:flex;gap:10px;align-items:flex-start">
+      <div id="macro-overall-icon" style="font-size:22px">📊</div>
+      <div>
+        <div id="macro-overall-title" style="font-weight:700;font-size:14px;color:var(--text)">분석 중...</div>
+        <div id="macro-overall-desc" style="font-size:12px;color:var(--text2);margin-top:3px;line-height:1.6"></div>
       </div>
     </div>
   </div>
 
-  <!-- 금리 -->
-  <div class="lbl">📈 금리 & 채권</div>
-  <div class="g3">
-    <div class="mcard">
-      <div class="mlabel">미국 10년물 국채금리</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-t10y-val" style="font-size:26px">—</div>
-        <div id="m-t10y-badge" class="badge b-neu">—</div>
-      </div>
-      <div class="msub" id="m-t10y-sub" style="margin-top:8px">—</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#34d399">■</span> ~3.5%: 완화적<br>
-        <span style="color:#fbbf24">■</span> 3.5~4.5%: 중립<br>
-        <span style="color:#f87171">■</span> 4.5%+: 긴축 압력
-      </div>
-    </div>
-    <div class="mcard">
-      <div class="mlabel">장단기 금리차 (10Y-2Y)</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-spread-val" style="font-size:26px">—</div>
-        <div id="m-spread-badge" class="badge b-neu">—</div>
-      </div>
-      <div class="msub" id="m-spread-sub" style="margin-top:8px">—</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#f87171">■</span> 음수: 역전 (침체 선행)<br>
-        <span style="color:#fbbf24">■</span> 0~0.5%: 정상화 중<br>
-        <span style="color:#34d399">■</span> 0.5%+: 정상 (성장 기대)
-      </div>
-    </div>
-    <div class="mcard">
-      <div class="mlabel">국채-회사채 스프레드 (HY)</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-hy-val" style="font-size:26px">—</div>
-        <div id="m-hy-badge" class="badge b-neu">—</div>
-      </div>
-      <div class="msub" id="m-hy-sub" style="margin-top:8px">—</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#34d399">■</span> ~3%: 낮음 (위험선호)<br>
-        <span style="color:#fbbf24">■</span> 3~5%: 보통<br>
-        <span style="color:#f87171">■</span> 5%+: 신용위험 경계
-      </div>
+  <!-- 2. 데이터 표 -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:var(--bg3);border-bottom:1px solid var(--border)">
+          <th style="padding:10px 14px;text-align:left;color:var(--text3);font-size:11px;font-weight:600;width:18%">분류</th>
+          <th style="padding:10px 14px;text-align:left;color:var(--text3);font-size:11px;font-weight:600;width:28%">구분</th>
+          <th style="padding:10px 14px;text-align:center;color:var(--text3);font-size:11px;font-weight:600;width:12%">값</th>
+          <th style="padding:10px 14px;text-align:center;color:var(--text3);font-size:11px;font-weight:600;width:14%">신호</th>
+          <th style="padding:10px 14px;text-align:left;color:var(--text3);font-size:11px;font-weight:600">기준</th>
+        </tr>
+      </thead>
+      <tbody id="macro-table-body">
+        <!-- JS로 채움 -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 3. 데이터 수집 정보 -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:11px;color:var(--text3);line-height:2">
+    <div style="font-weight:600;color:var(--text2);margin-bottom:6px">📋 데이터 수집 정보</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px 24px">
+      <div>· <b style="color:var(--text2)">VIX</b> — yfinance / 주간 수집 (매주 월요일)</div>
+      <div>· <b style="color:var(--text2)">10년물 금리</b> — FRED DGS10 / 일별, 주간 수집</div>
+      <div>· <b style="color:var(--text2)">장단기 금리차</b> — FRED T10Y2Y / 일별, 주간 수집</div>
+      <div>· <b style="color:var(--text2)">HY 스프레드</b> — FRED BAMLH0A0HYM2 / 일별, 주간 수집</div>
+      <div>· <b style="color:var(--text2)">실업률</b> — FRED UNRATE / 월별 발표, 주간 수집</div>
+      <div>· <b style="color:var(--text2)">M2 증가율</b> — FRED M2SL / 월별 발표, 주간 수집</div>
+      <div>· <b style="color:var(--text2)">WTI 유가</b> — FRED DCOILWTICO / 일별, 주간 수집</div>
+      <div>· <b style="color:var(--text2)">소비자신뢰</b> — FRED CSCICP03USM665S / 월별 발표, 주간 수집</div>
+      <div>· <b style="color:var(--text2)">Shiller CAPE</b> — 서버 IP 차단으로 수동 확인 필요</div>
+      <div>· <b style="color:var(--text2)">ISM PMI</b> — 서버 IP 차단으로 수동 확인 필요</div>
+      <div>· <b style="color:var(--text2)">CNN Fear & Greed</b> — 서버 IP 차단으로 수동 확인 필요</div>
     </div>
   </div>
 
-  <!-- 밸류에이션 & 경기 -->
-  <div class="lbl">📉 밸류에이션 & 경기지표</div>
-  <div class="g3">
-    <div class="mcard">
-      <div class="mlabel">Shiller P/E (CAPE)</div>
-      <div style="margin:10px 0 6px;font-size:13px;color:var(--text3);line-height:1.7">
-        서버 IP 차단으로 자동 수집 불가.<br>아래 링크에서 직접 확인하세요.
-      </div>
-      <a href="https://www.multpl.com/shiller-pe" target="_blank"
-         style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;
-                padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;
-                background:var(--accent);color:#fff;text-decoration:none">
-        📊 multpl.com ↗
-      </a>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#34d399">■</span> ~20: 저평가&nbsp;&nbsp;
-        <span style="color:#fbbf24">■</span> 20~30: 보통&nbsp;&nbsp;
-        <span style="color:#f87171">■</span> 30+: 고평가
-      </div>
-    </div>
-    <div class="mcard">
-      <div class="mlabel">ISM 제조업 PMI</div>
-      <div style="margin:10px 0 6px;font-size:13px;color:var(--text3);line-height:1.7">
-        서버 IP 차단으로 자동 수집 불가.<br>아래 링크에서 직접 확인하세요.
-      </div>
-      <a href="https://tradingeconomics.com/united-states/business-confidence" target="_blank"
-         style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;
-                padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;
-                background:var(--accent);color:#fff;text-decoration:none">
-        📊 TradingEconomics ↗
-      </a>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#f87171">■</span> ~45: 강한 수축&nbsp;&nbsp;
-        <span style="color:#fbbf24">■</span> 45~50: 수축&nbsp;&nbsp;
-        <span style="color:#34d399">■</span> 50+: 확장
-      </div>
-    </div>
-    <div class="mcard">
-      <div class="mlabel">S&P500 EPS 성장률 (Fwd)</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-eps-val" style="font-size:26px">—</div>
-        <div id="m-eps-badge" class="badge b-neu">—</div>
-      </div>
-      <div class="msub" id="m-eps-sub" style="margin-top:8px">향후 12개월 컨센서스</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#34d399">■</span> 10%+: 강한 성장<br>
-        <span style="color:#fbbf24">■</span> 5~10%: 보통<br>
-        <span style="color:#f87171">■</span> 0~5%: 부진 / 음수: 침체
-      </div>
-    </div>
-  </div>
-
-  <!-- 실물경제 -->
-  <div class="lbl">🏭 실물경제 & 원자재</div>
-  <div class="g3">
-    <div class="mcard">
-      <div class="mlabel">미국 실업률</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-unemp-val" style="font-size:26px">—</div>
-        <div id="m-unemp-badge" class="badge b-neu">—</div>
-      </div>
-      <div class="msub" id="m-unemp-sub" style="margin-top:8px">—</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#34d399">■</span> ~4%: 완전고용<br>
-        <span style="color:#fbbf24">■</span> 4~5%: 주의<br>
-        <span style="color:#f87171">■</span> 5%+: 경기둔화 신호
-      </div>
-    </div>
-    <div class="mcard">
-      <div class="mlabel">미국 M2 증가율 (YoY)</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-m2-val" style="font-size:26px">—</div>
-        <div id="m-m2-badge" class="badge b-neu">—</div>
-      </div>
-      <div class="msub" id="m-m2-sub" style="margin-top:8px">—</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#f87171">■</span> 8%+: 인플레 압력<br>
-        <span style="color:#fbbf24">■</span> 3~8%: 보통<br>
-        <span style="color:#34d399">■</span> 0~3%: 긴축 효과<br>
-        <span style="color:#38bdf8">■</span> 음수: 과도한 긴축
-      </div>
-    </div>
-    <div class="mcard">
-      <div class="mlabel">WTI 유가 ($/배럴)</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-wti-val" style="font-size:26px">—</div>
-        <div id="m-wti-badge" class="badge b-neu">—</div>
-      </div>
-      <div class="msub" id="m-wti-sub" style="margin-top:8px">—</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#34d399">■</span> ~60$: 저유가 (소비호재)<br>
-        <span style="color:#fbbf24">■</span> 60~85$: 보통<br>
-        <span style="color:#f87171">■</span> 85$+: 고유가 (인플레 압력)
-      </div>
-    </div>
-  </div>
-
-  <!-- 소비자신뢰 -->
-  <div class="lbl">👥 소비자 신뢰</div>
-  <div class="g3">
-    <div class="mcard">
-      <div class="mlabel">컨퍼런스보드 소비자신뢰지수</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 2px">
-        <div class="mval" id="m-cci-val" style="font-size:26px">—</div>
-        <div id="m-cci-badge" class="badge b-neu">—</div>
-      </div>
-      <div class="msub" id="m-cci-sub" style="margin-top:8px">—</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-        <span style="color:#34d399">■</span> 100+: 소비 낙관<br>
-        <span style="color:#fbbf24">■</span> 80~100: 보통<br>
-        <span style="color:#f87171">■</span> ~80: 소비 위축 우려
-      </div>
-    </div>
-    <div class="mcard" style="grid-column:span 2">
-      <div class="mlabel" style="margin-bottom:8px">📋 종합 거시경제 신호</div>
-      <div id="macro-signal-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px"></div>
-      <div style="margin-top:14px;padding:12px;background:var(--bg3);border-radius:8px;display:flex;gap:10px;align-items:flex-start">
-        <div id="macro-overall-icon" style="font-size:24px">📊</div>
-        <div>
-          <div id="macro-overall-title" style="font-weight:700;font-size:14px;color:var(--text)">분석 중...</div>
-          <div id="macro-overall-desc" style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.6"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div style="margin-top:12px;font-size:11px;color:var(--text3);line-height:1.8;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 16px">
-    ※ 데이터 출처: Yahoo Finance(실시간), FRED API(월간 지표 지연 가능) &nbsp;|&nbsp; CNN F&G는 별도 API 제한으로 추정치 표시
-  </div>
 </div>
 
 <script>
@@ -1336,30 +1175,81 @@ function setMacroCard(valId, badgeId, subId, val, key, unit='', subText=''){
 }
 
 function renderMacroPanel(fred){
-  // VIX
-  setMacroCard('m-vix-val','m-vix-badge','m-vix-sub', fred.vix, 'vix', '', fred.vix ? 'FRED 주간 수집' : '—');
-
-  // 10년물
-  setMacroCard('m-t10y-val','m-t10y-badge','m-t10y-sub', fred.t10y, 't10y', '%', fred.t10y ? 'FRED DGS10' : '—');
-
-  // 장단기 스프레드
   const spread = fred.spread10_2;
-  setMacroCard('m-spread-val','m-spread-badge','m-spread-sub', spread, 'spread', '%',
-    spread!=null ? (spread<0?'⚠ 수익률 곡선 역전 상태':'정상 기울기') : '—');
 
-  // WTI
-  setMacroCard('m-wti-val','m-wti-badge','m-wti-sub', fred.wti, 'wti', '$', fred.wti ? 'FRED 주간 수집' : '—');
+  const rows = [
+    { cat:'시장 센티먼트 & 변동성', label:'CNN Fear & Greed Index', val:null, key:'fg',
+      criteria:'0~25 극단공포 / 25~45 공포 / 45~55 중립 / 55~75 탐욕 / 75~100 극단탐욕',
+      link:'https://edition.cnn.com/markets/fear-and-greed', linkText:'CNN ↗' },
+    { cat:'', label:'VIX 변동성 지수', val:fred.vix, key:'vix', unit:'',
+      criteria:'~15 극단안정 / 15~20 안정 / 20~30 불안 / 30+ 공포' },
+    { cat:'금리 & 채권', label:'미국 10년물 국채금리', val:fred.t10y, key:'t10y', unit:'%',
+      criteria:'~3.5%: 완화 / 3.5~4.5%: 중립 / 4.5%+: 긴축압력' },
+    { cat:'', label:'장단기 금리차 (10Y-2Y)', val:spread, key:'spread', unit:'%',
+      criteria:'음수: 역전(침체선행) / 0~0.5%: 정상화중 / 0.5%+: 정상' },
+    { cat:'', label:'국채-회사채 스프레드 (HY)', val:fred.hySpread, key:'hy', unit:'%',
+      criteria:'~3%: 위험선호 / 3~5%: 보통 / 5%+: 신용위험' },
+    { cat:'밸류에이션 & 경기', label:'Shiller P/E (CAPE)', val:null, key:'cape',
+      criteria:'~20 저평가 / 20~30 보통 / 30+ 고평가',
+      link:'https://www.multpl.com/shiller-pe', linkText:'multpl.com ↗' },
+    { cat:'', label:'ISM 제조업 PMI', val:null, key:'pmi',
+      criteria:'~45 강한수축 / 45~50 수축 / 50+ 확장',
+      link:'https://tradingeconomics.com/united-states/business-confidence', linkText:'TradingEconomics ↗' },
+    { cat:'실물경제 & 원자재', label:'미국 실업률', val:fred.unemp, key:'unemp', unit:'%',
+      criteria:'~4%: 완전고용 / 4~5%: 주의 / 5%+: 경기둔화' },
+    { cat:'', label:'미국 M2 증가율 (YoY)', val:fred.m2, key:'m2', unit:'%',
+      criteria:'음수: 과긴축 / 0~3%: 긴축효과 / 3~8%: 보통 / 8%+: 인플레압력' },
+    { cat:'', label:'WTI 유가 ($/배럴)', val:fred.wti, key:'wti', unit:'$',
+      criteria:'~$65: 저유가(호재) / $65~90: 보통 / $90+: 고유가(압력)' },
+    { cat:'소비자 신뢰', label:'컨퍼런스보드 소비자신뢰지수', val:fred.cci, key:'cci', unit:'',
+      criteria:'~80: 소비위축 / 80~100: 보통 / 100+: 낙관' },
+  ];
 
+  const tbody = document.getElementById('macro-table-body');
+  if(!tbody) return;
 
-  // FRED 데이터
-  setMacroCard('m-unemp-val','m-unemp-badge','m-unemp-sub', fred.unemp, 'unemp', '%', '');
-  setMacroCard('m-m2-val','m-m2-badge','m-m2-sub', fred.m2, 'm2', '%', '');
-  setMacroCard('m-hy-val','m-hy-badge','m-hy-sub', fred.hySpread, 'hy', '%', '');
-  setMacroCard('m-cci-val','m-cci-badge','m-cci-sub', fred.cci, 'cci', '', '');
+  tbody.innerHTML = rows.map((r, i) => {
+    const [sigLabel, sigCls] = macroGrade(r.key, r.val);
 
-  // 종합 신호
+    let valCell;
+    if(r.link){
+      valCell = `<a href="${r.link}" target="_blank"
+        style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:6px;
+               font-size:11px;font-weight:600;background:var(--accent);color:#fff;text-decoration:none">
+        ${r.linkText}</a>`;
+    } else if(r.val != null){
+      const fmt = r.unit==='$' ? '$'+r.val.toFixed(1) : r.unit==='%' ? r.val.toFixed(2)+'%' : r.val.toFixed(2);
+      const col = sigCls==='b-ok'?'var(--green)':sigCls==='b-danger'?'var(--red)':sigCls==='b-warn'?'var(--yellow)':'var(--text)';
+      valCell = `<b style="font-size:15px;color:${col}">${fmt}</b>`;
+    } else {
+      valCell = `<span style="color:var(--text3);font-size:12px">—</span>`;
+    }
+
+    const sigCell = r.link
+      ? `<span style="color:var(--text3);font-size:11px">외부확인</span>`
+      : r.val != null
+        ? `<span class="badge ${sigCls}" style="font-size:10px">${sigLabel}</span>`
+        : `<span style="color:var(--text3)">—</span>`;
+
+    const catCell = r.cat
+      ? `<td style="padding:9px 14px;color:var(--text3);font-size:11px;font-weight:600;
+                    border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+                    white-space:nowrap">${r.cat}</td>`
+      : `<td style="border-right:1px solid var(--border);border-bottom:1px solid var(--border)"></td>`;
+
+    const bg = i%2===0 ? 'var(--bg2)' : 'var(--bg3)';
+    return `<tr style="background:${bg}">
+      ${catCell}
+      <td style="padding:9px 14px;color:var(--text2);border-bottom:1px solid var(--border)">${r.label}</td>
+      <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border)">${valCell}</td>
+      <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border)">${sigCell}</td>
+      <td style="padding:9px 14px;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)">${r.criteria}</td>
+    </tr>`;
+  }).join('');
+
   renderMacroSignal(fred.vix, fred.t10y, spread, fred.wti, fred);
 }
+
 
 function renderMacroSignal(vix, t10y, spread, wti, fred){
   const items = [
@@ -2265,7 +2155,7 @@ function invSimData(ticker, priceMode, nDays) {
 
 
 /* 초기 로드 */
-loadScanner();
+loadScanner().then(() => loadMacroData());
 </script>
 </body>
 </html>
