@@ -834,7 +834,7 @@ function showPanel(id,el){
   if((id==='kr'||id==='us')&&!dashLoaded) loadDash();
   if(id==='liquidity') renderLiquidityChart();
   if(id==='investor'&&!invLoaded) loadInvestorData();
-  if(id==='macro'&&!macroLoaded) loadMacroData();
+  if(id==='macro') { macroLoaded = false; loadMacroData(); }
 }
 
 const f=(v,d=2)=>v!=null?Number(v).toFixed(d):'—';
@@ -1268,6 +1268,13 @@ async function loadMacroData(){
     // Gist에서 macro 데이터 (FRED 주간 수집 결과)
     let fred = { unemp:null, m2:null, hySpread:null, spread10_2:null, cci:null,
                  vix:null, t10y:null, wti:null, updatedAt:null };
+
+    // cachedData가 아직 없으면 잠깐 기다렸다가 재시도
+    if(!cachedData) {
+      document.getElementById('macro-ts').textContent = 'Gist 데이터 로딩 대기 중...';
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
     if(cachedData && cachedData.macro){
       const m = cachedData.macro;
       fred.unemp      = m.unemp?.value ?? null;
@@ -1279,12 +1286,17 @@ async function loadMacroData(){
       fred.t10y       = m.t10y?.value ?? null;
       fred.wti        = m.wti?.value ?? null;
       fred.updatedAt  = m.updated_at ?? null;
+      console.log('✅ macro fred 데이터:', fred);
+    } else {
+      console.warn('⚠️ cachedData.macro 없음:', cachedData);
+      document.getElementById('macro-ts').textContent = 'Gist 데이터 없음 — 새로고침 후 재시도';
     }
 
     renderMacroPanel(fred);
     document.getElementById('macro-ts').textContent =
       'FRED 수집일: ' + (fred.updatedAt ?? '—') + ' (매주 월요일 자동 업데이트)';
   } catch(e) {
+    console.error('loadMacroData 오류:', e);
     document.getElementById('macro-ts').textContent = '로드 실패: ' + e.message;
   }
 }
