@@ -1178,8 +1178,7 @@ function renderMacroPanel(fred){
   const spread = fred.spread10_2;
 
   const rows = [
-    { cat:'시장 센티먼트
-& 변동성', label:'CNN Fear & Greed Index', val:null, key:'fg',
+    { cat:'시장 센티먼트 & 변동성', label:'CNN Fear & Greed Index', val:null, key:'fg',
       criteria:'0~25 극단공포 / 25~45 공포 / 45~55 중립 / 55~75 탐욕 / 75~100 극단탐욕',
       link:'https://edition.cnn.com/markets/fear-and-greed', linkText:'CNN ↗' },
     { cat:null, label:'VIX 변동성 지수', val:fred.vix, key:'vix', unit:'',
@@ -1190,15 +1189,13 @@ function renderMacroPanel(fred){
       criteria:'음수: 역전(침체선행) / 0~0.5%: 정상화중 / 0.5%+: 정상' },
     { cat:null, label:'국채-회사채 스프레드 (HY)', val:fred.hySpread, key:'hy', unit:'%',
       criteria:'~3%: 위험선호 / 3~5%: 보통 / 5%+: 신용위험' },
-    { cat:'밸류에이션
-& 경기', label:'Shiller P/E (CAPE)', val:null, key:'cape',
+    { cat:'밸류에이션 & 경기', label:'Shiller P/E (CAPE)', val:null, key:'cape',
       criteria:'~20 저평가 / 20~30 보통 / 30+ 고평가',
       link:'https://www.multpl.com/shiller-pe', linkText:'multpl.com ↗' },
     { cat:null, label:'ISM 제조업 PMI', val:null, key:'pmi',
       criteria:'~45 강한수축 / 45~50 수축 / 50+ 확장',
       link:'https://tradingeconomics.com/united-states/business-confidence', linkText:'TradingEconomics ↗' },
-    { cat:'실물경제
-& 원자재', label:'미국 실업률', val:fred.unemp, key:'unemp', unit:'%',
+    { cat:'실물경제 & 원자재', label:'미국 실업률', val:fred.unemp, key:'unemp', unit:'%',
       criteria:'~4%: 완전고용 / 4~5%: 주의 / 5%+: 경기둔화' },
     { cat:null, label:'미국 M2 증가율 (YoY)', val:fred.m2, key:'m2', unit:'%',
       criteria:'음수: 과긴축 / 0~3%: 긴축효과 / 3~8%: 보통 / 8%+: 인플레압력' },
