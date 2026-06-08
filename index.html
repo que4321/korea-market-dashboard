@@ -420,7 +420,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
           <span style="width:24px;height:2px;background:#3b82f6;display:inline-block"></span> 주가 (좌축, $)
         </span>
         <span style="display:inline-flex;align-items:center;gap:4px">
-          <span style="width:24px;height:2px;background:#f97316;display:inline-block"></span> non-GAAP 조정 EPS (우축, $)
+          <span style="width:24px;height:2px;background:#f97316;display:inline-block"></span> GAAP Diluted EPS - 실적 (우축, $)
         </span>
         &nbsp;|&nbsp; yfinance 주간 수집 (매주 월요일)
       </div>
@@ -2292,7 +2292,7 @@ function renderM7Chart(sym, btnEl){
         },
         {
           type: 'line',
-          label: '분기 EPS ($)',
+          label: 'GAAP Diluted EPS ($)',
           data: epsMapped,
           yAxisID: 'yEps',
           borderColor: '#f97316',
@@ -2318,7 +2318,7 @@ function renderM7Chart(sym, btnEl){
               const v = ctx.parsed.y;
               return ctx.datasetIndex === 0
                 ? ` 주가: $${v?.toFixed(2)}`
-                : ` EPS: $${v?.toFixed(4)}`;
+                : ` GAAP EPS: $${v?.toFixed(4)}`;
             }
           }
         }
