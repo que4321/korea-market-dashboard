@@ -305,6 +305,65 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       ※ 데이터가 누적될수록 통계적 정확도가 높아집니다 (현재: <span id="ewy-datacount">—</span>일치)
     </div>
   </div>
+
+  <!-- 한국 주요 종목 주가 & 분기 EPS -->
+  <div style="margin-top:28px">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+                color:var(--text3);margin-bottom:12px">📈 한국 주요 종목 주가 & 분기 EPS</div>
+
+    <!-- 종목 선택 탭 -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="kr-stock-tabs">
+      <button onclick="renderKrChart('삼성전자',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--accent);color:#fff;border:none" id="kr-btn-삼성전자">삼성전자</button>
+      <button onclick="renderKrChart('SK하이닉스',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--bg3);color:var(--text2);border:1px solid var(--border)" id="kr-btn-SK하이닉스">SK하이닉스</button>
+      <button onclick="renderKrChart('한미반도체',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--bg3);color:var(--text2);border:1px solid var(--border)" id="kr-btn-한미반도체">한미반도체</button>
+      <button onclick="renderKrChart('삼성중공업',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--bg3);color:var(--text2);border:1px solid var(--border)" id="kr-btn-삼성중공업">삼성중공업</button>
+      <button onclick="renderKrChart('삼성E&A',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--bg3);color:var(--text2);border:1px solid var(--border)" id="kr-btn-삼성E&A">삼성E&A</button>
+      <button onclick="renderKrChart('NAVER',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--bg3);color:var(--text2);border:1px solid var(--border)" id="kr-btn-NAVER">NAVER</button>
+      <button onclick="renderKrChart('한국쉘석유',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--bg3);color:var(--text2);border:1px solid var(--border)" id="kr-btn-한국쉘석유">한국쉘석유</button>
+      <button onclick="renderKrChart('한국전력',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--bg3);color:var(--text2);border:1px solid var(--border)" id="kr-btn-한국전력">한국전력</button>
+      <button onclick="renderKrChart('현대차',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--bg3);color:var(--text2);border:1px solid var(--border)" id="kr-btn-현대차">현대차</button>
+      <button onclick="renderKrChart('기아',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--bg3);color:var(--text2);border:1px solid var(--border)" id="kr-btn-기아">기아</button>
+      <button onclick="renderKrChart('두산에너빌리티',this)"
+        style="padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+               background:var(--bg3);color:var(--text2);border:1px solid var(--border)" id="kr-btn-두산에너빌리티">두산에너빌리티</button>
+    </div>
+
+    <!-- 차트 영역 -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div id="kr-chart-title" style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">삼성전자 — 주가 & 분기 EPS</div>
+      <div style="position:relative;height:320px"><canvas id="chartKR"></canvas></div>
+      <div class="ts" style="margin-top:8px">
+        <span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px">
+          <span style="width:24px;height:2px;background:#3b82f6;display:inline-block"></span> 주가 (좌축, ₩)
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:4px">
+          <span style="width:24px;height:2px;background:#f97316;display:inline-block"></span> GAAP Diluted EPS - 실적 (우축, ₩)
+        </span>
+        &nbsp;|&nbsp; yfinance 주간 수집 (매주 월요일)
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ══════════════════════════════════════
@@ -723,6 +782,7 @@ function showPanel(id,el){
   window.scrollTo({top: 0, behavior: 'smooth'});
   if((id==='kr'||id==='us')&&!dashLoaded) loadDash();
   if(id==='us') setTimeout(()=>renderM7Chart('AAPL', document.getElementById('m7-btn-AAPL')), 300);
+  if(id==='kr') setTimeout(()=>renderKrChart('삼성전자', document.getElementById('kr-btn-삼성전자')), 300);
   if(id==='liquidity') renderLiquidityChart();
   if(id==='investor'&&!invLoaded) loadInvestorData();
   if(id==='macro') loadMacroData();
@@ -2347,6 +2407,108 @@ function renderM7Chart(sym, btnEl){
           },
           grid: { drawOnChartArea: false },
           title: { display: true, text: '조정 EPS ($)', color: '#f97316', font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+/* ══════════════════════ 한국 주식 주가 & EPS 차트 ══════════════════════ */
+let krChartInst = null;
+
+function renderKrChart(name, btnEl){
+  document.querySelectorAll('#kr-stock-tabs button').forEach(b => {
+    b.style.background = 'var(--bg3)';
+    b.style.color = 'var(--text2)';
+    b.style.border = '1px solid var(--border)';
+  });
+  if(btnEl){ btnEl.style.background = 'var(--accent)'; btnEl.style.color = '#fff'; btnEl.style.border = 'none'; }
+
+  const title = document.getElementById('kr-chart-title');
+  if(title) title.textContent = `${name} — 주가 & 분기 EPS`;
+
+  const krStocks = cachedData?.macro?.kr_stocks;
+  if(!krStocks || !krStocks[name]){
+    if(title) title.textContent = `${name} — 데이터 로딩 중... (매주 월요일 수집)`;
+    return;
+  }
+
+  const symData = krStocks[name];
+  const prices  = symData.prices || [];
+  const epsArr  = symData.eps   || [];
+
+  // EPS 기간 기준 주가 필터링
+  let filteredPrices = prices;
+  if(epsArr.length > 0){
+    const filterStart = new Date(epsArr[0].date);
+    filterStart.setMonth(filterStart.getMonth() - 3);
+    filteredPrices = prices.filter(p => new Date(p.date) >= filterStart);
+  }
+
+  const labels = filteredPrices.map(p => p.date);
+  const epsMapped = labels.map(lbl => {
+    const match = epsArr.find(e => e.date.slice(0,7) === lbl.slice(0,7));
+    if(match) return match.eps;
+    const sorted = [...epsArr].sort((a,b) =>
+      Math.abs(new Date(a.date) - new Date(lbl)) - Math.abs(new Date(b.date) - new Date(lbl))
+    );
+    const nearest = sorted[0];
+    if(nearest && Math.abs(new Date(nearest.date) - new Date(lbl)) < 1000*60*60*24*90)
+      return nearest.eps;
+    return null;
+  });
+  const priceData = filteredPrices.map(p => p.price);
+
+  if(krChartInst){ krChartInst.destroy(); krChartInst = null; }
+
+  const ctx = document.getElementById('chartKR').getContext('2d');
+  krChartInst = new Chart(ctx, {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'line', label: '주가 (₩)', data: priceData, yAxisID: 'yPrice',
+          borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)',
+          borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#3b82f6',
+          tension: 0.3, fill: true,
+        },
+        {
+          type: 'line', label: 'GAAP EPS (₩)', data: epsMapped, yAxisID: 'yEps',
+          borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.0)',
+          borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#f97316',
+          tension: 0.3, fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return ctx.datasetIndex === 0
+                ? ` 주가: ₩${v?.toLocaleString()}`
+                : ` GAAP EPS: ₩${v?.toLocaleString()}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        yPrice: {
+          type: 'linear', position: 'left',
+          ticks: { color: '#3b82f6', callback: v => '₩'+v.toLocaleString() },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          title: { display: true, text: '주가 (₩)', color: '#3b82f6', font: { size: 11 } }
+        },
+        yEps: {
+          type: 'linear', position: 'right',
+          ticks: { color: '#f97316', callback: v => '₩'+v.toLocaleString() },
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: 'EPS (₩)', color: '#f97316', font: { size: 11 } }
         }
       }
     }
