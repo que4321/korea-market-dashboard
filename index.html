@@ -2243,21 +2243,31 @@ function renderM7Chart(sym, btnEl){
   const prices  = symData.prices || [];
   const epsArr  = symData.eps   || [];
 
-  // 날짜 라벨: 주가 기준 (분기별)
-  const labels = prices.map(p => p.date);
+  // EPS 날짜 범위 기준으로 주가 필터링 (겹치는 기간만 표시)
+  let filteredPrices = prices;
+  if(epsArr.length > 0){
+    const epsStart = new Date(epsArr[0].date);
+    const filterStart = new Date(epsStart);
+    filterStart.setMonth(filterStart.getMonth() - 3);
+    filteredPrices = prices.filter(p => new Date(p.date) >= filterStart);
+  }
 
-  // EPS를 주가 날짜에 맞춰 매핑 (가장 가까운 분기)
+  const labels = filteredPrices.map(p => p.date);
+
+  // EPS를 주가 날짜에 맞춰 매핑 (90일 이내만)
   const epsMapped = labels.map(lbl => {
     const match = epsArr.find(e => e.date.slice(0,7) === lbl.slice(0,7));
     if(match) return match.eps;
-    // 가장 가까운 날짜 찾기
     const sorted = [...epsArr].sort((a,b) =>
       Math.abs(new Date(a.date) - new Date(lbl)) - Math.abs(new Date(b.date) - new Date(lbl))
     );
-    return sorted[0]?.eps ?? null;
+    const nearest = sorted[0];
+    if(nearest && Math.abs(new Date(nearest.date) - new Date(lbl)) < 1000*60*60*24*90)
+      return nearest.eps;
+    return null;
   });
 
-  const priceData = prices.map(p => p.price);
+  const priceData = filteredPrices.map(p => p.price);
 
   // 기존 차트 파괴
   if(m7ChartInst) { m7ChartInst.destroy(); m7ChartInst = null; }
