@@ -2586,19 +2586,30 @@ function renderM7Growth(){
     return el && el.checked;
   });
 
-  // 전체 날짜 라벨 합집합 (정렬)
+  // 날짜를 분기 기준으로 정규화 (어떤 월이든 → Q1/Q2/Q3/Q4 끝월로)
+  function normalizeToQuarter(dateStr){
+    const [y, m] = dateStr.split('-').map(Number);
+    if(m <= 3)  return `${y}-03`;
+    if(m <= 6)  return `${y}-06`;
+    if(m <= 9)  return `${y}-09`;
+    return `${y}-12`;
+  }
+
+  // 전체 날짜 합집합 → 정규화 → 중복제거 → 정렬
   const allDates = [...new Set(
-    selected.flatMap(s => (m7[s]?.eps || []).map(e => e.date))
+    selected.flatMap(s => (m7[s]?.eps || []).map(e => normalizeToQuarter(e.date)))
   )].sort();
 
   if(allDates.length === 0) return;
 
   // 종목별 변화율 계산
   const datasets = selected.map(sym => {
-    const epsArr = (m7[sym]?.eps || []).sort((a,b) => a.date.localeCompare(b.date));
+    const epsArr = (m7[sym]?.eps || [])
+      .map(e => ({...e, date: normalizeToQuarter(e.date)}))
+      .sort((a,b) => a.date.localeCompare(b.date));
     if(epsArr.length === 0) return null;
 
-    // 기준값: 첫 번째 EPS (양수인 것)
+    // 기준값: 첫 번째 양수 EPS
     const base = epsArr.find(e => e.eps > 0)?.eps;
     if(!base) return null;
 
