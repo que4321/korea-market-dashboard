@@ -828,7 +828,27 @@ function showPanel(id,el){
   if((id==='kr'||id==='us')&&!dashLoaded) loadDash();
   if(id==='us') setTimeout(()=>{ renderM7Chart('AAPL', document.getElementById('m7-btn-AAPL')); renderM7Growth(); }, 300);
   if(id==='kr') setTimeout(()=>renderKrChart('삼성전자', document.getElementById('kr-btn-삼성전자')), 300);
-  if(id==='liquidity') renderLiquidityChart();
+  if(id==='liquidity'){
+    if(liqDataCache || cachedData?.liquidity){
+      renderLiquidityChart();
+    } else {
+      // 데이터 아직 없으면 최대 5초 대기 후 재시도
+      const tsEl = document.getElementById('ts-liquidity');
+      if(tsEl) tsEl.textContent = '데이터 로딩 중...';
+      let tries = 0;
+      const wait = setInterval(() => {
+        tries++;
+        if(liqDataCache || cachedData?.liquidity){
+          clearInterval(wait);
+          renderLiquidityChart();
+        } else if(tries >= 10){
+          clearInterval(wait);
+          if(tsEl) tsEl.textContent = '데이터 없음 — 새로고침 시도';
+          loadScanner();
+        }
+      }, 500);
+    }
+  }
   if(id==='investor'&&!invLoaded) loadInvestorData();
   if(id==='macro') loadMacroData();
 }
