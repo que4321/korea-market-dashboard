@@ -1482,7 +1482,21 @@ function renderMacroSignal(vix, t10y, spread, wti, fred){
   desc.textContent = `위험신호 ${risk}개 / 긍정신호 ${ok}개 (FRED 지표 ${known.length}개 분석)`;
 }
 
-async function loadScanner(){try{const url=GIST_URL.replace(/\/raw\/[a-f0-9]+\//,'/raw/')+'?nc='+Date.now();const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);cachedData=await r.json();document.getElementById('hdr-sub').textContent=`최종 업데이트: ${cachedData.updated_at||'-'}`;
+async function loadScanner(){
+  const tsEl = document.getElementById('macro-ts');
+  try {
+    const url = GIST_URL + '?nc=' + Date.now();
+    console.log('Gist fetch URL:', url);
+    const r = await fetch(url, {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const text = await r.text();
+    console.log('Gist 응답 길이:', text.length, 'bytes');
+    try {
+      cachedData = JSON.parse(text);
+    } catch(pe) {
+      throw new Error(`JSON 파싱 실패: ${pe.message} (길이:${text.length})`);
+    }
+    document.getElementById('hdr-sub').textContent=`최종 업데이트: ${cachedData.updated_at||'-'}`;
     const tsSc=document.getElementById('ts-scanner');
     if(tsSc&&cachedData.updated_at) tsSc.textContent='업데이트: '+cachedData.updated_at+' (매주 월요일 08:13)';
     // ★ Gist에 liquidity 데이터가 있으면 캐싱 (미국 유동성 탭에서 사용)
@@ -1500,7 +1514,12 @@ async function loadScanner(){try{const url=GIST_URL.replace(/\/raw\/[a-f0-9]+\//
         loadMacroData();
       }
     }
-    renderData(cachedData);}catch(e){document.getElementById('table-body').innerHTML=`<tr><td colspan="12"><div class="err">⚠️ 로드 실패: ${e.message}</div></td></tr>`;}}
+    renderData(cachedData);}catch(e){
+    console.error('loadScanner 오류:', e.message);
+    document.getElementById('table-body').innerHTML=`<tr><td colspan="12"><div class="err">⚠️ Gist 로드 실패: ${e.message}</div></td></tr>`;
+    document.getElementById('hdr-sub').textContent='Gist 로드 실패: '+e.message;
+  }
+}
 
 
 /* ══════════════════════ 미국 유동성 ══════════════════════ */
