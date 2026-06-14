@@ -164,6 +164,10 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <button class="ntab" onclick="showPanel('investor',this)" id="tab-investor">📈 투자자 분석</button>
     <div class="tab-ts" id="ts-investor">매일 18:00 KST</div>
   </div>
+  <div style="display:flex;flex-direction:column;align-items:center">
+    <button class="ntab" onclick="showPanel('timing',this)" id="tab-timing">⏱ 매수시점</button>
+    <div class="tab-ts" id="ts-timing">매주 월요일 08:30 KST</div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -746,6 +750,57 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 </div>
 
 <!-- ══════════════════════════════════════
+     패널 7: 매수시점
+══════════════════════════════════════ -->
+<div id="panel-timing" class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:13px;color:var(--text2)" id="timing-ts">데이터 로딩 중...</div>
+  </div>
+
+  <!-- 탭: 한국 / 미국 -->
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <button class="htab active" id="timing-btn-kr" onclick="switchTimingTab('kr',this)">🇰🇷 한국 (11종목)</button>
+    <button class="htab" id="timing-btn-us" onclick="switchTimingTab('us',this)">🇺🇸 M7+MU (8종목)</button>
+  </div>
+
+  <!-- 범례 -->
+  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-bottom:12px;color:var(--text2)">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block"></span>정배열+눌림목 — 매수 고려</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block"></span>정배열 — 관망</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>혼재</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block"></span>역배열 — 관망</span>
+  </div>
+
+  <!-- 테이블 -->
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:13px" id="timing-table">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);color:var(--text2);text-align:right">
+          <th style="text-align:left;padding:6px 8px">종목</th>
+          <th style="padding:6px 8px">현재가</th>
+          <th style="padding:6px 8px">MA20</th>
+          <th style="padding:6px 8px">MA50</th>
+          <th style="padding:6px 8px">MA200</th>
+          <th style="padding:6px 8px">MA200<br>이격률</th>
+          <th style="padding:6px 8px">52주고점<br>대비</th>
+          <th style="padding:6px 8px">이평선<br>배열</th>
+          <th style="padding:6px 8px">눌림목<br>신호</th>
+        </tr>
+      </thead>
+      <tbody id="timing-body">
+        <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 200일 이격률 바 차트 -->
+  <div style="margin-top:20px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">200일 이평선 이격률</div>
+    <div id="timing-devbar" style="display:flex;flex-direction:column;gap:4px"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
      패널 6: 거시경제 지표
 ══════════════════════════════════════ -->
 <div id="panel-macro" class="panel active">
@@ -852,6 +907,10 @@ function showPanel(id,el){
   }
   if(id==='investor'&&!invLoaded) loadInvestorData();
   if(id==='macro') loadMacroData();
+  if(id==='timing'){
+    if(cachedData?.macro?.m7 && cachedData?.macro?.kr_stocks){ renderTimingPanel('kr'); }
+    else { loadMacroFile().then(()=>renderTimingPanel('kr')); }
+  }
 }
 
 const f=(v,d=2)=>v!=null?Number(v).toFixed(d):'—';
@@ -2756,6 +2815,93 @@ function renderM7Growth(){
       }
     }
   });
+}
+
+/* ══════════════════════ 매수시점 ══════════════════════ */
+let timingTab = 'kr';
+
+function switchTimingTab(tab, el){
+  timingTab = tab;
+  document.querySelectorAll('#panel-timing .htab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderTimingPanel(tab);
+}
+
+function renderTimingPanel(tab){
+  const macro = cachedData?.macro;
+  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
+
+  const ts = document.getElementById('timing-ts');
+  if(ts) ts.textContent = '업데이트: ' + (macro.updated_at||'-') + ' (매주 월요일 08:30)';
+
+  const items = tab==='kr'
+    ? Object.entries(macro.kr_stocks||{}).map(([name,v])=>({name, ...v}))
+    : Object.entries(macro.m7||{}).map(([sym,v])=>({name:sym, ...v}));
+
+  const tbody = document.getElementById('timing-body');
+  const devbar = document.getElementById('timing-devbar');
+
+  if(!items.length){ tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
+
+  // 눌림목 신호 있는 종목 먼저 정렬
+  items.sort((a,b)=>{
+    const pa = a.technical?.pullback_signal ? 0 : (a.technical?.ma_alignment==='정배열' ? 1 : 2);
+    const pb = b.technical?.pullback_signal ? 0 : (b.technical?.ma_alignment==='정배열' ? 1 : 2);
+    return pa - pb;
+  });
+
+  const isCurrency = tab==='kr';
+  const fmt = (v,is=isCurrency) => v==null ? '-' : is ? v.toLocaleString()+'₩' : '$'+v.toLocaleString();
+  const fmtPct = v => v==null ? '-' : (v>0?'+':'')+v.toFixed(1)+'%';
+
+  const alignColor = {
+    '정배열':'#3b82f6',
+    '역배열':'#ef4444',
+    '혼재':'#f59e0b',
+    '데이터부족':'var(--text2)'
+  };
+
+  tbody.innerHTML = items.map(item=>{
+    const t = item.technical||{};
+    const pullback = t.pullback_signal;
+    const align = t.ma_alignment||'-';
+    const rowBg = pullback ? 'background:rgba(34,197,94,0.07)' : '';
+    const dev200color = t.ma200_dev==null ? '' : t.ma200_dev<=-10 ? 'color:#22c55e;font-weight:600' : t.ma200_dev>=20 ? 'color:#ef4444' : '';
+    const w52color = t.week52_pct==null ? '' : t.week52_pct<=-30 ? 'color:#22c55e;font-weight:600' : '';
+    return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
+      <td style="padding:7px 8px;font-weight:${pullback?'600':'400'};white-space:nowrap">
+        ${pullback?'<span style="color:#22c55e;margin-right:4px">●</span>':'<span style="color:'+alignColor[align]+';margin-right:4px">●</span>'}${item.name}
+      </td>
+      <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
+      <td style="text-align:right;padding:7px 8px;color:var(--text2)">${fmt(t.ma20)}</td>
+      <td style="text-align:right;padding:7px 8px;color:var(--text2)">${fmt(t.ma50)}</td>
+      <td style="text-align:right;padding:7px 8px;color:var(--text2)">${fmt(t.ma200)}</td>
+      <td style="text-align:right;padding:7px 8px;${dev200color}">${fmtPct(t.ma200_dev)}</td>
+      <td style="text-align:right;padding:7px 8px;${w52color}">${fmtPct(t.week52_pct)}</td>
+      <td style="text-align:center;padding:7px 8px;color:${alignColor[align]||'var(--text2)'}">${align}</td>
+      <td style="text-align:center;padding:7px 8px">${pullback?'<span style="background:#22c55e;color:#fff;border-radius:4px;padding:1px 7px;font-size:11px">매수고려</span>':'-'}</td>
+    </tr>`;
+  }).join('');
+
+  // 200일 이격률 바 차트
+  const validItems = items.filter(i=>i.technical?.ma200_dev!=null);
+  const maxAbs = Math.max(...validItems.map(i=>Math.abs(i.technical.ma200_dev)), 30);
+  devbar.innerHTML = validItems.map(item=>{
+    const dev = item.technical.ma200_dev;
+    const pct = Math.abs(dev)/maxAbs*45;
+    const color = dev<=-10?'#22c55e': dev>=20?'#ef4444': dev>=0?'#3b82f6':'#f59e0b';
+    const bar = dev>=0
+      ? `<div style="display:flex;align-items:center;width:50%;padding-left:4px"><div style="width:${pct}%;height:14px;background:${color};border-radius:0 3px 3px 0;min-width:2px"></div><span style="font-size:11px;margin-left:4px;color:${color}">${fmtPct(dev)}</span></div>`
+      : `<div style="display:flex;align-items:center;justify-content:flex-end;width:50%;padding-right:4px"><span style="font-size:11px;margin-right:4px;color:${color}">${fmtPct(dev)}</span><div style="width:${pct}%;height:14px;background:${color};border-radius:3px 0 0 3px;min-width:2px"></div></div>`;
+    return `<div style="display:flex;align-items:center;gap:0;font-size:12px">
+      <div style="width:100px;text-align:right;padding-right:8px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.name}</div>
+      <div style="flex:1;display:flex;align-items:center">
+        <div style="width:50%;display:flex;justify-content:flex-end">${dev<0?bar:''}</div>
+        <div style="width:1px;height:16px;background:var(--border)"></div>
+        <div style="width:50%">${dev>=0?bar:''}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 /* 초기 로드 — 3개 파일 병렬 fetch */
