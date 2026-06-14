@@ -1339,7 +1339,7 @@ async function loadMacroData(){
   document.getElementById('macro-ts').textContent = '데이터 로딩 중...';
   try {
     let fred = { unemp:null, m2:null, hySpread:null, spread10_2:null, cci:null,
-                 vix:null, t10y:null, wti:null, updatedAt:null };
+                 vix:null, t10y:null, wti:null, updatedAt:null, fng:null };
 
     if(cachedData && cachedData.macro){
       const m = cachedData.macro;
@@ -1352,6 +1352,7 @@ async function loadMacroData(){
       fred.t10y       = m.t10y?.value ?? null;
       fred.wti        = m.wti?.value ?? null;
       fred.updatedAt  = m.updated_at ?? null;
+      fred.fng        = m.fng ?? null;
       console.log('macro fred 데이터:', fred);
     } else {
       document.getElementById('macro-ts').textContent = 'Gist 데이터 없음 — 잠시 후 새로고침';
@@ -1415,7 +1416,7 @@ function renderMacroPanel(fred){
   const rows = [
     { cat:'시장 센티먼트 & 변동성', label:'CNN Fear & Greed Index',
       val: fng?.score ?? null, key:'fg', unit:'',
-      extra: fng ? ` (${fng.rating_kr})${fng.prev_1w!=null?' | 1주전:'+fng.prev_1w:''}` : '',
+      extra: fng ? ` (${fng.rating_kr})${fng.prev_1w!=null?' | 1주전:'+Math.round(fng.prev_1w):''}${fng.prev_1m!=null?' | 1개월전:'+Math.round(fng.prev_1m):''}` : '',
       criteria:'0~25 극단공포 / 25~45 공포 / 45~55 중립 / 55~75 탐욕 / 75~100 극단탐욕' },
     { cat:null, label:'VIX 변동성 지수', val:fred.vix, key:'vix', unit:'',
       criteria:'~15 극단안정 / 15~20 안정 / 20~30 불안 / 30+ 공포' },
