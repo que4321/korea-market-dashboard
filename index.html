@@ -2925,8 +2925,8 @@ function renderTimingPanel(tab){
 
     // 매수 신호 셀
     let sigCell = '-';
-    if(rsiBuy)        sigCell = '<span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600">★RSI매수</span>';
-    else if(pullback) sigCell = '<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">눌림목</span>';
+    if(rsiBuy)        sigCell = `<span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600">★RSI매수(${t.pullback_at||''})</span>`;
+    else if(pullback) sigCell = `<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">눌림목(${t.pullback_at||''})</span>`;
     else if(sell)     sigCell = '<span style="background:#ef4444;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">이탈주의</span>';
 
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
