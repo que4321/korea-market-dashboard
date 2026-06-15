@@ -778,17 +778,20 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         <tr style="border-bottom:1px solid var(--border);color:var(--text2)">
           <th style="text-align:left;padding:6px 8px;font-weight:500">종목</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">현재가</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">MA5</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA20</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA50</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA200</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA200<br>이격률</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">52주고점<br>대비</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">RSI<br>주봉</th>
+          <th style="text-align:center;padding:6px 8px;font-weight:500">거래량<br>추세</th>
           <th style="text-align:center;padding:6px 8px;font-weight:500">이평선<br>배열</th>
-          <th style="text-align:center;padding:6px 8px;font-weight:500">눌림목<br>신호</th>
+          <th style="text-align:center;padding:6px 8px;font-weight:500">매수<br>신호</th>
         </tr>
       </thead>
       <tbody id="timing-body">
-        <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
+        <tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
       </tbody>
     </table>
   </div>
@@ -2834,7 +2837,7 @@ function switchTimingTab(tab, el){
 
 function renderTimingPanel(tab){
   const macro = cachedData?.macro;
-  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
+  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
 
   const ts = document.getElementById('timing-ts');
   if(ts) ts.textContent = '업데이트: ' + (macro.updated_at||'-') + ' (매주 월요일 08:30)';
@@ -2846,13 +2849,21 @@ function renderTimingPanel(tab){
   const tbody = document.getElementById('timing-body');
   const devbar = document.getElementById('timing-devbar');
 
-  if(!items.length){ tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
+  if(!items.length){ tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
 
-  // 눌림목 신호 있는 종목 먼저 정렬
+  // 정렬: RSI매수신호 → 눌림목 → 정배열 → 완전정배열 → 기타
   items.sort((a,b)=>{
-    const pa = a.technical?.pullback_signal ? 0 : (a.technical?.ma_alignment==='정배열' ? 1 : 2);
-    const pb = b.technical?.pullback_signal ? 0 : (b.technical?.ma_alignment==='정배열' ? 1 : 2);
-    return pa - pb;
+    const score = t => {
+      if(!t?.ma_alignment) return 9;
+      if(t.rsi_buy_signal)   return 0;
+      if(t.pullback_signal)  return 1;
+      if(t.ma_alignment==='완전정배열') return 2;
+      if(t.ma_alignment==='정배열')     return 3;
+      if(t.ma_alignment==='혼재')       return 4;
+      if(t.sell_signal)                 return 6;
+      return 5;
+    };
+    return score(a.technical) - score(b.technical);
   });
 
   const isCurrency = tab==='kr';
@@ -2860,31 +2871,61 @@ function renderTimingPanel(tab){
   const fmtPct = v => v==null ? '-' : (v>0?'+':'')+v.toFixed(1)+'%';
 
   const alignColor = {
-    '정배열':'#3b82f6',
-    '역배열':'#ef4444',
-    '혼재':'#f59e0b',
+    '완전정배열':'#22c55e',
+    '정배열':    '#3b82f6',
+    '역배열':    '#ef4444',
+    '혼재':      '#f59e0b',
     '데이터부족':'var(--text2)'
+  };
+
+  const volBadge = v => {
+    if(!v) return '-';
+    const c = v==='급증'?'#f59e0b': v==='감소'?'#22c55e': 'var(--text2)';
+    return `<span style="color:${c};font-size:11px">${v}</span>`;
+  };
+
+  const rsiBadge = v => {
+    if(v==null) return '-';
+    const c = v<=30?'#22c55e;font-weight:700': v<=40?'#86efac': v>=70?'#ef4444': 'var(--text2)';
+    return `<span style="color:${c}">${v}</span>`;
   };
 
   tbody.innerHTML = items.map(item=>{
     const t = item.technical||{};
+    const rsiBuy  = t.rsi_buy_signal;
     const pullback = t.pullback_signal;
-    const align = t.ma_alignment||'-';
-    const rowBg = pullback ? 'background:rgba(34,197,94,0.07)' : '';
+    const sell    = t.sell_signal;
+    const align   = t.ma_alignment||'-';
+
+    const rowBg = rsiBuy   ? 'background:rgba(34,197,94,0.12)' :
+                  pullback ? 'background:rgba(34,197,94,0.06)' :
+                  sell     ? 'background:rgba(239,68,68,0.06)'  : '';
+
+    const dotColor = rsiBuy||pullback ? '#22c55e' : alignColor[align]||'var(--text2)';
     const dev200color = t.ma200_dev==null ? '' : t.ma200_dev<=-10 ? 'color:#22c55e;font-weight:600' : t.ma200_dev>=20 ? 'color:#ef4444' : '';
     const w52color = t.week52_pct==null ? '' : t.week52_pct<=-30 ? 'color:#22c55e;font-weight:600' : '';
+
+    // 매수 신호 셀
+    let sigCell = '-';
+    if(rsiBuy)        sigCell = '<span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600">★RSI매수</span>';
+    else if(pullback) sigCell = '<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">눌림목</span>';
+    else if(sell)     sigCell = '<span style="background:#ef4444;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">이탈주의</span>';
+
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
-      <td style="padding:7px 8px;font-weight:${pullback?'600':'400'};white-space:nowrap">
-        ${pullback?'<span style="color:#22c55e;margin-right:4px">●</span>':'<span style="color:'+alignColor[align]+';margin-right:4px">●</span>'}${item.name}
+      <td style="padding:7px 8px;font-weight:${rsiBuy||pullback?'600':'400'};white-space:nowrap">
+        <span style="color:${dotColor};margin-right:4px">●</span>${item.name}
       </td>
       <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
-      <td style="text-align:right;padding:7px 8px;color:var(--text2)">${fmt(t.ma20)}</td>
-      <td style="text-align:right;padding:7px 8px;color:var(--text2)">${fmt(t.ma50)}</td>
-      <td style="text-align:right;padding:7px 8px;color:var(--text2)">${fmt(t.ma200)}</td>
+      <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma5)}</td>
+      <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma20)}</td>
+      <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma50)}</td>
+      <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma200)}</td>
       <td style="text-align:right;padding:7px 8px;${dev200color}">${fmtPct(t.ma200_dev)}</td>
       <td style="text-align:right;padding:7px 8px;${w52color}">${fmtPct(t.week52_pct)}</td>
-      <td style="text-align:center;padding:7px 8px;color:${alignColor[align]||'var(--text2)'}">${align}</td>
-      <td style="text-align:center;padding:7px 8px">${pullback?'<span style="background:#22c55e;color:#fff;border-radius:4px;padding:1px 7px;font-size:11px">매수고려</span>':'-'}</td>
+      <td style="text-align:right;padding:7px 8px">${rsiBadge(t.rsi_weekly)}</td>
+      <td style="text-align:center;padding:7px 8px">${volBadge(t.vol_trend)}</td>
+      <td style="text-align:center;padding:7px 8px;color:${alignColor[align]||'var(--text2)'};font-size:12px">${align}</td>
+      <td style="text-align:center;padding:7px 8px">${sigCell}</td>
     </tr>`;
   }).join('');
 
