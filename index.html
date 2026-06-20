@@ -801,6 +801,30 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)" id="timing-devbar-title">장기 이평선 이격률</div>
     <div id="timing-devbar" style="display:flex;flex-direction:column;gap:4px"></div>
   </div>
+
+  <!-- 한국 종목 전용: 투자자별 수급 동향 -->
+  <div id="timing-investor-section" style="margin-top:24px;display:none">
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px;color:var(--text)">투자자별 수급 동향 (1개월 누적)</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:10px" id="timing-investor-period">기간 정보 로딩 중...</div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border);color:var(--text2)">
+            <th style="text-align:left;padding:6px 8px;font-weight:500">종목</th>
+            <th style="text-align:right;padding:6px 8px;font-weight:500">외국인<br>순매수</th>
+            <th style="text-align:right;padding:6px 8px;font-weight:500">기관<br>순매수</th>
+            <th style="text-align:right;padding:6px 8px;font-weight:500">연기금<br>순매수</th>
+            <th style="text-align:right;padding:6px 8px;font-weight:500">외국인<br>지분율</th>
+            <th style="text-align:right;padding:6px 8px;font-weight:500">4주전<br>대비</th>
+            <th style="text-align:center;padding:6px 8px;font-weight:500">수급<br>신호</th>
+          </tr>
+        </thead>
+        <tbody id="timing-investor-body">
+          <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text2)">데이터 로딩 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -2966,6 +2990,87 @@ function renderTimingPanel(tab){
         <div style="width:50%">${dev>=0?bar:''}</div>
       </div>
     </div>`;
+  }).join('');
+
+  // 한국 종목일 때만 투자자 수급 섹션 표시
+  const invSection = document.getElementById('timing-investor-section');
+  if(invSection){
+    if(isKR){
+      invSection.style.display = 'block';
+      renderInvestorFlow(items);
+    } else {
+      invSection.style.display = 'none';
+    }
+  }
+}
+
+function renderInvestorFlow(items){
+  const tbody  = document.getElementById('timing-investor-body');
+  const periodEl = document.getElementById('timing-investor-period');
+  if(!tbody) return;
+
+  const withFlow = items.filter(i => i.investor);
+  if(!withFlow.length){
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text2)">수급 데이터 없음 — 투자자 수급 수집 후 확인</td></tr>';
+    if(periodEl) periodEl.textContent = '';
+    return;
+  }
+
+  const first = withFlow[0].investor;
+  if(periodEl && first.period_start && first.period_end){
+    const fmtDate = s => s ? `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}` : '';
+    periodEl.textContent = `기간: ${fmtDate(first.period_start)} ~ ${fmtDate(first.period_end)}`;
+  }
+
+  const fmtShares = v => v==null ? '-' : (v>0?'+':'') + v.toLocaleString() + '주';
+  const fmtPctFlow = v => v==null ? '-' : (v>0?'+':'') + v.toFixed(2) + '%p';
+
+  // 외국인+기관 동반 순매수 종목 우선 정렬
+  const sorted = [...items].sort((a,b)=>{
+    const score = it => {
+      const inv = it.investor;
+      if(!inv) return 9;
+      const fPos = (inv.foreign_net_1m||0) > 0;
+      const iPos = (inv.inst_net_1m||0) > 0;
+      if(fPos && iPos) return 0;
+      if(fPos || iPos) return 1;
+      return 2;
+    };
+    return score(a) - score(b);
+  });
+
+  tbody.innerHTML = sorted.map(item => {
+    const inv = item.investor;
+    if(!inv){
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:7px 8px">${item.name}</td>
+        <td colspan="6" style="text-align:center;padding:7px 8px;color:var(--text2)">데이터 없음</td>
+      </tr>`;
+    }
+    const fNet = inv.foreign_net_1m, iNet = inv.inst_net_1m, pNet = inv.pension_net_1m;
+    const fColor = fNet==null ? '' : fNet>0 ? 'color:#22c55e' : fNet<0 ? 'color:#ef4444' : '';
+    const iColor = iNet==null ? '' : iNet>0 ? 'color:#22c55e' : iNet<0 ? 'color:#ef4444' : '';
+    const pColor = pNet==null ? '' : pNet>0 ? 'color:#22c55e' : pNet<0 ? 'color:#ef4444' : '';
+    const rChange = inv.foreign_ratio_change;
+    const rColor  = rChange==null ? '' : rChange>0 ? 'color:#22c55e' : rChange<0 ? 'color:#ef4444' : '';
+
+    const bothBuy = (fNet||0) > 0 && (iNet||0) > 0;
+    const eitherBuy = (fNet||0) > 0 || (iNet||0) > 0;
+    let sigCell = '-';
+    if(bothBuy)        sigCell = '<span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600">동반매수</span>';
+    else if(eitherBuy) sigCell = '<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">단독매수</span>';
+
+    const rowBg = bothBuy ? 'background:rgba(34,197,94,0.07)' : '';
+
+    return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
+      <td style="padding:7px 8px;font-weight:${bothBuy?'600':'400'}">${item.name}</td>
+      <td style="text-align:right;padding:7px 8px;${fColor}">${fmtShares(fNet)}</td>
+      <td style="text-align:right;padding:7px 8px;${iColor}">${fmtShares(iNet)}</td>
+      <td style="text-align:right;padding:7px 8px;${pColor}">${fmtShares(pNet)}</td>
+      <td style="text-align:right;padding:7px 8px">${inv.foreign_ratio!=null ? inv.foreign_ratio.toFixed(2)+'%' : '-'}</td>
+      <td style="text-align:right;padding:7px 8px;${rColor}">${fmtPctFlow(rChange)}</td>
+      <td style="text-align:center;padding:7px 8px">${sigCell}</td>
+    </tr>`;
   }).join('');
 }
 
