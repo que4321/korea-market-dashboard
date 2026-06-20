@@ -2908,7 +2908,14 @@ function renderTimingPanel(tab){
   if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
 
   const ts = document.getElementById('timing-ts');
-  if(ts) ts.textContent = '업데이트: ' + (macro.updated_at||'-') + ' (매주 월요일 08:30)';
+  if(ts){
+    const techUpdated = macro.technical_updated;
+    if(techUpdated){
+      ts.textContent = '기술지표 업데이트: ' + techUpdated + ' (매일 09:00, 평일)';
+    } else {
+      ts.textContent = '업데이트: ' + (macro.updated_at||'-') + ' (매주 월요일 08:30)';
+    }
+  }
 
   const items = tab==='kr'
     ? Object.entries(macro.kr_stocks||{}).map(([name,v])=>({name, ...v}))
