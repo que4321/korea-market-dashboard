@@ -168,6 +168,10 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <button class="ntab" onclick="showPanel('timing',this)" id="tab-timing">⏱ 매수시점</button>
     <div class="tab-ts" id="ts-timing">매주 월요일 08:30 KST</div>
   </div>
+  <div style="display:flex;flex-direction:column;align-items:center">
+    <button class="ntab" onclick="showPanel('discovery',this)" id="tab-discovery">🔎 종목 발굴</button>
+    <div class="tab-ts" id="ts-discovery">눌림목 매일·수급 화요일</div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -828,6 +832,42 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 </div>
 
 <!-- ══════════════════════════════════════
+     패널 8: 코스피 종목 발굴
+══════════════════════════════════════ -->
+<div id="panel-discovery" class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:13px;color:var(--text2)" id="discovery-ts">데이터 로딩 중...</div>
+  </div>
+
+  <div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6">
+    코스피 시가총액 상위 80종목을 매주 스캔하여, 다음 4가지 조건을 <b style="color:var(--text)">모두</b> 충족하는 종목만 표시합니다.
+    <br>① 눌림목 신호 &nbsp;② 외국인 1개월 순매수 + &nbsp;③ 기관 1개월 순매수 + &nbsp;④ 외국인 지분율 4주 전 대비 증가
+  </div>
+
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:13px" id="discovery-table">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);color:var(--text2)">
+          <th style="text-align:left;padding:6px 8px;font-weight:500">종목</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">현재가</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">MA120<br>이격률</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">52주고점<br>대비</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">RSI<br>주봉</th>
+          <th style="text-align:center;padding:6px 8px;font-weight:500">눌림목<br>위치</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">외국인<br>순매수</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">기관<br>순매수</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">외국인<br>지분율</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">4주전<br>대비</th>
+        </tr>
+      </thead>
+      <tbody id="discovery-body">
+        <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
      패널 6: 거시경제 지표
 ══════════════════════════════════════ -->
 <div id="panel-macro" class="panel active">
@@ -936,6 +976,10 @@ function showPanel(id,el){
   if(id==='timing'){
     if(cachedData?.macro?.m7 && cachedData?.macro?.kr_stocks){ renderTimingPanel('kr'); }
     else { loadMacroFile().then(()=>renderTimingPanel('kr')); }
+  }
+  if(id==='discovery'){
+    if(cachedData?.kospi_discovery){ renderDiscoveryPanel(); }
+    else { loadScanner().then(()=>renderDiscoveryPanel()); }
   }
 }
 
@@ -3070,6 +3114,68 @@ function renderInvestorFlow(items){
       <td style="text-align:right;padding:7px 8px">${inv.foreign_ratio!=null ? inv.foreign_ratio.toFixed(2)+'%' : '-'}</td>
       <td style="text-align:right;padding:7px 8px;${rColor}">${fmtPctFlow(rChange)}</td>
       <td style="text-align:center;padding:7px 8px">${sigCell}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDiscoveryPanel(){
+  const disc = cachedData?.kospi_discovery;
+  const tbody = document.getElementById('discovery-body');
+  const tsEl  = document.getElementById('discovery-ts');
+
+  if(!disc){
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 종목 발굴 스캔 후 확인 (매주 화요일 수급 확정)</td></tr>';
+    if(tsEl) tsEl.textContent = '';
+    return;
+  }
+
+  if(tsEl) tsEl.textContent = `업데이트: ${disc.updated_at||'-'} | 스캔: ${disc.scanned_count||0}종목 중 ${disc.found_count||0}종목 발굴`;
+
+  const stocks = disc.stocks || [];
+  if(!stocks.length){
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text2)">이번 주 조건 충족 종목 없음</td></tr>';
+    return;
+  }
+
+  const fmt = v => v==null ? '-' : v.toLocaleString()+'₩';
+  const fmtPct = v => v==null ? '-' : (v>0?'+':'')+v.toFixed(1)+'%';
+  const fmtPctFlow = v => v==null ? '-' : (v>0?'+':'')+v.toFixed(2)+'%p';
+  const fmtShares = v => v==null ? '-' : (v>0?'+':'')+v.toLocaleString()+'주';
+
+  // 정렬: RSI매수신호 먼저, 그 다음 외국인 순매수 큰 순
+  const sorted = [...stocks].sort((a,b)=>{
+    const aRsi = a.technical?.rsi_buy_signal ? 0 : 1;
+    const bRsi = b.technical?.rsi_buy_signal ? 0 : 1;
+    if(aRsi !== bRsi) return aRsi - bRsi;
+    return (b.investor?.foreign_net_1m||0) - (a.investor?.foreign_net_1m||0);
+  });
+
+  tbody.innerHTML = sorted.map(item=>{
+    const t = item.technical||{};
+    const inv = item.investor||{};
+    const rsiBuy = t.rsi_buy_signal;
+    const dev200color = t.ma120_dev==null ? '' : t.ma120_dev<=-10 ? 'color:#22c55e;font-weight:600' : t.ma120_dev>=20 ? 'color:#ef4444' : '';
+    const w52color = t.week52_pct==null ? '' : t.week52_pct<=-30 ? 'color:#22c55e;font-weight:600' : '';
+    const rowBg = rsiBuy ? 'background:rgba(34,197,94,0.1)' : 'background:rgba(34,197,94,0.04)';
+
+    const pullbackBadge = `<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">${t.pullback_at||'-'}</span>`;
+    const rsiCell = t.rsi_weekly==null ? '-' :
+      (t.rsi_weekly<=30 ? `<span style="color:#22c55e;font-weight:700">${t.rsi_weekly}</span>` : t.rsi_weekly);
+
+    return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
+      <td style="padding:7px 8px;font-weight:${rsiBuy?'700':'600'}">
+        ${rsiBuy?'<span style="color:#22c55e;margin-right:4px">★</span>':''}${item.name}
+        <span style="color:var(--text2);font-size:11px;margin-left:4px">${item.code}</span>
+      </td>
+      <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
+      <td style="text-align:right;padding:7px 8px;${dev200color}">${fmtPct(t.ma120_dev)}</td>
+      <td style="text-align:right;padding:7px 8px;${w52color}">${fmtPct(t.week52_pct)}</td>
+      <td style="text-align:right;padding:7px 8px">${rsiCell}</td>
+      <td style="text-align:center;padding:7px 8px">${pullbackBadge}</td>
+      <td style="text-align:right;padding:7px 8px;color:#22c55e">${fmtShares(inv.foreign_net_1m)}</td>
+      <td style="text-align:right;padding:7px 8px;color:#22c55e">${fmtShares(inv.inst_net_1m)}</td>
+      <td style="text-align:right;padding:7px 8px">${inv.foreign_ratio!=null?inv.foreign_ratio.toFixed(2)+'%':'-'}</td>
+      <td style="text-align:right;padding:7px 8px;color:#22c55e">${fmtPctFlow(inv.foreign_ratio_change)}</td>
     </tr>`;
   }).join('');
 }
