@@ -142,7 +142,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 <div class="nav" style="display:flex;align-items:flex-end;gap:0;flex-wrap:wrap">
   <div style="display:flex;flex-direction:column;align-items:center">
     <button class="ntab active" onclick="showPanel('macro',this)" id="tab-macro">🌐 거시경제</button>
-    <div class="tab-ts" id="ts-macro">실시간</div>
+    <div class="tab-ts" id="ts-macro">매주 월요일 08:30 KST</div>
   </div>
   <div style="display:flex;flex-direction:column;align-items:center">
     <button class="ntab" onclick="showPanel('scanner',this)" id="tab-scanner">🔍 저평가 스캐너</button>
@@ -829,6 +829,32 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       </table>
     </div>
   </div>
+
+  <!-- 데이터 출처 및 갱신 주기 비고 -->
+  <div style="margin-top:24px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:6px;color:var(--text)">데이터 갱신 안내</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="color:var(--text2);border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:4px 8px;font-weight:500">스크립트</th>
+          <th style="text-align:left;padding:4px 8px;font-weight:500">주기</th>
+          <th style="text-align:left;padding:4px 8px;font-weight:500">갱신 내용</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:4px 8px"><code>timing_technical_scan.py</code></td>
+          <td style="padding:4px 8px">매일 09:00 (평일)</td>
+          <td style="padding:4px 8px">MA / RSI / 거래량 / 눌림목</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px"><code>macro_scan.py</code></td>
+          <td style="padding:4px 8px">주 1회 월요일 08:30</td>
+          <td style="padding:4px 8px">거시지표 + M7 주가·EPS + 한국 주가 (기술지표도 동일 계산되나 매일 갱신본으로 대체됨)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -836,6 +862,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 ══════════════════════════════════════ -->
 <div id="panel-discovery" class="panel">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+
     <div style="font-size:13px;color:var(--text2)" id="discovery-ts">데이터 로딩 중...</div>
   </div>
 
@@ -862,6 +889,32 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       </thead>
       <tbody id="discovery-body">
         <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 데이터 출처 및 갱신 주기 비고 -->
+  <div style="margin-top:24px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:6px;color:var(--text)">데이터 갱신 안내</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="color:var(--text2);border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:4px 8px;font-weight:500">스크립트</th>
+          <th style="text-align:left;padding:4px 8px;font-weight:500">주기</th>
+          <th style="text-align:left;padding:4px 8px;font-weight:500">갱신 내용</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:4px 8px"><code>kospi_pullback_scan.py</code></td>
+          <td style="padding:4px 8px">매일 09:00 (평일)</td>
+          <td style="padding:4px 8px">코스피 시총 상위 80종목 눌림목 신호만</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px"><code>kospi_discovery_scan.py</code></td>
+          <td style="padding:4px 8px">주 1회 화요일 09:00</td>
+          <td style="padding:4px 8px">눌림목 종목 대상 외국인·기관 수급 4조건 필터</td>
+        </tr>
       </tbody>
     </table>
   </div>
@@ -2910,11 +2963,9 @@ function renderTimingPanel(tab){
   const ts = document.getElementById('timing-ts');
   if(ts){
     const techUpdated = macro.technical_updated;
-    if(techUpdated){
-      ts.textContent = '기술지표 업데이트: ' + techUpdated + ' (매일 09:00, 평일)';
-    } else {
-      ts.textContent = '업데이트: ' + (macro.updated_at||'-') + ' (매주 월요일 08:30)';
-    }
+    ts.textContent = techUpdated
+      ? '기술지표 업데이트: ' + techUpdated
+      : '업데이트: ' + (macro.updated_at||'-');
   }
 
   const items = tab==='kr'
@@ -3136,7 +3187,11 @@ function renderDiscoveryPanel(){
     return;
   }
 
-  if(tsEl) tsEl.textContent = `업데이트: ${disc.updated_at||'-'} | 스캔: ${disc.scanned_count||0}종목 중 ${disc.found_count||0}종목 발굴`;
+  const pullbackUpdated = cachedData?.kospi_pullback?.updated_at;
+  if(tsEl){
+    tsEl.textContent = `수급 발굴: ${disc.updated_at||'-'} (${disc.scanned_count||0}종목 중 ${disc.found_count||0}종목)`
+      + (pullbackUpdated ? ` · 눌림목 일일갱신: ${pullbackUpdated}` : '');
+  }
 
   const stocks = disc.stocks || [];
   if(!stocks.length){
