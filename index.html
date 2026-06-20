@@ -139,39 +139,15 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
   </div>
 </header>
 
-<div class="nav" style="display:flex;align-items:flex-end;gap:0;flex-wrap:wrap">
-  <div style="display:flex;flex-direction:column;align-items:center">
-    <button class="ntab active" onclick="showPanel('macro',this)" id="tab-macro">🌐 거시경제</button>
-    <div class="tab-ts" id="ts-macro">매주 월요일 08:30 KST</div>
-  </div>
-  <div style="display:flex;flex-direction:column;align-items:center">
-    <button class="ntab" onclick="showPanel('scanner',this)" id="tab-scanner">🔍 저평가 스캐너</button>
-    <div class="tab-ts" id="ts-scanner">매주 월요일 08:13 KST</div>
-  </div>
-  <div style="display:flex;flex-direction:column;align-items:center">
-    <button class="ntab" onclick="showPanel('kr',this)" id="tab-kr">🇰🇷 한국 시장</button>
-    <div class="tab-ts" id="ts-kr">매일 07:00 KST</div>
-  </div>
-  <div style="display:flex;flex-direction:column;align-items:center">
-    <button class="ntab" onclick="showPanel('us',this)" id="tab-us">🇺🇸 미국 시장</button>
-    <div class="tab-ts" id="ts-us">매일 07:00 KST</div>
-  </div>
-  <div style="display:flex;flex-direction:column;align-items:center">
-    <button class="ntab" onclick="showPanel('liquidity',this)" id="tab-liquidity">💧 미국 유동성</button>
-    <div class="tab-ts" id="ts-liquidity">매주 금요일 08:00 KST</div>
-  </div>
-  <div style="display:flex;flex-direction:column;align-items:center">
-    <button class="ntab" onclick="showPanel('investor',this)" id="tab-investor">📈 투자자 분석</button>
-    <div class="tab-ts" id="ts-investor">매일 18:00 KST</div>
-  </div>
-  <div style="display:flex;flex-direction:column;align-items:center">
-    <button class="ntab" onclick="showPanel('timing',this)" id="tab-timing">⏱ 매수시점</button>
-    <div class="tab-ts" id="ts-timing">매일 09:00 KST (평일)</div>
-  </div>
-  <div style="display:flex;flex-direction:column;align-items:center">
-    <button class="ntab" onclick="showPanel('discovery',this)" id="tab-discovery">🔎 종목 발굴</button>
-    <div class="tab-ts" id="ts-discovery">눌림목 매일·수급 화요일</div>
-  </div>
+<div class="nav" style="display:flex;align-items:center;gap:0;flex-wrap:wrap">
+  <button class="ntab active" onclick="showPanel('macro',this)" id="tab-macro">🌐 거시경제</button>
+  <button class="ntab" onclick="showPanel('scanner',this)" id="tab-scanner">🔍 저평가 스캐너</button>
+  <button class="ntab" onclick="showPanel('kr',this)" id="tab-kr">🇰🇷 한국 시장</button>
+  <button class="ntab" onclick="showPanel('us',this)" id="tab-us">🇺🇸 미국 시장</button>
+  <button class="ntab" onclick="showPanel('liquidity',this)" id="tab-liquidity">💧 미국 유동성</button>
+  <button class="ntab" onclick="showPanel('investor',this)" id="tab-investor">📈 투자자 분석</button>
+  <button class="ntab" onclick="showPanel('timing',this)" id="tab-timing">⏱ 매수시점</button>
+  <button class="ntab" onclick="showPanel('discovery',this)" id="tab-discovery">🔎 종목 발굴</button>
 </div>
 
 <!-- ══════════════════════════════════════
