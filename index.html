@@ -820,12 +820,12 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <tbody>
         <tr style="border-bottom:1px solid var(--border)">
           <td style="padding:4px 8px"><code>timing_technical_scan.py</code></td>
-          <td style="padding:4px 8px">매일 09:00 (평일)</td>
+          <td style="padding:4px 8px">매일 09:00 KST (평일)</td>
           <td style="padding:4px 8px">MA / RSI / 거래량 / 눌림목</td>
         </tr>
         <tr>
           <td style="padding:4px 8px"><code>macro_scan.py</code></td>
-          <td style="padding:4px 8px">주 1회 월요일 08:30</td>
+          <td style="padding:4px 8px">매주 월요일 08:30 KST</td>
           <td style="padding:4px 8px">거시지표 + M7 주가·EPS + 한국 주가 (기술지표도 동일 계산되나 매일 갱신본으로 대체됨)</td>
         </tr>
       </tbody>
@@ -883,12 +883,12 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <tbody>
         <tr style="border-bottom:1px solid var(--border)">
           <td style="padding:4px 8px"><code>kospi_pullback_scan.py</code></td>
-          <td style="padding:4px 8px">매일 09:00 (평일)</td>
+          <td style="padding:4px 8px">매일 09:00 KST (평일)</td>
           <td style="padding:4px 8px">코스피 시총 상위 80종목 눌림목 신호만</td>
         </tr>
         <tr>
           <td style="padding:4px 8px"><code>kospi_discovery_scan.py</code></td>
-          <td style="padding:4px 8px">주 1회 화요일 09:00</td>
+          <td style="padding:4px 8px">매주 화요일 09:00 KST</td>
           <td style="padding:4px 8px">눌림목 종목 대상 외국인·기관 수급 4조건 필터</td>
         </tr>
       </tbody>
@@ -1109,7 +1109,7 @@ async function loadDash(){
     }
     const d=histData[histData.length-1];
     const now=new Date();
-    const ts=`수집: ${d.date} · 로드: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const ts=`업데이트: ${d.date} · 매일 07:00 KST 자동갱신`;
     // 한국/미국 시장은 기본 주기만 표시 (수집 날짜는 패널 내부에 표시)
     document.getElementById('kr-ts').textContent=ts;
     document.getElementById('us-ts').textContent=ts;
@@ -1461,7 +1461,7 @@ async function loadMacroData(){
 
     renderMacroPanel(fred);
     document.getElementById('macro-ts').textContent =
-      'FRED 수집일: ' + (fred.updatedAt ?? '—') + ' (매주 월요일 자동 업데이트)';
+      '업데이트: ' + (fred.updatedAt ?? '—') + ' · 매주 월요일 08:30 KST 자동갱신';
   } catch(e) {
     console.error('loadMacroData 오류:', e);
     document.getElementById('macro-ts').textContent = '로드 실패: ' + e.message;
@@ -1660,7 +1660,7 @@ async function loadScanner(){
     } catch(pe) {
       throw new Error(`JSON 파싱 실패: ${pe.message}`);
     }
-    document.getElementById('hdr-sub').textContent=`최종 업데이트: ${cachedData.updated_at||'-'}`;
+    document.getElementById('hdr-sub').textContent=`업데이트: ${cachedData.updated_at||'-'} · 매주 월요일 08:13 KST 자동갱신`;
     const tsSc=document.getElementById('ts-scanner');
     if(tsSc&&cachedData.updated_at) tsSc.textContent='업데이트: '+cachedData.updated_at+' (매주 월요일 08:13)';
     renderData(cachedData);
@@ -1747,9 +1747,7 @@ function renderLiquidityChart(){
   if(!liq){ document.getElementById('liq-update').textContent='데이터 없음 — Actions 실행 후 확인하세요'; return; }
 
   const tga=liq.tga||[], rrp=liq.rrp||[], sp=liq.sp500||[];
-  document.getElementById('liq-update').textContent='업데이트: '+(liq.updated_at||'-');
-  const tsLiq=document.getElementById('ts-liquidity');
-  if(tsLiq&&liq.updated_at) tsLiq.textContent='업데이트: '+liq.updated_at+' (매주 금요일 08:00)';
+  document.getElementById('liq-update').textContent='업데이트: '+(liq.updated_at||'-')+' · 매주 금요일 08:00 KST 자동갱신';
 
   // 요약 카드
   if(tga.length){
@@ -2202,7 +2200,7 @@ async function loadInvestorData() {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     invRawData = await r.json();
     const upd = invRawData.updated_at || '-';
-    document.getElementById('inv-ts').textContent = '업데이트: ' + upd;
+    document.getElementById('inv-ts').textContent = '업데이트: ' + upd + ' · 매일 18:00 KST 자동갱신';
     const tEl = document.getElementById('ts-investor');
     if (tEl) tEl.textContent = upd;
   } catch(e) {
@@ -2940,8 +2938,8 @@ function renderTimingPanel(tab){
   if(ts){
     const techUpdated = macro.technical_updated;
     ts.textContent = techUpdated
-      ? '기술지표 업데이트: ' + techUpdated
-      : '업데이트: ' + (macro.updated_at||'-');
+      ? '업데이트: ' + techUpdated + ' · 매일 09:00 KST(평일) 자동갱신'
+      : '업데이트: ' + (macro.updated_at||'-') + ' · 매주 월요일 08:30 KST 자동갱신';
   }
 
   const items = tab==='kr'
@@ -3165,8 +3163,8 @@ function renderDiscoveryPanel(){
 
   const pullbackUpdated = cachedData?.kospi_pullback?.updated_at;
   if(tsEl){
-    tsEl.textContent = `수급 발굴: ${disc.updated_at||'-'} (${disc.scanned_count||0}종목 중 ${disc.found_count||0}종목)`
-      + (pullbackUpdated ? ` · 눌림목 일일갱신: ${pullbackUpdated}` : '');
+    tsEl.textContent = `업데이트: ${disc.updated_at||'-'} · 매주 화요일 09:00 KST 자동갱신 (수급 ${disc.scanned_count||0}종목 중 ${disc.found_count||0}종목 발굴)`
+      + (pullbackUpdated ? ` · 눌림목 업데이트: ${pullbackUpdated} · 매일 09:00 KST(평일) 자동갱신` : '');
   }
 
   const stocks = disc.stocks || [];
