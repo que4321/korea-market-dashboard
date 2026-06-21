@@ -135,7 +135,6 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 <header>
   <div>
     <div class="h1">📊 주식 분석 허브</div>
-    <div class="hsub" id="hdr-top-sub">데이터 로딩 중...</div>
   </div>
 </header>
 
@@ -1660,14 +1659,10 @@ async function loadScanner(){
     } catch(pe) {
       throw new Error(`JSON 파싱 실패: ${pe.message}`);
     }
-    const hdrTop = document.getElementById('hdr-top-sub');
-    if(hdrTop) hdrTop.textContent = `전체 데이터 최종 갱신: ${cachedData.updated_at||'-'}`;
     renderData(cachedData);
   } catch(e) {
     console.error('loadScanner 오류:', e.message);
     document.getElementById('table-body').innerHTML=`<tr><td colspan="12"><div class="err">⚠️ 스캐너 로드 실패: ${e.message}</div></td></tr>`;
-    const hdrTop = document.getElementById('hdr-top-sub');
-    if(hdrTop) hdrTop.textContent = '데이터 로드 실패: ' + e.message;
   }
 }
 
