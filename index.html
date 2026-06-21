@@ -135,7 +135,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 <header>
   <div>
     <div class="h1">📊 주식 분석 허브</div>
-    <div class="hsub" id="hdr-sub">데이터 로딩 중...</div>
+    <div class="hsub" id="hdr-top-sub">데이터 로딩 중...</div>
   </div>
 </header>
 
@@ -1660,14 +1660,14 @@ async function loadScanner(){
     } catch(pe) {
       throw new Error(`JSON 파싱 실패: ${pe.message}`);
     }
-    document.getElementById('hdr-sub').textContent=`업데이트: ${cachedData.updated_at||'-'} · 매주 월요일 08:13 KST 자동갱신`;
-    const tsSc=document.getElementById('ts-scanner');
-    if(tsSc&&cachedData.updated_at) tsSc.textContent='업데이트: '+cachedData.updated_at+' (매주 월요일 08:13)';
+    const hdrTop = document.getElementById('hdr-top-sub');
+    if(hdrTop) hdrTop.textContent = `전체 데이터 최종 갱신: ${cachedData.updated_at||'-'}`;
     renderData(cachedData);
   } catch(e) {
     console.error('loadScanner 오류:', e.message);
     document.getElementById('table-body').innerHTML=`<tr><td colspan="12"><div class="err">⚠️ 스캐너 로드 실패: ${e.message}</div></td></tr>`;
-    document.getElementById('hdr-sub').textContent='스캐너 로드 실패: '+e.message;
+    const hdrTop = document.getElementById('hdr-top-sub');
+    if(hdrTop) hdrTop.textContent = '데이터 로드 실패: ' + e.message;
   }
 }
 
