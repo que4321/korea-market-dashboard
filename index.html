@@ -147,6 +147,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
   <button class="ntab" onclick="showPanel('investor',this)" id="tab-investor">📈 투자자 분석</button>
   <button class="ntab" onclick="showPanel('timing',this)" id="tab-timing">⏱ 매수시점</button>
   <button class="ntab" onclick="showPanel('discovery',this)" id="tab-discovery">🔎 종목 발굴</button>
+  <button class="ntab" onclick="showPanel('flowsignal',this)" id="tab-flowsignal">📡 연속수급</button>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -896,6 +897,107 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 </div>
 
 <!-- ══════════════════════════════════════
+     패널 9: KOSPI200 연속 순매수 신호
+══════════════════════════════════════ -->
+<div id="panel-flowsignal" class="panel">
+
+  <!-- 헤더 -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">📡 KOSPI200 연속 순매수 신호</div>
+      <div class="ts" id="flow-updated" style="margin-top:3px">데이터 로딩 중...</div>
+    </div>
+    <button onclick="loadFlowData(true)" style="font-size:12px;cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);">↻ 새로고침</button>
+  </div>
+
+  <!-- 필터 컨트롤 -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
+    <!-- 연속 일수 -->
+    <div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden">
+      <button id="flow-btn-day3" onclick="setFlowDay(3)"
+        style="padding:7px 18px;background:rgba(56,189,248,.15);color:var(--accent);border:none;cursor:pointer;font-size:12px;font-weight:600;">3일 연속</button>
+      <button id="flow-btn-day5" onclick="setFlowDay(5)"
+        style="padding:7px 18px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;font-weight:600;">5일 연속</button>
+    </div>
+    <!-- 투자자 유형 -->
+    <div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden">
+      <button id="flow-btn-all" onclick="setFlowInv('all')"
+        style="padding:7px 14px;background:rgba(56,189,248,.15);color:var(--accent);border:none;cursor:pointer;font-size:12px;font-weight:600;">전체</button>
+      <button id="flow-btn-foreign" onclick="setFlowInv('foreign')"
+        style="padding:7px 14px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;">외국인</button>
+      <button id="flow-btn-institution" onclick="setFlowInv('institution')"
+        style="padding:7px 14px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;">기관</button>
+      <button id="flow-btn-pension" onclick="setFlowInv('pension')"
+        style="padding:7px 14px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;">연기금</button>
+    </div>
+  </div>
+
+  <!-- 요약 카드 3개 -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+    <div class="mcard" style="text-align:center">
+      <div class="mlabel">외국인</div>
+      <div class="mval" id="flow-cnt-foreign" style="color:#ef4444">—</div>
+      <div class="msub" style="color:var(--text3)" id="flow-lbl-foreign">종목</div>
+    </div>
+    <div class="mcard" style="text-align:center">
+      <div class="mlabel">기관</div>
+      <div class="mval" id="flow-cnt-institution" style="color:#38bdf8">—</div>
+      <div class="msub" style="color:var(--text3)" id="flow-lbl-institution">종목</div>
+    </div>
+    <div class="mcard" style="text-align:center">
+      <div class="mlabel">연기금</div>
+      <div class="mval" id="flow-cnt-pension" style="color:#fbbf24">—</div>
+      <div class="msub" style="color:var(--text3)" id="flow-lbl-pension">종목</div>
+    </div>
+  </div>
+
+  <!-- 테이블 -->
+  <div style="overflow-x:auto;background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:var(--bg3);border-bottom:1px solid var(--border2)">
+          <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px">종목</th>
+          <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px">투자자</th>
+          <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--text3)">연속</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">D-0</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">D-1</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">D-2</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" id="flow-th-d3">D-3</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" id="flow-th-d4">D-4</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">누적</th>
+        </tr>
+      </thead>
+      <tbody id="flow-tbody">
+        <tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text2)">
+          <div class="spinner" style="margin:0 auto 12px"></div>데이터 로딩 중...
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 갱신 안내 -->
+  <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:6px;color:var(--text)">데이터 갱신 안내</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="color:var(--text2);border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:4px 8px;font-weight:500">스크립트</th>
+          <th style="text-align:left;padding:4px 8px;font-weight:500">주기</th>
+          <th style="text-align:left;padding:4px 8px;font-weight:500">갱신 내용</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:4px 8px"><code>kospi_consecutive_flow_scan.py</code></td>
+          <td style="padding:4px 8px">매일 09:30 KST (월~금)</td>
+          <td style="padding:4px 8px">KOSPI200 전 종목 외국인·기관·연기금 3일·5일 연속 순매수 스캔</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
      패널 6: 거시경제 지표
 ══════════════════════════════════════ -->
 <div id="panel-macro" class="panel active">
@@ -999,6 +1101,8 @@ function showPanel(id,el){
       });
     }
   }
+  if(id==='flowsignal') loadFlowData();
+}
   if(id==='investor'&&!invLoaded) loadInvestorData();
   if(id==='macro') loadMacroData();
   if(id==='timing'){
@@ -3209,6 +3313,108 @@ function renderDiscoveryPanel(){
       <td style="text-align:right;padding:7px 8px;color:#22c55e">${fmtPctFlow(inv.foreign_ratio_change)}</td>
     </tr>`;
   }).join('');
+}
+
+/* ══════════════════ 연속수급 탭 ══════════════════ */
+let flowCache = null;
+let flowDay = 3;
+let flowInv = 'all';
+
+async function loadFlowData(force=false){
+  if(flowCache && !force){ renderFlowSignal(); return; }
+  const tbody = document.getElementById('flow-tbody');
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text2)"><div class="spinner" style="margin:0 auto 12px"></div>데이터 로딩 중...</td></tr>';
+  try{
+    const r = await fetch(SCANNER_URL + '?t=' + Date.now());
+    const json = await r.json();
+    flowCache = json.consecutive_flow || null;
+    if(!flowCache){
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text3)">아직 데이터 없음 — 스크립트 첫 실행 후 확인 (매일 09:30 KST)</td></tr>';
+      return;
+    }
+    renderFlowSignal();
+  }catch(e){
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--red)">로드 실패: ${e.message}</td></tr>`;
+  }
+}
+
+function setFlowDay(n){
+  flowDay = n;
+  [3,5].forEach(d=>{
+    const el = document.getElementById('flow-btn-day'+d);
+    if(el){el.style.background=d===n?'rgba(56,189,248,.15)':'var(--bg2)';el.style.color=d===n?'var(--accent)':'var(--text2)';}
+  });
+  renderFlowSignal();
+}
+
+function setFlowInv(type){
+  flowInv = type;
+  ['all','foreign','institution','pension'].forEach(t=>{
+    const el = document.getElementById('flow-btn-'+t);
+    if(el){el.style.background=t===type?'rgba(56,189,248,.15)':'var(--bg2)';el.style.color=t===type?'var(--accent)':'var(--text2)';}
+  });
+  renderFlowSignal();
+}
+
+function renderFlowSignal(){
+  if(!flowCache) return;
+  const upd = document.getElementById('flow-updated');
+  if(upd) upd.textContent='업데이트: '+(flowCache.updated_at||'-')+' · 기준일: '+(flowCache.analysis_end||'-')+' · 매일 09:30 KST 자동갱신';
+
+  const key = 'day'+flowDay;
+  const signals = flowCache.signals?.[key] || {};
+
+  const INV = {
+    foreign:     {label:'외국인', color:'#ef4444'},
+    institution: {label:'기관',   color:'#38bdf8'},
+    pension:     {label:'연기금', color:'#fbbf24'},
+  };
+
+  // 요약 카드
+  Object.entries(INV).forEach(([k,meta])=>{
+    const cnt=(signals[k]||[]).length;
+    const el=document.getElementById('flow-cnt-'+k);
+    const lbl=document.getElementById('flow-lbl-'+k);
+    if(el) el.textContent=cnt;
+    if(lbl) lbl.textContent=flowDay+'일 연속 종목';
+  });
+
+  // D-3, D-4 컬럼 헤더 표시/숨김
+  const show5 = flowDay===5;
+  const th3=document.getElementById('flow-th-d3');
+  const th4=document.getElementById('flow-th-d4');
+  if(th3) th3.style.display = show5 ? '' : 'none';
+  if(th4) th4.style.display = show5 ? '' : 'none';
+
+  const invKeys = flowInv==='all' ? ['foreign','institution','pension'] : [flowInv];
+  let rows=[];
+
+  for(const invKey of invKeys){
+    const items=[...(signals[invKey]||[])].sort((a,b)=>b.total_net-a.total_net);
+    const meta=INV[invKey];
+    for(const item of items){
+      const vals=item.daily_net||[];
+      const dayCells=[0,1,2,3,4].map(i=>{
+        const hide = (!show5 && i>=3) ? 'display:none;' : '';
+        const v=vals[i];
+        if(v===undefined) return `<td style="${hide}padding:9px 12px;text-align:right;color:var(--text3)">-</td>`;
+        const c=v>0?'#22c55e':'#ef4444';
+        return `<td style="${hide}padding:9px 12px;text-align:right;color:${c};font-family:'JetBrains Mono',monospace;font-size:12px">${v>0?'+':''}${v.toLocaleString()}</td>`;
+      }).join('');
+      const tc=item.total_net>0?'#22c55e':'#ef4444';
+      rows.push(`<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:9px 12px"><span style="font-weight:600">${item.name}</span><span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span></td>
+        <td style="padding:9px 12px;text-align:center"><span style="color:${meta.color};font-size:11px;font-weight:700">${meta.label}</span></td>
+        <td style="padding:9px 12px;text-align:center;color:var(--yellow);font-weight:700">${item.consecutive_days}일</td>
+        ${dayCells}
+        <td style="padding:9px 12px;text-align:right;color:${tc};font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.total_net>0?'+':''}${item.total_net.toLocaleString()}</td>
+      </tr>`);
+    }
+  }
+
+  document.getElementById('flow-tbody').innerHTML = rows.length
+    ? rows.join('')
+    : '<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text3)">해당 조건의 종목 없음</td></tr>';
 }
 
 /* 초기 로드 — 3개 파일 병렬 fetch */
