@@ -920,7 +920,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         style="padding:7px 18px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;font-weight:600;">5일 연속</button>
     </div>
     <!-- 투자자 유형 -->
-    <div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden">
+    <div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;flex-wrap:wrap">
       <button id="flow-btn-all" onclick="setFlowInv('all')"
         style="padding:7px 14px;background:rgba(56,189,248,.15);color:var(--accent);border:none;cursor:pointer;font-size:12px;font-weight:600;">전체</button>
       <button id="flow-btn-foreign" onclick="setFlowInv('foreign')"
@@ -929,11 +929,15 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         style="padding:7px 14px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;">기관</button>
       <button id="flow-btn-pension" onclick="setFlowInv('pension')"
         style="padding:7px 14px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;">연기금</button>
+      <button id="flow-btn-foreign_institution" onclick="setFlowInv('foreign_institution')"
+        style="padding:7px 14px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;">외국인&amp;기관</button>
+      <button id="flow-btn-foreign_pension" onclick="setFlowInv('foreign_pension')"
+        style="padding:7px 14px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;">외국인&amp;연기금</button>
     </div>
   </div>
 
-  <!-- 요약 카드 3개 -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+  <!-- 요약 카드 5개 -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px">
     <div class="mcard" style="text-align:center">
       <div class="mlabel">외국인</div>
       <div class="mval" id="flow-cnt-foreign" style="color:#ef4444">—</div>
@@ -948,6 +952,16 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <div class="mlabel">연기금</div>
       <div class="mval" id="flow-cnt-pension" style="color:#fbbf24">—</div>
       <div class="msub" style="color:var(--text3)" id="flow-lbl-pension">종목</div>
+    </div>
+    <div class="mcard" style="text-align:center">
+      <div class="mlabel">외국인&amp;기관</div>
+      <div class="mval" id="flow-cnt-foreign_institution" style="color:#34d399">—</div>
+      <div class="msub" style="color:var(--text3)" id="flow-lbl-foreign_institution">동반종목</div>
+    </div>
+    <div class="mcard" style="text-align:center">
+      <div class="mlabel">외국인&amp;연기금</div>
+      <div class="mval" id="flow-cnt-foreign_pension" style="color:#a78bfa">—</div>
+      <div class="msub" style="color:var(--text3)" id="flow-lbl-foreign_pension">동반종목</div>
     </div>
   </div>
 
@@ -3348,7 +3362,7 @@ function setFlowDay(n){
 
 function setFlowInv(type){
   flowInv = type;
-  ['all','foreign','institution','pension'].forEach(t=>{
+  ['all','foreign','institution','pension','foreign_institution','foreign_pension'].forEach(t=>{
     const el = document.getElementById('flow-btn-'+t);
     if(el){el.style.background=t===type?'rgba(56,189,248,.15)':'var(--bg2)';el.style.color=t===type?'var(--accent)':'var(--text2)';}
   });
@@ -3378,6 +3392,24 @@ function renderFlowSignal(){
     if(lbl) lbl.textContent=flowDay+'일 연속 종목';
   });
 
+  // 교차 필터용 종목 집합 계산
+  const foreignTickers  = new Set((signals['foreign']||[]).map(i=>i.ticker));
+  const instTickers     = new Set((signals['institution']||[]).map(i=>i.ticker));
+  const pensionTickers  = new Set((signals['pension']||[]).map(i=>i.ticker));
+
+  const crossFI  = [...foreignTickers].filter(t=>instTickers.has(t));
+  const crossFP  = [...foreignTickers].filter(t=>pensionTickers.has(t));
+
+  // 교차 카드 카운트
+  const cntFI = document.getElementById('flow-cnt-foreign_institution');
+  const lblFI = document.getElementById('flow-lbl-foreign_institution');
+  const cntFP = document.getElementById('flow-cnt-foreign_pension');
+  const lblFP = document.getElementById('flow-lbl-foreign_pension');
+  if(cntFI) cntFI.textContent = crossFI.length;
+  if(lblFI) lblFI.textContent = flowDay+'일 동반종목';
+  if(cntFP) cntFP.textContent = crossFP.length;
+  if(lblFP) lblFP.textContent = flowDay+'일 동반종목';
+
   // D-3, D-4 컬럼 헤더 표시/숨김
   const show5 = flowDay===5;
   const th3=document.getElementById('flow-th-d3');
@@ -3385,11 +3417,21 @@ function renderFlowSignal(){
   if(th3) th3.style.display = show5 ? '' : 'none';
   if(th4) th4.style.display = show5 ? '' : 'none';
 
-  const invKeys = flowInv==='all' ? ['foreign','institution','pension'] : [flowInv];
+  const invKeys = flowInv==='all' ? ['foreign','institution','pension']
+    : flowInv==='foreign_institution' ? ['foreign','institution']
+    : flowInv==='foreign_pension'     ? ['foreign','pension']
+    : [flowInv];
+
+  // 교차 필터일 때 공통 종목만 추림
+  const crossSet = flowInv==='foreign_institution' ? new Set(crossFI)
+    : flowInv==='foreign_pension' ? new Set(crossFP)
+    : null;
   let rows=[];
 
   for(const invKey of invKeys){
-    const items=[...(signals[invKey]||[])].sort((a,b)=>b.total_net-a.total_net);
+    const items=[...(signals[invKey]||[])]
+      .filter(item => crossSet ? crossSet.has(item.ticker) : true)
+      .sort((a,b)=>b.total_net-a.total_net);
     const meta=INV[invKey];
     for(const item of items){
       const vals=item.daily_net||[];
