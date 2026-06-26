@@ -3428,28 +3428,80 @@ function renderFlowSignal(){
     : null;
   let rows=[];
 
-  for(const invKey of invKeys){
-    const items=[...(signals[invKey]||[])]
-      .filter(item => crossSet ? crossSet.has(item.ticker) : true)
-      .sort((a,b)=>b.total_net-a.total_net);
-    const meta=INV[invKey];
-    for(const item of items){
-      const vals=item.daily_net||[];
-      const dayCells=[0,1,2,3,4].map(i=>{
+  if(crossSet){
+    // ── 교차 필터: 종목당 1행, 투자자 컬럼에 두 유형 병기 ──
+    const [keyA, keyB] = invKeys;
+    const mapA = Object.fromEntries((signals[keyA]||[]).map(i=>[i.ticker,i]));
+    const mapB = Object.fromEntries((signals[keyB]||[]).map(i=>[i.ticker,i]));
+    const metaA = INV[keyA];
+    const metaB = INV[keyB];
+
+    const merged = [...crossSet].map(ticker=>{
+      const a = mapA[ticker]; const b = mapB[ticker];
+      return { ticker, name: a.name, totalA: a.total_net, totalB: b.total_net,
+               valsA: a.daily_net||[], valsB: b.daily_net||[] };
+    }).sort((a,b)=>b.totalA - a.totalA);
+
+    for(const item of merged){
+      const dayCellsA = [0,1,2,3,4].map(i=>{
         const hide = (!show5 && i>=3) ? 'display:none;' : '';
-        const v=vals[i];
-        if(v===undefined) return `<td style="${hide}padding:9px 12px;text-align:right;color:var(--text3)">-</td>`;
-        const c=v>0?'#22c55e':'#ef4444';
-        return `<td style="${hide}padding:9px 12px;text-align:right;color:${c};font-family:'JetBrains Mono',monospace;font-size:12px">${v>0?'+':''}${v.toLocaleString()}</td>`;
+        const v = item.valsA[i];
+        if(v===undefined) return `<td style="${hide}padding:5px 12px;text-align:right;color:var(--text3)">-</td>`;
+        return `<td style="${hide}padding:5px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px">${v>0?'+':''}${v.toLocaleString()}</td>`;
       }).join('');
-      const tc=item.total_net>0?'#22c55e':'#ef4444';
-      rows.push(`<tr style="border-bottom:1px solid var(--border)">
-        <td style="padding:9px 12px"><span style="font-weight:600">${item.name}</span><span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span></td>
-        <td style="padding:9px 12px;text-align:center"><span style="color:${meta.color};font-size:11px;font-weight:700">${meta.label}</span></td>
-        <td style="padding:9px 12px;text-align:center;color:var(--yellow);font-weight:700">${item.consecutive_days}일</td>
-        ${dayCells}
-        <td style="padding:9px 12px;text-align:right;color:${tc};font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.total_net>0?'+':''}${item.total_net.toLocaleString()}</td>
+      const dayCellsB = [0,1,2,3,4].map(i=>{
+        const hide = (!show5 && i>=3) ? 'display:none;' : '';
+        const v = item.valsB[i];
+        if(v===undefined) return `<td style="${hide}padding:5px 12px;text-align:right;color:var(--text3)">-</td>`;
+        return `<td style="${hide}padding:5px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px">${v>0?'+':''}${v.toLocaleString()}</td>`;
+      }).join('');
+
+      // 종목명 행 (헤더 역할)
+      const colspan = show5 ? 9 : 7;
+      rows.push(`<tr style="background:rgba(56,189,248,0.05);border-top:1px solid var(--border2)">
+        <td colspan="${colspan}" style="padding:8px 12px;font-weight:700;font-size:13px">
+          ${item.name} <span style="color:var(--text3);font-size:11px;font-weight:400;margin-left:4px">${item.ticker}</span>
+        </td>
       </tr>`);
+      // A행 (외국인)
+      rows.push(`<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+        <td style="padding:6px 12px 6px 20px;color:var(--text3);font-size:12px">└</td>
+        <td style="padding:6px 12px;text-align:center"><span style="color:${metaA.color};font-size:11px;font-weight:700">${metaA.label}</span></td>
+        <td style="padding:6px 12px;text-align:center;color:var(--yellow);font-weight:700">${flowDay}일</td>
+        ${dayCellsA}
+        <td style="padding:6px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.totalA>0?'+':''}${item.totalA.toLocaleString()}</td>
+      </tr>`);
+      // B행 (기관 or 연기금)
+      rows.push(`<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px 12px 6px 20px;color:var(--text3);font-size:12px">└</td>
+        <td style="padding:6px 12px;text-align:center"><span style="color:${metaB.color};font-size:11px;font-weight:700">${metaB.label}</span></td>
+        <td style="padding:6px 12px;text-align:center;color:var(--yellow);font-weight:700">${flowDay}일</td>
+        ${dayCellsB}
+        <td style="padding:6px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.totalB>0?'+':''}${item.totalB.toLocaleString()}</td>
+      </tr>`);
+    }
+  } else {
+    for(const invKey of invKeys){
+      const items=[...(signals[invKey]||[])].sort((a,b)=>b.total_net-a.total_net);
+      const meta=INV[invKey];
+      for(const item of items){
+        const vals=item.daily_net||[];
+        const dayCells=[0,1,2,3,4].map(i=>{
+          const hide = (!show5 && i>=3) ? 'display:none;' : '';
+          const v=vals[i];
+          if(v===undefined) return `<td style="${hide}padding:9px 12px;text-align:right;color:var(--text3)">-</td>`;
+          const c=v>0?'#22c55e':'#ef4444';
+          return `<td style="${hide}padding:9px 12px;text-align:right;color:${c};font-family:'JetBrains Mono',monospace;font-size:12px">${v>0?'+':''}${v.toLocaleString()}</td>`;
+        }).join('');
+        const tc=item.total_net>0?'#22c55e':'#ef4444';
+        rows.push(`<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:9px 12px"><span style="font-weight:600">${item.name}</span><span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span></td>
+          <td style="padding:9px 12px;text-align:center"><span style="color:${meta.color};font-size:11px;font-weight:700">${meta.label}</span></td>
+          <td style="padding:9px 12px;text-align:center;color:var(--yellow);font-weight:700">${item.consecutive_days}일</td>
+          ${dayCells}
+          <td style="padding:9px 12px;text-align:right;color:${tc};font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.total_net>0?'+':''}${item.total_net.toLocaleString()}</td>
+        </tr>`);
+      }
     }
   }
 
