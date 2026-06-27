@@ -1114,14 +1114,14 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <div class="msub" id="cf-deposit-chg" style="font-size:11px;color:var(--text3)">주식 대기자금</div>
     </div>
     <div class="mcard">
-      <div class="mlabel">MMF 잔고 (최신월)</div>
-      <div class="mval" id="cf-mmf" style="font-size:18px">—</div>
-      <div class="msub" style="font-size:11px;color:var(--text3)">단기 대피자금 (주식↔채권 완충)</div>
+      <div class="mlabel">신용융자 잔고 (최신월)</div>
+      <div class="mval" id="cf-margin" style="font-size:18px">—</div>
+      <div class="msub" style="font-size:11px;color:var(--text3)">레버리지 투자 규모↑ = 주식 과열 신호</div>
     </div>
     <div class="mcard">
-      <div class="mlabel">채권형펀드 설정액 (최신월)</div>
-      <div class="mval" id="cf-bondfund" style="font-size:18px">—</div>
-      <div class="msub" id="cf-bondfund-chg" style="font-size:11px;color:var(--text3)">채권 유입 직접 지표</div>
+      <div class="mlabel">RP 잔고 (최신월)</div>
+      <div class="mval" id="cf-rp" style="font-size:18px">—</div>
+      <div class="msub" id="cf-rp-chg" style="font-size:11px;color:var(--text3)">채권 유입 직접 지표</div>
     </div>
     <div class="mcard" style="background:rgba(56,189,248,0.05);border-color:rgba(56,189,248,0.2)">
       <div class="mlabel" style="color:var(--accent)">📊 자금 방향</div>
@@ -1178,17 +1178,17 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     </div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:var(--text2)">
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#38bdf8;margin-right:4px;vertical-align:middle"></span>투자자예탁금 (좌축, 일별)</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fbbf24;margin-right:4px;vertical-align:middle"></span>채권형펀드 설정액 (우축, 월별)</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#818cf8;margin-right:4px;vertical-align:middle"></span>MMF 잔고 (우축, 월별)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fbbf24;margin-right:4px;vertical-align:middle"></span>신용융자 잔고 (우축, 월별)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#818cf8;margin-right:4px;vertical-align:middle"></span>RP 잔고 (우축, 월별)</span>
     </div>
     <div class="chart-w" style="height:260px">
       <canvas id="chart-cf-flow" role="img" aria-label="투자자예탁금 vs 채권형펀드 듀얼 차트"></canvas>
     </div>
     <div style="margin-top:10px;padding:8px 12px;background:var(--bg3);border-radius:6px;font-size:11px;color:var(--text3)">
       💡 <b style="color:var(--text2)">읽는 법:</b>
-      투자자예탁금(파란선)이 하락하면서 채권형펀드(노란선)가 상승하면 → 주식에서 채권으로 자금 이동.
-      MMF(보라선)는 양쪽 사이의 완충지대 — MMF 급증 후 채권펀드 증가 순서로 이동하는 경우가 많음.
-      &nbsp;|&nbsp; 출처: 한국은행 ECOS API (투자자예탁금 901Y013 · 펀드잔액 901Y035)
+      투자자예탁금(파란선)이 하락하면서 신용융자(노란선)도 함께 감소하면 → 주식 시장 자금 이탈.
+      RP(보라선)는 단기 자금 대피처 — RP 잔고 증가는 채권 시장 선호 신호.
+      &nbsp;|&nbsp; 출처: 한국은행 ECOS API 901Y056 (S23A 투자자예탁금 · S23E 신용융자 · S23C RP)
     </div>
   </div>
 
@@ -3836,8 +3836,8 @@ function renderCapitalFlow(data){
   } else if(depEl) depEl.textContent = '수집 중';
 
   // MMF
-  const mmf = cf.mmf || [];
-  const mmfEl = document.getElementById('cf-mmf');
+  const mmf = cf.margin_loan || [];
+  const mmfEl = document.getElementById('cf-margin');
   if(mmf.length && mmfEl){
     const cur = mmf[mmf.length-1];
     const prev = mmf.length > 1 ? mmf[mmf.length-2] : null;
@@ -3845,14 +3845,14 @@ function renderCapitalFlow(data){
   } else if(mmfEl) mmfEl.textContent = '수집 중';
 
   // 채권형펀드
-  const bf = cf.bond_fund || [];
-  const bfEl = document.getElementById('cf-bondfund');
-  const bfChgEl = document.getElementById('cf-bondfund-chg');
+  const bf = cf.rp || [];
+  const bfEl = document.getElementById('cf-rp');
+  const bfChgEl = document.getElementById('cf-rp-chg');
   if(bf.length && bfEl){
     const cur = bf[bf.length-1];
     const prev = bf.length > 1 ? bf[bf.length-2] : null;
     bfEl.innerHTML = fmtTril(cur.value) + fmtChgPct(cur.value, prev?.value);
-    if(bfChgEl) bfChgEl.textContent = `채권 유입 직접 지표 (${cur.date})`;
+    if(bfChgEl) bfChgEl.textContent = `단기 자금 대피처 (${cur.date})`;
   } else if(bfEl) bfEl.textContent = '수집 중';
 
   // 자금 방향 판단
@@ -3860,17 +3860,17 @@ function renderCapitalFlow(data){
   if(dirEl){
     const stockOut = sumField(last5, 'foreign') < 0;  // 외국인 매도
     const depDown  = dep.length > 5 && dep[dep.length-1].value < dep[dep.length-6].value;  // 예탁금 감소
-    const bfUp     = bf.length > 1 && bf[bf.length-1].value > bf[bf.length-2].value;  // 채권펀드 증가
+    const marginUp = mmf.length > 1 && mmf[mmf.length-1].value > mmf[mmf.length-2].value;  // 신용융자 증가
     const yieldDown = by.length > 5 &&
       by[by.length-1].y10 < by[by.length-6].y10;  // 국채금리 하락
 
     let signals = [];
     if(stockOut) signals.push('외국인 주식 매도');
     if(depDown)  signals.push('예탁금↓');
-    if(bfUp)     signals.push('채권펀드↑');
+    if(!marginUp) signals.push('신용융자 안정');
     if(yieldDown) signals.push('국채금리↓');
 
-    const score = (stockOut?1:0) + (depDown?1:0) + (bfUp?1:0) + (yieldDown?1:0);
+    const score = (stockOut?1:0) + (depDown?1:0) + (!marginUp?1:0) + (yieldDown?1:0);
     if(score >= 3){
       dirEl.innerHTML = '<span style="color:var(--accent)">📤 주식→채권</span><br><small style="color:var(--text3);font-size:10px">' + signals.join(' · ') + '</small>';
     } else if(score === 0){
@@ -3917,7 +3917,7 @@ function renderCapitalFlow(data){
             spanGaps: true,
           },
           {
-            label: '채권형펀드',
+            label: '신용융자',
             data: bfData,
             borderColor: '#fbbf24',
             backgroundColor: 'rgba(251,191,36,0.08)',
@@ -3929,7 +3929,7 @@ function renderCapitalFlow(data){
             spanGaps: true,
           },
           {
-            label: 'MMF',
+            label: 'RP',
             data: mmfData,
             borderColor: '#818cf8',
             backgroundColor: 'rgba(129,140,248,0.08)',
