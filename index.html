@@ -148,6 +148,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
   <button class="ntab" onclick="showPanel('timing',this)" id="tab-timing">⏱ 매수시점</button>
   <button class="ntab" onclick="showPanel('discovery',this)" id="tab-discovery">🔎 종목 발굴</button>
   <button class="ntab" onclick="showPanel('flowsignal',this)" id="tab-flowsignal">📡 연속수급</button>
+  <button class="ntab" onclick="showPanel('capitalflow',this)" id="tab-capitalflow">💰 자금흐름</button>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -1073,6 +1074,77 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 
 </div>
 
+<!-- ══════════════════════════════════════
+     패널: 자금흐름
+══════════════════════════════════════ -->
+<div id="panel-capitalflow" class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--accent)">💰 국내 자금흐름 — KOSPI 투자자별 수급 + 국채 수익률</div>
+    <div class="ts" id="cf-updated" style="color:var(--text3)">로딩 중...</div>
+  </div>
+
+  <!-- 요약 카드 -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px">
+    <div class="mcard">
+      <div class="mlabel">외국인 순매수 (5일 누적)</div>
+      <div class="mval" id="cf-foreign-5d" style="font-size:18px">—</div>
+    </div>
+    <div class="mcard">
+      <div class="mlabel">기관 순매수 (5일 누적)</div>
+      <div class="mval" id="cf-inst-5d" style="font-size:18px">—</div>
+    </div>
+    <div class="mcard">
+      <div class="mlabel">개인 순매수 (5일 누적)</div>
+      <div class="mval" id="cf-ind-5d" style="font-size:18px">—</div>
+    </div>
+    <div class="mcard">
+      <div class="mlabel">국고채 10년 (최신)</div>
+      <div class="mval" id="cf-y10" style="font-size:18px">—</div>
+      <div class="msub" style="font-size:11px;color:var(--text3)">하락 = 채권 매수↑</div>
+    </div>
+  </div>
+
+  <!-- 차트 1: KOSPI 투자자별 순매수 -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head">
+      <div>
+        <div class="ctitle">KOSPI 투자자별 일별 순매수</div>
+        <div class="csub">단위: 억원 &nbsp;|&nbsp; 양수=순매수 / 음수=순매도</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:var(--text2)">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#38bdf8;margin-right:4px;vertical-align:middle"></span>외국인(매수 파란색 / 매도 빨간색)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#34d399;margin-right:4px;vertical-align:middle"></span>기관</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#475569;margin-right:4px;vertical-align:middle"></span>개인</span>
+    </div>
+    <div class="chart-w" style="height:280px">
+      <canvas id="chart-cf-stock" role="img" aria-label="KOSPI 투자자별 일별 순매수 막대 차트"></canvas>
+    </div>
+  </div>
+
+  <!-- 차트 2: 국채 수익률 -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="ctitle">국고채 수익률 추이 (%)</div>
+        <div class="csub">수익률 하락 = 채권 가격 상승 = 채권 매수 증가 신호</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:var(--text2)">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#38bdf8;margin-right:4px;vertical-align:middle"></span>국고채 3년</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#34d399;margin-right:4px;vertical-align:middle"></span>국고채 10년</span>
+    </div>
+    <div class="chart-w" style="height:220px">
+      <canvas id="chart-cf-bond" role="img" aria-label="국고채 3년 및 10년 수익률 추이 꺾은선 차트"></canvas>
+    </div>
+    <div style="margin-top:10px;padding:8px 12px;background:var(--bg3);border-radius:6px;font-size:11px;color:var(--text3)">
+      💡 외국인이 국채를 순매수하면 채권 가격↑ → 수익률↓ 흐름으로 간접 확인 가능 &nbsp;|&nbsp;
+      데이터 출처: pykrx (KRX 장외채권수익률) + KOSPI 투자자별 매매실적
+    </div>
+  </div>
+
+</div><!-- end panel-capitalflow -->
+
 <script>
 /* ══════════════════════ 공통 ══════════════════════ */
 const HIST_URL='https://raw.githubusercontent.com/que4321/korea-market-dashboard/main/data/history.json';
@@ -1125,6 +1197,10 @@ function showPanel(id,el){
   if(id==='discovery'){
     if(cachedData?.kospi_discovery){ renderDiscoveryPanel(); }
     else { loadScanner().then(()=>renderDiscoveryPanel()); }
+  }
+  if(id==='capitalflow'){
+    if(cachedData?.capital_flow){ renderCapitalFlow(cachedData); }
+    else { loadScanner().then(()=>renderCapitalFlow(cachedData)); }
   }
 }
 
@@ -3508,6 +3584,178 @@ function renderFlowSignal(){
   document.getElementById('flow-tbody').innerHTML = rows.length
     ? rows.join('')
     : '<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text3)">해당 조건의 종목 없음</td></tr>';
+}
+
+/* ══════════════════════ 자금흐름 ══════════════════════ */
+let cfStockChart = null;
+let cfBondChart  = null;
+
+function renderCapitalFlow(data){
+  const cf = data?.capital_flow;
+  if(!cf){
+    document.getElementById('cf-updated').textContent = '데이터 없음 — GitHub Actions 실행 후 확인 (평일 16:30 KST)';
+    return;
+  }
+
+  // 업데이트 시각
+  const upd = document.getElementById('cf-updated');
+  if(upd) upd.textContent = '업데이트: ' + (cf.updated_at||'-') + ' · 평일 16:30 KST 자동갱신';
+
+  // ── 요약 카드 (최근 5일 누적) ──────────────────────
+  const sf = cf.stock_flow || [];
+  const last5 = sf.slice(-5);
+
+  function sumField(arr, field){
+    return arr.reduce((s,r) => s + (r[field] || 0), 0);
+  }
+  function fmtAmt(v){
+    // 원 단위 → 억 변환 (raw 값이 원 단위)
+    const bil = v / 1e8;
+    const sign = bil >= 0 ? '+' : '';
+    const col = bil >= 0 ? 'var(--accent)' : 'var(--red)';
+    return `<span style="color:${col}">${sign}${bil.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')}억</span>`;
+  }
+
+  document.getElementById('cf-foreign-5d').innerHTML = last5.length ? fmtAmt(sumField(last5,'foreign')) : '—';
+  document.getElementById('cf-inst-5d').innerHTML    = last5.length ? fmtAmt(sumField(last5,'institution')) : '—';
+  document.getElementById('cf-ind-5d').innerHTML     = last5.length ? fmtAmt(sumField(last5,'individual')) : '—';
+
+  // 국채 10년 최신값
+  const by = cf.bond_yield || [];
+  if(by.length > 0){
+    const latest  = by[by.length - 1];
+    const prev    = by.length > 1 ? by[by.length - 2].y10 : latest.y10;
+    const diff    = (latest.y10 - prev).toFixed(3);
+    const diffSign = parseFloat(diff) >= 0 ? '+' : '';
+    const diffCol  = parseFloat(diff) >= 0 ? 'var(--red)' : 'var(--accent)';
+    document.getElementById('cf-y10').innerHTML =
+      `${latest.y10}% <small style="font-size:11px;color:${diffCol}">(${diffSign}${diff})</small>`;
+  }
+
+  // ── 차트 1: 투자자별 순매수 막대 ───────────────────
+  const labels  = sf.map(r => r.date.slice(5));
+  const foreign = sf.map(r => Math.round((r.foreign     || 0) / 1e8));
+  const inst    = sf.map(r => Math.round((r.institution || 0) / 1e8));
+  const indiv   = sf.map(r => Math.round((r.individual  || 0) / 1e8));
+
+  if(cfStockChart){ cfStockChart.destroy(); cfStockChart = null; }
+  const ctx1 = document.getElementById('chart-cf-stock')?.getContext('2d');
+  if(ctx1){
+    cfStockChart = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '외국인',
+            data: foreign,
+            backgroundColor: foreign.map(v => v >= 0 ? 'rgba(56,189,248,0.7)' : 'rgba(248,113,113,0.7)'),
+            borderRadius: 3,
+          },
+          {
+            label: '기관',
+            data: inst,
+            backgroundColor: inst.map(v => v >= 0 ? 'rgba(52,211,153,0.65)' : 'rgba(251,191,36,0.65)'),
+            borderRadius: 3,
+          },
+          {
+            label: '개인',
+            data: indiv,
+            backgroundColor: 'rgba(71,85,105,0.5)',
+            borderRadius: 3,
+          },
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toLocaleString()}억`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(26,40,64,.6)' },
+            ticks: { color: '#94a3b8', font: { size: 10 }, maxRotation: 45, autoSkip: false }
+          },
+          y: {
+            grid: { color: 'rgba(26,40,64,.6)' },
+            ticks: {
+              color: '#94a3b8', font: { size: 10 },
+              callback: v => v.toLocaleString() + '억'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ── 차트 2: 국채 수익률 꺾은선 ─────────────────────
+  const byLabels = by.map(r => r.date.slice(5));
+  const y3data   = by.map(r => r.y3);
+  const y10data  = by.map(r => r.y10);
+
+  if(cfBondChart){ cfBondChart.destroy(); cfBondChart = null; }
+  const ctx2 = document.getElementById('chart-cf-bond')?.getContext('2d');
+  if(ctx2){
+    cfBondChart = new Chart(ctx2, {
+      type: 'line',
+      data: {
+        labels: byLabels,
+        datasets: [
+          {
+            label: '국고채 3년',
+            data: y3data,
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56,189,248,0.07)',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.3,
+            fill: false,
+          },
+          {
+            label: '국고채 10년',
+            data: y10data,
+            borderColor: '#34d399',
+            backgroundColor: 'rgba(52,211,153,0.07)',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.3,
+            fill: false,
+          },
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(3)}%`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(26,40,64,.6)' },
+            ticks: { color: '#94a3b8', font: { size: 10 }, maxRotation: 45, autoSkip: false }
+          },
+          y: {
+            grid: { color: 'rgba(26,40,64,.6)' },
+            ticks: {
+              color: '#94a3b8', font: { size: 10 },
+              callback: v => v.toFixed(2) + '%'
+            }
+          }
+        }
+      }
+    });
+  }
 }
 
 /* 초기 로드 — 3개 파일 병렬 fetch */
