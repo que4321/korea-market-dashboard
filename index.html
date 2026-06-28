@@ -3908,6 +3908,7 @@ function renderCapitalFlow(data){
   if(window.cfFlowChart){ window.cfFlowChart.destroy(); window.cfFlowChart = null; }
   const ctx3 = document.getElementById('chart-cf-flow')?.getContext('2d');
   if(ctx3 && (dep.length || bf.length || mmf.length)){
+    const mmfArr  = cf.mmf || [];
     // 최근 60일치 날짜 기준으로 정렬
     const allDates = [...new Set([
       ...dep.map(r=>r.date),
@@ -3916,7 +3917,6 @@ function renderCapitalFlow(data){
       ...mmfArr.map(r=>r.date),
     ])].sort().slice(-60);
 
-    const mmfArr  = cf.mmf || [];
     const depMap = Object.fromEntries(dep.map(r=>[r.date, r.value]));
     const mmfMap2 = Object.fromEntries(mmfArr.map(r=>[r.date, r.value]));
     const mmfMap = Object.fromEntries(mmf.map(r=>[r.date, r.value]));
