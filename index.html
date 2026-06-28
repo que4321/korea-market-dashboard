@@ -1106,27 +1106,27 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
   </div>
 
   <!-- 요약 카드 Row 2: 자금 이동 지표 -->
-  <div class="lbl">💸 자금 이동 지표 (주식↔채권 흐름)</div>
+  <div class="lbl">💸 자금 이동 지표</div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:20px">
     <div class="mcard">
       <div class="mlabel">투자자예탁금 (최신)</div>
       <div class="mval" id="cf-deposit" style="font-size:18px">—</div>
-      <div class="msub" id="cf-deposit-chg" style="font-size:11px;color:var(--text3)">주식 대기자금</div>
+      <div class="msub" id="cf-deposit-chg" style="font-size:11px;color:var(--text3)">✅ 직접 대기자금 (즉시 주식 매수)</div>
     </div>
     <div class="mcard">
       <div class="mlabel">신용융자 잔고 (최신월)</div>
       <div class="mval" id="cf-margin" style="font-size:18px">—</div>
-      <div class="msub" style="font-size:11px;color:var(--text3)">레버리지 투자 규모↑ = 주식 과열 신호</div>
+      <div class="msub" style="font-size:11px;color:var(--text3)">⚠️ 레버리지 규모 (과열 신호)</div>
     </div>
     <div class="mcard">
       <div class="mlabel">RP 잔고 (최신월)</div>
       <div class="mval" id="cf-rp" style="font-size:18px">—</div>
-      <div class="msub" id="cf-rp-chg" style="font-size:11px;color:var(--text3)">채권 유입 직접 지표</div>
+      <div class="msub" id="cf-rp-chg" style="font-size:11px;color:var(--text3)">🔶 CMA-RP는 즉시 주식 전환 가능</div>
     </div>
     <div class="mcard">
       <div class="mlabel">MMF 지분 (최신월)</div>
       <div class="mval" id="cf-mmf-val" style="font-size:18px">—</div>
-      <div class="msub" id="cf-mmf-sub" style="font-size:11px;color:var(--text3)">단기 대피자금 완충지대</div>
+      <div class="msub" id="cf-mmf-sub" style="font-size:11px;color:var(--text3)">🔶 간접 대기자금 (당일 환매 후 주식 가능)</div>
     </div>
     <div class="mcard" style="background:rgba(56,189,248,0.05);border-color:rgba(56,189,248,0.2)">
       <div class="mlabel" style="color:var(--accent)">📊 자금 방향</div>
@@ -1178,7 +1178,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <div class="card-head">
       <div>
         <div class="ctitle">💸 자금 이동 추적 — 투자자예탁금 vs MMF / RP</div>
-        <div class="csub">예탁금↓ + MMF/RP↑ = 주식 → 단기 안전자산 이동 신호 &nbsp;|&nbsp; 단위: 조원 (공통 Y축)</div>
+        <div class="csub">예탁금·MMF↑ = 주식 대기자금 증가 &nbsp;|&nbsp; RP↑ = 단기 자금 대피 (CMA-RP는 즉시 주식 전환 가능) &nbsp;|&nbsp; 단위: 조원</div>
       </div>
     </div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:var(--text2)">
@@ -1191,8 +1191,10 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     </div>
     <div style="margin-top:10px;padding:8px 12px;background:var(--bg3);border-radius:6px;font-size:11px;color:var(--text3)">
       💡 <b style="color:var(--text2)">읽는 법:</b>
-      투자자예탁금(파란선)이 하락하면서 MMF(초록점선)·RP(보라점선)가 상승하면 → 주식에서 단기 안전자산으로 자금 이동.
-      반대로 예탁금 상승 + MMF/RP 하락 → 주식 시장 재진입 신호.
+      <b style="color:#38bdf8">투자자예탁금↑</b> = 주식 즉시 매수 가능한 직접 대기자금.
+      <b style="color:#34d399">MMF↑</b> = 당일~익일 환매 후 주식 매수 가능한 간접 대기자금.
+      <b style="color:#818cf8">RP↑</b> = CMA-RP는 주식 즉시 전환 가능 / 기관 RP는 만기 약정으로 제한적.
+      셋 모두 감소하면 주식시장으로 자금 유입 중, 셋 모두 증가하면 주식 외부로 자금 대피 중으로 해석.
       &nbsp;|&nbsp;
       <b style="color:var(--text2)">출처:</b> 한국은행 ECOS API —
       투자자예탁금·신용융자·RP: <span style="color:var(--accent)">901Y056</span> (S23A·S23E·S23C) /
@@ -3867,7 +3869,7 @@ function renderCapitalFlow(data){
     const cur = bf[bf.length-1];
     const prev = bf.length > 1 ? bf[bf.length-2] : null;
     bfEl.innerHTML = fmtTril(cur.value) + fmtChgPct(cur.value, prev?.value);
-    if(bfChgEl) bfChgEl.textContent = `단기 자금 대피처 (${cur.date})`;
+    if(bfChgEl) bfChgEl.textContent = `🔶 CMA-RP는 즉시 주식 전환 가능 (${cur.date})`;
   } else if(bfEl) bfEl.textContent = '수집 중';
 
   // MMF 지분 (십억원 단위)
@@ -3879,7 +3881,7 @@ function renderCapitalFlow(data){
     mmfEl2.innerHTML = fmtTril(cur.value, true) + fmtChgPct(
       toJo(cur.value, true), prev ? toJo(prev.value, true) : null);
     const sub = document.getElementById('cf-mmf-sub');
-    if(sub) sub.textContent = `단기 대피자금 완충지대 (${cur.date})`;
+    if(sub) sub.textContent = `🔶 간접 대기자금 (당일 환매 후 주식 가능) (${cur.date})`;
   } else if(mmfEl2) mmfEl2.textContent = '수집 중';
 
   // 자금 방향 판단
