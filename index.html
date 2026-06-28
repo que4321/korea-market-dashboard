@@ -1123,6 +1123,11 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <div class="mval" id="cf-rp" style="font-size:18px">—</div>
       <div class="msub" id="cf-rp-chg" style="font-size:11px;color:var(--text3)">채권 유입 직접 지표</div>
     </div>
+    <div class="mcard">
+      <div class="mlabel">MMF 지분 (최신월)</div>
+      <div class="mval" id="cf-mmf-val" style="font-size:18px">—</div>
+      <div class="msub" id="cf-mmf-sub" style="font-size:11px;color:var(--text3)">단기 대피자금 완충지대</div>
+    </div>
     <div class="mcard" style="background:rgba(56,189,248,0.05);border-color:rgba(56,189,248,0.2)">
       <div class="mlabel" style="color:var(--accent)">📊 자금 방향</div>
       <div class="mval" id="cf-direction" style="font-size:15px;line-height:1.4">—</div>
@@ -1180,6 +1185,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#38bdf8;margin-right:4px;vertical-align:middle"></span>투자자예탁금 (좌축, 일별)</span>
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fbbf24;margin-right:4px;vertical-align:middle"></span>신용융자 잔고 (우축, 월별)</span>
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#818cf8;margin-right:4px;vertical-align:middle"></span>RP 잔고 (우축, 월별)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#34d399;margin-right:4px;vertical-align:middle"></span>MMF 지분 (우축, 월별)</span>
     </div>
     <div class="chart-w" style="height:260px">
       <canvas id="chart-cf-flow" role="img" aria-label="투자자예탁금 vs 채권형펀드 듀얼 차트"></canvas>
@@ -1188,7 +1194,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       💡 <b style="color:var(--text2)">읽는 법:</b>
       투자자예탁금(파란선)이 하락하면서 신용융자(노란선)도 함께 감소하면 → 주식 시장 자금 이탈.
       RP(보라선)는 단기 자금 대피처 — RP 잔고 증가는 채권 시장 선호 신호.
-      &nbsp;|&nbsp; 출처: 한국은행 ECOS API 901Y056 (S23A 투자자예탁금 · S23E 신용융자 · S23C RP)
+      &nbsp;|&nbsp; 출처: 한국은행 ECOS API 901Y056 (S23A 투자자예탁금 · S23E 신용융자 · S23C RP) + 161Y008/BBGA04 MMF지분
     </div>
   </div>
 
@@ -3806,14 +3812,19 @@ function renderCapitalFlow(data){
     });
   }
 
-  // ── ECOS 카드: 투자자예탁금 / 신용융자 / RP ────────────
-  // 901Y056 데이터는 원(₩) 단위로 수신됨 → 조원 변환: / 1e12
-  function fmtTril(v) {
+  // ── ECOS 카드: 투자자예탁금 / 신용융자 / RP / MMF ───────
+  // 901Y056: 원단위 → / 1e12 = 조원
+  // 161Y008: 십억원단위 → / 1e3 = 조원
+  function toJo(v, unit_bil) {
+    if(v == null) return null;
+    return unit_bil ? v / 1e3 : v / 1e12;
+  }
+  function fmtTril(v, unit_bil=false) {
     if(v == null) return '—';
-    const jo = v / 1e12;  // 원 → 조원
+    const jo = toJo(v, unit_bil);
     return jo >= 0.1
       ? jo.toFixed(1) + '조'
-      : (v / 1e8).toFixed(0) + '억';
+      : (v / (unit_bil ? 1 : 1e8)).toFixed(0) + '억';
   }
   function fmtChgPct(cur, prev) {
     if(cur == null || prev == null || prev === 0) return '';
@@ -3854,6 +3865,18 @@ function renderCapitalFlow(data){
     if(bfChgEl) bfChgEl.textContent = `단기 자금 대피처 (${cur.date})`;
   } else if(bfEl) bfEl.textContent = '수집 중';
 
+  // MMF 지분 (십억원 단위)
+  const mmfData2 = cf.mmf || [];
+  const mmfEl2 = document.getElementById('cf-mmf-val');
+  if(mmfData2.length && mmfEl2){
+    const cur = mmfData2[mmfData2.length-1];
+    const prev = mmfData2.length > 1 ? mmfData2[mmfData2.length-2] : null;
+    mmfEl2.innerHTML = fmtTril(cur.value, true) + fmtChgPct(
+      toJo(cur.value, true), prev ? toJo(prev.value, true) : null);
+    const sub = document.getElementById('cf-mmf-sub');
+    if(sub) sub.textContent = `단기 대피자금 완충지대 (${cur.date})`;
+  } else if(mmfEl2) mmfEl2.textContent = '수집 중';
+
   // 자금 방향 판단
   const dirEl = document.getElementById('cf-direction');
   if(dirEl){
@@ -3862,6 +3885,8 @@ function renderCapitalFlow(data){
     const marginUp = mmf.length > 1 && mmf[mmf.length-1].value > mmf[mmf.length-2].value;  // 신용융자 증가
     const yieldDown = by.length > 5 &&
       by[by.length-1].y10 < by[by.length-6].y10;  // 국채금리 하락
+    const mmfUp = mmfData2.length > 1 &&
+      mmfData2[mmfData2.length-1].value > mmfData2[mmfData2.length-2].value;  // MMF 증가
 
     let signals = [];
     if(stockOut) signals.push('외국인 주식 매도');
@@ -3888,15 +3913,20 @@ function renderCapitalFlow(data){
       ...dep.map(r=>r.date),
       ...mmf.map(r=>r.date),
       ...bf.map(r=>r.date),
+      ...mmfArr.map(r=>r.date),
     ])].sort().slice(-60);
 
+    const mmfArr  = cf.mmf || [];
     const depMap = Object.fromEntries(dep.map(r=>[r.date, r.value]));
+    const mmfMap2 = Object.fromEntries(mmfArr.map(r=>[r.date, r.value]));
     const mmfMap = Object.fromEntries(mmf.map(r=>[r.date, r.value]));
     const bfMap  = Object.fromEntries(bf.map(r=>[r.date, r.value]));
 
     const depData = allDates.map(d => depMap[d] ?? null);
     const mmfData = allDates.map(d => mmfMap[d] ?? null);
     const bfData  = allDates.map(d => bfMap[d]  ?? null);
+    // MMF: 십억원 단위 → 원 단위로 환산해서 yRight 동일 스케일 사용
+    const mmf2Data = allDates.map(d => mmfMap2[d] != null ? mmfMap2[d] * 1e9 : null);
 
     window.cfFlowChart = new Chart(ctx3, {
       type: 'line',
@@ -3940,6 +3970,19 @@ function renderCapitalFlow(data){
             spanGaps: true,
             borderDash: [4,3],
           },
+          {
+            label: 'MMF',
+            data: mmf2Data,
+            borderColor: '#34d399',
+            backgroundColor: 'rgba(52,211,153,0.08)',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.3,
+            fill: false,
+            yAxisID: 'yRight',
+            spanGaps: true,
+            borderDash: [2,2],
+          },
         ]
       },
       options: {
@@ -3953,7 +3996,7 @@ function renderCapitalFlow(data){
               label: ctx => {
                 const v = ctx.parsed.y;
                 if(v == null) return '';
-                const jo = v / 1e12;  // 원 → 조원
+                const jo = v / 1e12;
                 const fmt = jo >= 0.1 ? jo.toFixed(1)+'조' : (v/1e8).toFixed(0)+'억';
                 return ` ${ctx.dataset.label}: ${fmt}`;
               }
