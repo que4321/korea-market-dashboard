@@ -1078,10 +1078,10 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
      패널: 자금흐름
 ══════════════════════════════════════ -->
 <div id="panel-capitalflow" class="panel">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
     <div style="font-size:13px;font-weight:700;color:var(--accent)">💰 국내 자금흐름 — KOSPI 투자자별 수급 + 국채 수익률</div>
-    <div class="ts" id="cf-updated" style="color:var(--text3)">로딩 중...</div>
   </div>
+  <div class="ts" id="cf-updated" style="color:var(--text3);margin-bottom:16px">로딩 중...</div>
 
   <!-- 요약 카드 Row 1: 주식 수급 -->
   <div class="lbl" style="margin-top:0">📈 주식시장 수급 (최근 5일 누적)</div>
@@ -1177,24 +1177,28 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
   <div class="card" style="margin-top:16px">
     <div class="card-head">
       <div>
-        <div class="ctitle">💸 자금 이동 추적 — 투자자예탁금 vs 채권형펀드</div>
-        <div class="csub">예탁금↓ + 채권펀드↑ = 주식 → 채권 이동 신호 &nbsp;|&nbsp; 단위: 억원</div>
+        <div class="ctitle">💸 자금 이동 추적 — 투자자예탁금 vs MMF / RP</div>
+        <div class="csub">예탁금↓ + MMF/RP↑ = 주식 → 단기 안전자산 이동 신호 &nbsp;|&nbsp; 단위: 조원 (공통 Y축)</div>
       </div>
     </div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:var(--text2)">
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#38bdf8;margin-right:4px;vertical-align:middle"></span>투자자예탁금 (좌축, 일별)</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fbbf24;margin-right:4px;vertical-align:middle"></span>신용융자 잔고 (우축, 월별)</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#818cf8;margin-right:4px;vertical-align:middle"></span>RP 잔고 (우축, 월별)</span>
-      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#34d399;margin-right:4px;vertical-align:middle"></span>MMF 지분 (우축, 월별)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#38bdf8;margin-right:4px;vertical-align:middle"></span>투자자예탁금 (월별)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#818cf8;margin-right:4px;vertical-align:middle"></span>RP 잔고 (월별)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#34d399;margin-right:4px;vertical-align:middle"></span>MMF 지분 (월별)</span>
     </div>
     <div class="chart-w" style="height:260px">
       <canvas id="chart-cf-flow" role="img" aria-label="투자자예탁금 vs 채권형펀드 듀얼 차트"></canvas>
     </div>
     <div style="margin-top:10px;padding:8px 12px;background:var(--bg3);border-radius:6px;font-size:11px;color:var(--text3)">
       💡 <b style="color:var(--text2)">읽는 법:</b>
-      투자자예탁금(파란선)이 하락하면서 신용융자(노란선)도 함께 감소하면 → 주식 시장 자금 이탈.
-      RP(보라선)는 단기 자금 대피처 — RP 잔고 증가는 채권 시장 선호 신호.
-      &nbsp;|&nbsp; 출처: 한국은행 ECOS API 901Y056 (S23A 투자자예탁금 · S23E 신용융자 · S23C RP) + 161Y008/BBGA04 MMF지분
+      투자자예탁금(파란선)이 하락하면서 MMF(초록점선)·RP(보라점선)가 상승하면 → 주식에서 단기 안전자산으로 자금 이동.
+      반대로 예탁금 상승 + MMF/RP 하락 → 주식 시장 재진입 신호.
+      &nbsp;|&nbsp;
+      <b style="color:var(--text2)">출처:</b> 한국은행 ECOS API —
+      투자자예탁금·신용융자·RP: <span style="color:var(--accent)">901Y056</span> (S23A·S23E·S23C) /
+      MMF 지분: <span style="color:var(--accent)">161Y008/BBGA04</span> /
+      국채수익률: pykrx KRX 장외채권수익률 /
+      KOSPI 수급: pykrx 투자자별 매매실적
     </div>
   </div>
 
@@ -3654,7 +3658,8 @@ function renderCapitalFlow(data){
 
   // 업데이트 시각
   const upd = document.getElementById('cf-updated');
-  if(upd) upd.textContent = '업데이트: ' + (cf.updated_at||'-') + ' · 평일 16:30 KST 자동갱신';
+  if(upd) upd.textContent =
+    '업데이트: ' + (cf.updated_at || '—') + ' · 평일 16:30 KST 자동갱신 (주식수급/국채금리: 일별 | 예탁금/MMF/RP: 월별)';
 
   // ── 요약 카드 (최근 5일 누적) ──────────────────────
   const sf = cf.stock_flow || [];
@@ -3922,11 +3927,13 @@ function renderCapitalFlow(data){
     const mmfMap = Object.fromEntries(mmf.map(r=>[r.date, r.value]));
     const bfMap  = Object.fromEntries(bf.map(r=>[r.date, r.value]));
 
-    const depData = allDates.map(d => depMap[d] ?? null);
-    const mmfData = allDates.map(d => mmfMap[d] ?? null);
-    const bfData  = allDates.map(d => bfMap[d]  ?? null);
-    // MMF: 십억원 단위 → 원 단위로 환산해서 yRight 동일 스케일 사용
-    const mmf2Data = allDates.map(d => mmfMap2[d] != null ? mmfMap2[d] * 1e9 : null);
+    // 모든 데이터를 조원 단위로 통일
+    // 901Y056(원단위) → / 1e12, 161Y008(십억원단위) → / 1e3
+    const depData  = allDates.map(d => depMap[d]  != null ? depMap[d]  / 1e12 : null);
+    const mmfData  = allDates.map(d => mmfMap[d]  != null ? mmfMap[d]  / 1e12 : null);
+    const bfData   = allDates.map(d => bfMap[d]   != null ? bfMap[d]   / 1e12 : null);
+    // MMF: 십억원 단위 → / 1e3 = 조원
+    const mmf2Data = allDates.map(d => mmfMap2[d] != null ? mmfMap2[d] / 1e3  : null);
 
     window.cfFlowChart = new Chart(ctx3, {
       type: 'line',
@@ -3942,19 +3949,7 @@ function renderCapitalFlow(data){
             pointRadius: 2,
             tension: 0.3,
             fill: false,
-            yAxisID: 'yLeft',
-            spanGaps: true,
-          },
-          {
-            label: '신용융자',
-            data: bfData,
-            borderColor: '#fbbf24',
-            backgroundColor: 'rgba(251,191,36,0.08)',
-            borderWidth: 2,
-            pointRadius: 3,
-            tension: 0.3,
-            fill: false,
-            yAxisID: 'yRight',
+            yAxisID: 'y',
             spanGaps: true,
           },
           {
@@ -3966,7 +3961,7 @@ function renderCapitalFlow(data){
             pointRadius: 3,
             tension: 0.3,
             fill: false,
-            yAxisID: 'yRight',
+            yAxisID: 'y',
             spanGaps: true,
             borderDash: [4,3],
           },
@@ -3979,7 +3974,7 @@ function renderCapitalFlow(data){
             pointRadius: 3,
             tension: 0.3,
             fill: false,
-            yAxisID: 'yRight',
+            yAxisID: 'y',
             spanGaps: true,
             borderDash: [2,2],
           },
@@ -3996,9 +3991,8 @@ function renderCapitalFlow(data){
               label: ctx => {
                 const v = ctx.parsed.y;
                 if(v == null) return '';
-                const jo = v / 1e12;
-                const fmt = jo >= 0.1 ? jo.toFixed(1)+'조' : (v/1e8).toFixed(0)+'억';
-                return ` ${ctx.dataset.label}: ${fmt}`;
+                // 모든 데이터가 조원 단위로 통일됨
+                return ` ${ctx.dataset.label}: ${v.toFixed(1)}조`;
               }
             }
           }
@@ -4008,25 +4002,15 @@ function renderCapitalFlow(data){
             grid: { color: 'rgba(26,40,64,.6)' },
             ticks: { color: '#94a3b8', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 15 }
           },
-          yLeft: {
+          y: {
             type: 'linear',
             position: 'left',
             grid: { color: 'rgba(26,40,64,.6)' },
             ticks: {
-              color: '#38bdf8', font: { size: 10 },
-              callback: v => { const jo=v/1e12; return jo>=0.1?jo.toFixed(0)+'조':(v/1e8).toFixed(0)+'억'; }
+              color: '#94a3b8', font: { size: 10 },
+              callback: v => v.toFixed(0) + '조'
             },
-            title: { display: true, text: '투자자예탁금 (조원)', color: '#38bdf8', font: { size: 10 } }
-          },
-          yRight: {
-            type: 'linear',
-            position: 'right',
-            grid: { drawOnChartArea: false },
-            ticks: {
-              color: '#fbbf24', font: { size: 10 },
-              callback: v => { const jo=v/1e12; return jo>=0.1?jo.toFixed(0)+'조':(v/1e8).toFixed(0)+'억'; }
-            },
-            title: { display: true, text: '신용융자 / RP (조원)', color: '#fbbf24', font: { size: 10 } }
+            title: { display: true, text: '조원', color: '#94a3b8', font: { size: 10 } }
           }
         }
       }
