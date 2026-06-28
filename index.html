@@ -3806,15 +3806,14 @@ function renderCapitalFlow(data){
     });
   }
 
-  // ── ECOS 카드: 투자자예탁금 / MMF / 채권형펀드 ────────
+  // ── ECOS 카드: 투자자예탁금 / 신용융자 / RP ────────────
+  // 901Y056 데이터는 원(₩) 단위로 수신됨 → 조원 변환: / 1e12
   function fmtTril(v) {
-    // v: 억원 단위로 들어올 수도, 십억원 단위로 들어올 수도 있음 → 조원으로 표시
     if(v == null) return '—';
-    // ECOS 값은 '억원' 단위가 많음
-    const jo = v / 10000;
-    return jo >= 1
+    const jo = v / 1e12;  // 원 → 조원
+    return jo >= 0.1
       ? jo.toFixed(1) + '조'
-      : v.toLocaleString() + '억';
+      : (v / 1e8).toFixed(0) + '억';
   }
   function fmtChgPct(cur, prev) {
     if(cur == null || prev == null || prev === 0) return '';
@@ -3954,8 +3953,8 @@ function renderCapitalFlow(data){
               label: ctx => {
                 const v = ctx.parsed.y;
                 if(v == null) return '';
-                const jo = v / 10000;
-                const fmt = jo >= 1 ? jo.toFixed(1)+'조' : v.toLocaleString()+'억';
+                const jo = v / 1e12;  // 원 → 조원
+                const fmt = jo >= 0.1 ? jo.toFixed(1)+'조' : (v/1e8).toFixed(0)+'억';
                 return ` ${ctx.dataset.label}: ${fmt}`;
               }
             }
@@ -3972,9 +3971,9 @@ function renderCapitalFlow(data){
             grid: { color: 'rgba(26,40,64,.6)' },
             ticks: {
               color: '#38bdf8', font: { size: 10 },
-              callback: v => { const jo=v/10000; return jo>=1?jo.toFixed(0)+'조':v.toLocaleString()+'억'; }
+              callback: v => { const jo=v/1e12; return jo>=0.1?jo.toFixed(0)+'조':(v/1e8).toFixed(0)+'억'; }
             },
-            title: { display: true, text: '투자자예탁금', color: '#38bdf8', font: { size: 10 } }
+            title: { display: true, text: '투자자예탁금 (조원)', color: '#38bdf8', font: { size: 10 } }
           },
           yRight: {
             type: 'linear',
@@ -3982,9 +3981,9 @@ function renderCapitalFlow(data){
             grid: { drawOnChartArea: false },
             ticks: {
               color: '#fbbf24', font: { size: 10 },
-              callback: v => { const jo=v/10000; return jo>=1?jo.toFixed(0)+'조':v.toLocaleString()+'억'; }
+              callback: v => { const jo=v/1e12; return jo>=0.1?jo.toFixed(0)+'조':(v/1e8).toFixed(0)+'억'; }
             },
-            title: { display: true, text: '채권형펀드 / MMF', color: '#fbbf24', font: { size: 10 } }
+            title: { display: true, text: '신용융자 / RP (조원)', color: '#fbbf24', font: { size: 10 } }
           }
         }
       }
