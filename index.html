@@ -1064,6 +1064,8 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <div>· <b style="color:var(--text2)">HY 스프레드</b> — FRED BAMLH0A0HYM2 / 일별, 주간 수집</div>
       <div>· <b style="color:var(--text2)">실업률</b> — FRED UNRATE / 월별 발표, 주간 수집</div>
       <div>· <b style="color:var(--text2)">M2 증가율</b> — FRED M2SL / 월별 발표, 주간 수집</div>
+      <div>· <b style="color:var(--text2)">CPI (YoY%)</b> — FRED CPIAUCSL / 월별 발표, 주간 수집</div>
+      <div>· <b style="color:var(--text2)">Core PCE (YoY%)</b> — FRED PCEPILFE / 월별 발표, 주간 수집 (Fed 공식 목표 지표)</div>
       <div>· <b style="color:var(--text2)">WTI 유가</b> — yfinance CL=F 선물 / 주간 수집 (FRED 현물 폴백)</div>
       <div>· <b style="color:var(--text2)">소비자신뢰</b> — FRED CSCICP03USM665S / 월별 발표, 주간 수집</div>
       <div>· <b style="color:var(--text2)">Shiller CAPE</b> — 서버 IP 차단으로 수동 확인 필요</div>
@@ -1704,6 +1706,10 @@ async function loadMacroData(){
       fred.vix        = m.vix?.value ?? null;
       fred.t10y       = m.t10y?.value ?? null;
       fred.wti        = m.wti?.value ?? null;
+      fred.cpi        = m.cpi_yoy?.value ?? null;
+      fred.cpiDate    = m.cpi_yoy?.date ?? null;
+      fred.corePce    = m.core_pce?.value ?? null;
+      fred.corePceDate= m.core_pce?.date ?? null;
       fred.updatedAt  = m.updated_at ?? null;
       fred.fng        = m.fng ?? null;
       console.log('macro fred 데이터:', fred);
@@ -1740,6 +1746,8 @@ function macroGrade(key, val){
     m2:      [[-0.01,'과도한 긴축','b-info'],[3,'긴축 효과','b-ok'],[8,'보통','b-warn'],[999,'인플레 압력','b-danger']],
     wti:     [[65,'저유가(호재)','b-ok'],[90,'보통','b-warn'],[999,'고유가(압력)','b-danger']],
     cci:     [[80,'소비위축','b-danger'],[100,'보통','b-warn'],[999,'소비낙관','b-ok']],
+    cpi:     [[2,'목표범위','b-ok'],[3,'주의','b-warn'],[4,'긴축 압력','b-danger'],[999,'고인플레','b-danger']],
+    core_pce:[[2,'목표(완화)','b-ok'],[2.5,'주의','b-warn'],[3,'긴축 압력','b-danger'],[999,'고인플레','b-danger']],
   };
   const rules = cfg[key];
   if(!rules) return [val.toFixed(2),'b-neu','—'];
@@ -1785,7 +1793,13 @@ function renderMacroPanel(fred){
     { cat:null, label:'ISM 제조업 PMI', val:null, key:'pmi',
       criteria:'~45 강한수축 / 45~50 수축 / 50+ 확장',
       link:'https://tradingeconomics.com/united-states/business-confidence', linkText:'TradingEconomics ↗' },
-    { cat:'실물경제 & 원자재', label:'미국 실업률', val:fred.unemp, key:'unemp', unit:'%',
+    { cat:'실물경제 & 원자재', label:'미국 CPI (YoY%)', val:fred.cpi, key:'cpi', unit:'%',
+      extra: fred.cpiDate ? ` (${fred.cpiDate.slice(0,7)})` : '',
+      criteria:'~2%: 목표범위 / 2~3%: 주의 / 3~4%: 긴축압력 / 4%+: 고인플레' },
+    { cat:null, label:'미국 Core PCE (YoY%) ★Fed 핵심', val:fred.corePce, key:'core_pce', unit:'%',
+      extra: fred.corePceDate ? ` (${fred.corePceDate.slice(0,7)})` : '',
+      criteria:'~2%: 목표(완화) / 2~2.5%: 주의 / 2.5~3%: 긴축압력 / 3%+: 고인플레' },
+    { cat:null, label:'미국 실업률', val:fred.unemp, key:'unemp', unit:'%',
       criteria:'~4%: 완전고용 / 4~5%: 주의 / 5%+: 경기둔화' },
     { cat:null, label:'미국 M2 증가율 (YoY)', val:fred.m2, key:'m2', unit:'%',
       criteria:'음수: 과긴축 / 0~3%: 긴축효과 / 3~8%: 보통 / 8%+: 인플레압력' },
