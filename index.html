@@ -1990,10 +1990,10 @@ async function loadMacroFile(){
     } catch(pe) {
       throw new Error(`JSON 파싱 실패: ${pe.message}`);
     }
-    // cachedData.macro 에 주입
+    // cachedData.macro 에 주입 (macro.json이 {macro:{...}} 구조인 경우 언래핑)
     if(!cachedData) cachedData = {};
-    cachedData.macro = macroData;
-    console.log('✅ 거시경제 데이터 캐싱 완료:', macroData.updated_at);
+    cachedData.macro = macroData.macro ?? macroData;
+    console.log('✅ 거시경제 데이터 캐싱 완료:', (macroData.macro ?? macroData).updated_at);
     if(document.getElementById('panel-macro').classList.contains('active')){
       loadMacroData();
     }
