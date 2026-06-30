@@ -1251,6 +1251,7 @@ const HIST_URL='https://raw.githubusercontent.com/que4321/korea-market-dashboard
 const GIST_ID='128b0a34d2153c277b01288f03e35c1d';
 const SCANNER_URL  = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/scanner.json`;
 const MACRO_URL    = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/macro.json`;
+const TIMING_URL   = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/timing.json`;
 const LIQUIDITY_URL= `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/liquidity.json`;
 
 let dashLoaded=false, histData=[];
@@ -1268,12 +1269,12 @@ function showPanel(id,el){
   if(id==='us'){
     const doRender = () => { renderM7Chart('AAPL', document.getElementById('m7-btn-AAPL')); renderM7Growth(); };
     if(cachedData?.macro?.m7){ setTimeout(doRender, 300); }
-    else { loadMacroFile().then(() => setTimeout(doRender, 300)); }
+    else { Promise.all([loadMacroFile(), loadTimingFile()]).then(() => setTimeout(doRender, 300)); }
   }
   if(id==='kr'){
     const doRender = () => renderKrChart('삼성전자', document.getElementById('kr-btn-삼성전자'));
     if(cachedData?.macro?.kr_stocks){ setTimeout(doRender, 300); }
-    else { loadMacroFile().then(() => setTimeout(doRender, 300)); }
+    else { Promise.all([loadMacroFile(), loadTimingFile()]).then(() => setTimeout(doRender, 300)); }
   }
   if(id==='liquidity'){
     if(liqDataCache){
@@ -1292,7 +1293,7 @@ function showPanel(id,el){
   if(id==='macro') loadMacroData();
   if(id==='timing'){
     if(cachedData?.macro?.m7 && cachedData?.macro?.kr_stocks){ renderTimingPanel('kr'); }
-    else { loadMacroFile().then(()=>renderTimingPanel('kr')); }
+    else { loadTimingFile().then(()=>renderTimingPanel('kr')); }
   }
   if(id==='discovery'){
     if(cachedData?.kospi_discovery){ renderDiscoveryPanel(); }
@@ -1990,10 +1991,12 @@ async function loadMacroFile(){
     } catch(pe) {
       throw new Error(`JSON 파싱 실패: ${pe.message}`);
     }
-    // cachedData.macro 에 주입 (macro.json이 {macro:{...}} 구조인 경우 언래핑)
+    // macro.json 구조 (분리 후, 2026-07-01~): { macro: {cpi_yoy, core_pce, ...} }
+    // 과거 호환: 최상위에 kr_stocks/m7이 남아있을 수 있으므로 함께 보존
     if(!cachedData) cachedData = {};
-    cachedData.macro = macroData.macro ?? macroData;
-    console.log('✅ 거시경제 데이터 캐싱 완료:', (macroData.macro ?? macroData).updated_at);
+    const macroInner = macroData.macro ?? {};
+    cachedData.macro = { ...(cachedData.macro||{}), ...macroData, ...macroInner };
+    console.log('✅ 거시경제 데이터 캐싱 완료:', cachedData.macro.updated_at);
     if(document.getElementById('panel-macro').classList.contains('active')){
       loadMacroData();
     }
@@ -2002,6 +2005,49 @@ async function loadMacroFile(){
     const tsEl = document.getElementById('macro-ts');
     if(tsEl) tsEl.textContent = '거시경제 로드 실패: ' + e.message;
   }
+}
+
+async function loadTimingFile(){
+  try {
+    const url = TIMING_URL + '?nc=' + Date.now();
+    console.log('Timing fetch URL:', url);
+    const r = await fetch(url, {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const text = await r.text();
+    let timingData;
+    try {
+      timingData = JSON.parse(text);
+    } catch(pe) {
+      throw new Error(`JSON 파싱 실패: ${pe.message}`);
+    }
+    // timing.json 구조: { kr_stocks: {종목: {technical}}, m7: {심볼: {technical}}, technical_updated }
+    // → 기존 cachedData.macro.kr_stocks/m7 의 prices/eps는 보존하고 technical 필드만 병합
+    if(!cachedData) cachedData = {};
+    if(!cachedData.macro) cachedData.macro = {};
+    if(!cachedData.macro.kr_stocks) cachedData.macro.kr_stocks = {};
+    if(!cachedData.macro.m7) cachedData.macro.m7 = {};
+
+    for(const [name, v] of Object.entries(timingData.kr_stocks || {})){
+      if(!cachedData.macro.kr_stocks[name]) cachedData.macro.kr_stocks[name] = {};
+      cachedData.macro.kr_stocks[name].technical = v.technical;
+      if(v.ticker) cachedData.macro.kr_stocks[name].ticker = v.ticker;
+    }
+    for(const [sym, v] of Object.entries(timingData.m7 || {})){
+      if(!cachedData.macro.m7[sym]) cachedData.macro.m7[sym] = {};
+      cachedData.macro.m7[sym].technical = v.technical;
+    }
+    cachedData.macro.technical_updated = timingData.technical_updated || null;
+
+    console.log('✅ 매수시점 데이터 캐싱 완료:', timingData.technical_updated,
+                '| kr_stocks:', Object.keys(timingData.kr_stocks||{}).length,
+                '| m7:', Object.keys(timingData.m7||{}).length);
+    if(document.getElementById('panel-timing')?.classList.contains('active')){
+      renderTimingPanel('kr');
+    }
+  } catch(e) {
+    console.error('loadTimingFile 오류:', e.message);
+  }
+}
 }
 
 async function loadLiquidityFile(){
@@ -4081,10 +4127,11 @@ function renderCapitalFlow(data){
   }
 }
 
-/* 초기 로드 — 3개 파일 병렬 fetch */
+/* 초기 로드 — 4개 파일 병렬 fetch */
 Promise.all([
   loadScanner(),
   loadMacroFile(),
+  loadTimingFile(),
   loadLiquidityFile(),
 ]).then(() => {
   loadMacroData();
