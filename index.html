@@ -1249,10 +1249,13 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 /* ══════════════════════ 공통 ══════════════════════ */
 const HIST_URL='https://raw.githubusercontent.com/que4321/korea-market-dashboard/main/data/history.json';
 const GIST_ID='128b0a34d2153c277b01288f03e35c1d';
-const SCANNER_URL  = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/scanner.json`;
-const MACRO_URL    = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/macro.json`;
-const TIMING_URL   = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/timing.json`;
-const LIQUIDITY_URL= `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/liquidity.json`;
+const SCANNER_URL       = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/scanner.json`;
+const CAPITAL_FLOW_URL  = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/capital_flow.json`;
+const CONSECUTIVE_URL   = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/consecutive_flow.json`;
+const DISCOVERY_URL     = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/kospi_discovery.json`;
+const MACRO_URL         = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/macro.json`;
+const TIMING_URL        = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/timing.json`;
+const LIQUIDITY_URL     = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/liquidity.json`;
 
 let dashLoaded=false, histData=[];
 let chartInstances={};
@@ -1297,11 +1300,11 @@ function showPanel(id,el){
   }
   if(id==='discovery'){
     if(cachedData?.kospi_discovery){ renderDiscoveryPanel(); }
-    else { loadScanner().then(()=>renderDiscoveryPanel()); }
+    else { loadDiscoveryFile().then(()=>renderDiscoveryPanel()); }
   }
   if(id==='capitalflow'){
     if(cachedData?.capital_flow){ renderCapitalFlow(cachedData); }
-    else { loadScanner().then(()=>renderCapitalFlow(cachedData)); }
+    else { loadCapitalFlowFile().then(()=>renderCapitalFlow(cachedData)); }
   }
 }
 
@@ -1958,6 +1961,7 @@ function renderMacroSignal(vix, t10y, spread, wti, fred){
 }
 
 async function loadScanner(){
+  // 저평가 스캐너 전용 (kospi200, sp500, updated_at)
   try {
     const url = SCANNER_URL + '?nc=' + Date.now();
     console.log('Scanner fetch URL:', url);
@@ -1966,14 +1970,62 @@ async function loadScanner(){
     const text = await r.text();
     console.log('Scanner 응답 길이:', text.length, 'bytes');
     try {
-      cachedData = JSON.parse(text);
+      const data = JSON.parse(text);
+      // scanner.json → cachedData에 저평가 스캐너 필드만 병합
+      cachedData = cachedData || {};
+      cachedData.kospi200    = data.kospi200    || cachedData.kospi200;
+      cachedData.sp500       = data.sp500       || cachedData.sp500;
+      cachedData.updated_at  = data.updated_at  || cachedData.updated_at;
+      renderData(cachedData);
     } catch(pe) {
       throw new Error(`JSON 파싱 실패: ${pe.message}`);
     }
-    renderData(cachedData);
   } catch(e) {
     console.error('loadScanner 오류:', e.message);
     document.getElementById('table-body').innerHTML=`<tr><td colspan="12"><div class="err">⚠️ 스캐너 로드 실패: ${e.message}</div></td></tr>`;
+  }
+}
+
+async function loadCapitalFlowFile(){
+  // 자금흐름 탭 전용 (capital_flow.json)
+  try {
+    const r = await fetch(CAPITAL_FLOW_URL + '?nc=' + Date.now(), {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = JSON.parse(await r.text());
+    cachedData = cachedData || {};
+    // capital_flow.json 구조: { capital_flow: {...} }
+    cachedData.capital_flow = data.capital_flow || data;
+    console.log('✅ 자금흐름 데이터 캐싱 완료:', cachedData.capital_flow?.updated_at);
+  } catch(e) {
+    console.error('loadCapitalFlowFile 오류:', e.message);
+  }
+}
+
+async function loadConsecutiveFile(){
+  // 연속수급 탭 전용 (consecutive_flow.json)
+  try {
+    const r = await fetch(CONSECUTIVE_URL + '?nc=' + Date.now(), {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = JSON.parse(await r.text());
+    cachedData = cachedData || {};
+    cachedData.consecutive_flow = data.consecutive_flow || data;
+    console.log('✅ 연속수급 데이터 캐싱 완료:', cachedData.consecutive_flow?.updated_at);
+  } catch(e) {
+    console.error('loadConsecutiveFile 오류:', e.message);
+  }
+}
+
+async function loadDiscoveryFile(){
+  // 종목발굴 탭 전용 (kospi_discovery.json)
+  try {
+    const r = await fetch(DISCOVERY_URL + '?nc=' + Date.now(), {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = JSON.parse(await r.text());
+    cachedData = cachedData || {};
+    cachedData.kospi_discovery = data.kospi_discovery || data;
+    console.log('✅ 종목발굴 데이터 캐싱 완료');
+  } catch(e) {
+    console.error('loadDiscoveryFile 오류:', e.message);
   }
 }
 
@@ -3576,10 +3628,11 @@ async function loadFlowData(force=false){
   const tbody = document.getElementById('flow-tbody');
   tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text2)"><div class="spinner" style="margin:0 auto 12px"></div>데이터 로딩 중...</td></tr>';
   try{
-    const r = await fetch(SCANNER_URL + '?t=' + Date.now());
+    const r = await fetch(CONSECUTIVE_URL + '?t=' + Date.now());
     const json = await r.json();
-    flowCache = json.consecutive_flow || null;
-    if(!flowCache){
+    // consecutive_flow.json 구조: { consecutive_flow: {...} } 또는 기존 scanner.json 호환
+    flowCache = json.consecutive_flow || json || null;
+    if(!flowCache || !flowCache.signals){
       tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text3)">아직 데이터 없음 — 스크립트 첫 실행 후 확인 (매일 09:30 KST)</td></tr>';
       return;
     }
@@ -4126,9 +4179,12 @@ function renderCapitalFlow(data){
   }
 }
 
-/* 초기 로드 — 4개 파일 병렬 fetch */
+/* 초기 로드 — 7개 파일 병렬 fetch */
 Promise.all([
   loadScanner(),
+  loadCapitalFlowFile(),
+  loadConsecutiveFile(),
+  loadDiscoveryFile(),
   loadMacroFile(),
   loadTimingFile(),
   loadLiquidityFile(),
