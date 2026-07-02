@@ -1884,12 +1884,61 @@ function renderMacroPanel(fred){
   const tbody = document.getElementById('macro-table-body');
   if(!tbody) return;
 
+  // CNN F&G 스타일 반원 게이지 SVG 생성
+  function fngGaugeSvg(score, ratingEn){
+    if(score==null) return '';
+    const zones = [
+      {min:0,  max:25,  fill:'#f6a68f', stroke:'#c0392b', key:'Extreme Fear'},
+      {min:25, max:45,  fill:'#fbd7bd', stroke:'#e07b39', key:'Fear'},
+      {min:45, max:55,  fill:'#f0e2a3', stroke:'#c9a227', key:'Neutral'},
+      {min:55, max:75,  fill:'#cbe8b4', stroke:'#6fa844', key:'Greed'},
+      {min:75, max:100, fill:'#9fd88c', stroke:'#3f8f3f', key:'Extreme Greed'},
+    ];
+    const cx=64, cy=64, rO=58, rI=32;
+    const angleFor = v => 180 + (v/100)*180; // 0→180°(좌) 50→270°(상단) 100→360°(우)
+    const polar = (r,ang) => {
+      const a = ang*Math.PI/180;
+      return { x: cx + r*Math.cos(a), y: cy + r*Math.sin(a) };
+    };
+    const sector = (a0,a1,fill,stroke) => {
+      const large = (a1-a0) > 180 ? 1 : 0;
+      const p1=polar(rO,a0), p2=polar(rO,a1), p3=polar(rI,a1), p4=polar(rI,a0);
+      return `<path d="M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}
+                       A ${rO} ${rO} 0 ${large} 1 ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}
+                       L ${p3.x.toFixed(1)} ${p3.y.toFixed(1)}
+                       A ${rI} ${rI} 0 ${large} 0 ${p4.x.toFixed(1)} ${p4.y.toFixed(1)} Z"
+               fill="${fill}" stroke="${stroke==='none'?'none':stroke}" stroke-width="${stroke==='none'?0:1.5}"/>`;
+    };
+    const wedges = zones.map(z=>{
+      const isCurrent = ratingEn === z.key;
+      return sector(angleFor(z.min), angleFor(z.max), isCurrent ? z.fill : 'var(--bg3)', isCurrent ? z.stroke : 'none');
+    }).join('');
+    const nAng = angleFor(score);
+    const nTip = polar(rI-2, nAng);
+    const needle = `<line x1="${cx}" y1="${cy}" x2="${nTip.x.toFixed(1)}" y2="${nTip.y.toFixed(1)}"
+                      stroke="var(--text)" stroke-width="2.5" stroke-linecap="round"/>
+                     <circle cx="${cx}" cy="${cy}" r="3.5" fill="var(--text)"/>`;
+    const scoreText = `<text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="22" font-weight="800" fill="var(--text)">${score.toFixed(0)}</text>`;
+    return `<svg viewBox="0 0 128 68" width="128" height="68" style="display:block;margin:0 auto">${wedges}${needle}${scoreText}</svg>`;
+  }
+
   tbody.innerHTML = rows.map((r, i) => {
     const [sigLabel, sigCls] = macroGrade(r.key, r.val);
 
     // 값 셀 — 값을 가져왔으면 값+뱃지, 값이 없으면 링크만
     let valCell;
-    if(r.val != null){
+    if(r.key === 'fg' && r.val != null){
+      const gaugeHtml = fngGaugeSvg(r.val, fng?.rating);
+      const captionHtml = `<div style="font-size:11px;color:var(--text2);margin-top:2px">
+          ${fng?.rating_kr ?? ''}${fng?.prev_1w!=null?' · 1주전 '+Math.round(fng.prev_1w):''}${fng?.prev_1m!=null?' · 1개월전 '+Math.round(fng.prev_1m):''}
+        </div>`;
+      const linkHtml = r.link ? `<a href="${r.link}" target="_blank"
+        style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;
+               font-size:10px;font-weight:600;background:var(--bg3);color:var(--text3);
+               text-decoration:none;margin-top:4px;border:1px solid var(--border)">
+        ${r.linkText}</a>` : '';
+      valCell = `<div style="display:flex;flex-direction:column;align-items:center">${gaugeHtml}${captionHtml}${linkHtml}</div>`;
+    } else if(r.val != null){
       const fmt = r.unit==='$' ? '$'+r.val.toFixed(1) : r.unit==='%' ? r.val.toFixed(2)+'%' : r.val.toFixed(1);
       const col = sigCls==='b-ok'?'var(--green)':sigCls==='b-danger'?'var(--red)':sigCls==='b-warn'?'var(--yellow)':'var(--text)';
       const extraHtml = r.extra ? `<span style="font-size:11px;color:var(--text2);margin-left:6px">${r.extra}</span>` : '';
