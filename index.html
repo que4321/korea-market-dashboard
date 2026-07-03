@@ -140,15 +140,14 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 
 <div class="nav" style="display:flex;align-items:center;gap:0;flex-wrap:wrap">
   <button class="ntab active" onclick="showPanel('macro',this)" id="tab-macro">🌐 거시경제</button>
-  <button class="ntab" onclick="showPanel('scanner',this)" id="tab-scanner">🔍 저평가 스캐너</button>
-  <button class="ntab" onclick="showPanel('kr',this)" id="tab-kr">🇰🇷 한국 시장</button>
-  <button class="ntab" onclick="showPanel('us',this)" id="tab-us">🇺🇸 미국 시장</button>
   <button class="ntab" onclick="showPanel('liquidity',this)" id="tab-liquidity">💧 미국 유동성</button>
-  <button class="ntab" onclick="showPanel('investor',this)" id="tab-investor">📈 투자자 분석</button>
-  <button class="ntab" onclick="showPanel('timing',this)" id="tab-timing">⏱ 매수시점</button>
-  <button class="ntab" onclick="showPanel('discovery',this)" id="tab-discovery">🔎 종목 발굴</button>
-  <button class="ntab" onclick="showPanel('flowsignal',this)" id="tab-flowsignal">📡 연속수급</button>
-  <button class="ntab" onclick="showPanel('capitalflow',this)" id="tab-capitalflow">💰 자금흐름</button>
+  <button class="ntab" onclick="showPanel('us',this)" id="tab-us">🇺🇸 미국 시장</button>
+  <button class="ntab" onclick="showPanel('capitalflow',this)" id="tab-capitalflow">💰 자금흐름(한국)</button>
+  <button class="ntab" onclick="showPanel('kr',this)" id="tab-kr">🇰🇷 한국 시장</button>
+  <button class="ntab" onclick="showPanel('timing',this)" id="tab-timing">⏱ 매수시점(한국)</button>
+  <button class="ntab" onclick="showPanel('discovery',this)" id="tab-discovery">🔎 종목 발굴(한국)</button>
+  <button class="ntab" onclick="showPanel('flowsignal',this)" id="tab-flowsignal">📡 연속수급(한국)</button>
+  <button class="ntab" onclick="showPanel('scanner',this)" id="tab-scanner">🔍 저평가 스캐너</button>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -621,114 +620,6 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 </div>
 
 
-<!-- ══════════════════════════════════════
-     패널 5 : 투자자 분석
-══════════════════════════════════════ -->
-<div id="panel-investor" class="panel">
-
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-    <div class="ts" id="inv-ts">데이터 로딩 중...</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <select id="inv-period" onchange="renderAllStocksTable()"
-        style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;cursor:pointer">
-        <option value="1M">1개월</option>
-        <option value="3M" selected>3개월</option>
-      </select>
-      <select id="inv-price" onchange="renderAllStocksTable()"
-        style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;cursor:pointer">
-        <option value="close">종가 기준</option>
-        <option value="avg">시가+종가 평균</option>
-      </select>
-      <button onclick="downloadInvExcel()"
-        style="background:#1a7a3c;color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer">
-        📥 엑셀 다운로드
-      </button>
-    </div>
-  </div>
-
-  <div class="table-wrap" style="margin-bottom:16px">
-    <table style="table-layout:fixed;width:100%;font-size:12px">
-      <thead>
-        <tr>
-          <th rowspan="2" style="width:90px;text-align:left;vertical-align:middle;padding:8px 10px">종목명</th>
-          <th rowspan="2" style="width:85px;vertical-align:middle">현재가(원)</th>
-          <th colspan="3" style="text-align:center;padding:6px;border-bottom:0.5px solid var(--border)">평균 매입단가(원)</th>
-          <th colspan="3" style="text-align:center;padding:6px;border-bottom:0.5px solid var(--border)">누적 순매수(천주)</th>
-        </tr>
-        <tr>
-          <th style="width:90px;text-align:right">기관</th>
-          <th style="width:90px;text-align:right">외국인</th>
-          <th style="width:90px;text-align:right">개인</th>
-          <th style="width:72px;text-align:right">기관</th>
-          <th style="width:72px;text-align:right">외국인</th>
-          <th style="width:72px;text-align:right">개인</th>
-        </tr>
-      </thead>
-      <tbody id="inv-all-tbody">
-        <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">데이터 로딩 중...</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.8">
-    ※ 평균매입단가 = Σ(일별 순매수량 × 당일 기준가격) / Σ(일별 순매수량). 순매도 구간 제외.<br>
-    ※ 데이터 출처: KRX 정보데이터시스템
-  </div>
-
-  <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-      <span style="font-size:14px;font-weight:600;color:var(--text)">📂 KRX 수동 데이터 업로드</span>
-      <span style="font-size:11px;color:var(--text3);background:var(--bg2);padding:2px 8px;border-radius:4px">주 1~2회 수동 갱신</span>
-    </div>
-    <div style="background:#0d1f0d;border:1px solid #1a4d1a;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:2">
-      <div style="color:#4ade80;font-weight:600;margin-bottom:4px">📋 KRX CSV 다운로드 방법</div>
-      <div style="color:#94a3b8">
-        1. <a href="https://data.krx.co.kr" target="_blank" style="color:#38bdf8">data.krx.co.kr</a> 접속<br>
-        2. 주식 → 투자자별 거래실적 → <b style="color:#e2e8f0">일별 투자자별 매매현황</b> → 종목별 CSV (수량 기준)<br>
-        3. 주식 → 종목시세 → <b style="color:#e2e8f0">개별종목 시세</b> → 종목별 CSV<br>
-        4. 시세 11개 + 투자자 11개 = <b style="color:#e2e8f0">22개 파일</b> 한번에 업로드
-      </div>
-    </div>
-    <div id="krx-drop-zone"
-      style="border:2px dashed var(--border2);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px"
-      onclick="document.getElementById('krx-file-input').click()"
-      ondragover="event.preventDefault();this.style.borderColor='#38bdf8'"
-      ondragleave="this.style.borderColor=''"
-      ondrop="handleKrxDrop(event)">
-      <div style="font-size:28px;margin-bottom:8px">📁</div>
-      <div style="color:var(--text);font-size:13px;font-weight:500">KRX CSV 파일을 여기에 드래그하거나 클릭하여 선택</div>
-      <div style="color:var(--text3);font-size:11px;margin-top:4px">시세 CSV + 투자자 CSV 전체 한번에 선택 가능</div>
-    </div>
-    <input type="file" id="krx-file-input" multiple accept=".csv,.xls,.xlsx"
-           style="display:none" onchange="handleKrxFiles(this.files)">
-    <div id="krx-file-list" style="display:none;margin-bottom:12px">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">선택된 파일:</div>
-      <div id="krx-file-items" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-    </div>
-    <div id="krx-status" style="display:none;font-size:12px;color:var(--text3);margin-bottom:10px;background:var(--bg2);border-radius:6px;padding:10px 14px;line-height:1.8"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button id="krx-convert-btn" onclick="convertKrxFiles()"
-        style="display:none;background:#185FA5;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">
-        🔄 JSON 변환 &amp; 미리보기
-      </button>
-      <button id="krx-download-btn" onclick="downloadInvestorJson()"
-        style="display:none;background:#1a7a3c;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">
-        ⬇ investor_data.json 다운로드
-      </button>
-      <button id="krx-github-btn" onclick="showGithubUploadGuide()"
-        style="display:none;background:#6e40c9;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">
-        🐙 GitHub 업로드 가이드
-      </button>
-    </div>
-    <div id="krx-github-guide" style="display:none;margin-top:12px;background:#0d0d1f;border:1px solid #2d2d6e;border-radius:8px;padding:14px;font-size:12px;color:#94a3b8;line-height:2">
-      <div style="color:#a78bfa;font-weight:600;margin-bottom:6px">🐙 GitHub 업로드 방법</div>
-      1. <b style="color:#e2e8f0">⬇ investor_data.json 다운로드</b> 클릭<br>
-      2. <a href="https://github.com/que4321/korea-market-dashboard/upload/main/data" target="_blank" style="color:#38bdf8">korea-market-dashboard → data 폴더</a> 이동<br>
-      3. <b style="color:#e2e8f0">Add file → Upload files</b> → investor_data.json 업로드<br>
-      4. <b style="color:#e2e8f0">Commit changes</b> 클릭 → 완료!
-    </div>
-  </div>
-</div>
 
 <!-- ══════════════════════════════════════
      패널 7: 매수시점
@@ -1292,7 +1183,6 @@ function showPanel(id,el){
     }
   }
   if(id==='flowsignal') loadFlowData();
-  if(id==='investor'&&!invLoaded) loadInvestorData();
   if(id==='macro') loadMacroData();
   if(id==='timing'){
     if(cachedData?.macro?.m7 && cachedData?.macro?.kr_stocks){ renderTimingPanel('kr'); }
@@ -1910,7 +1800,7 @@ function renderMacroPanel(fred){
                fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`;
     };
     const wedges = zones.map(z=>{
-      const isCurrent = ratingEn === z.key;
+      const isCurrent = score >= z.min && (z.max===100 ? score <= z.max : score < z.max);
       return sector(angleFor(z.min), angleFor(z.max), isCurrent ? z.fill : 'var(--bg3)', isCurrent ? z.stroke : 'none', isCurrent ? 2 : 0);
     }).join('');
     // 구간 경계마다 얇은 구분선
@@ -1923,7 +1813,7 @@ function renderMacroPanel(fred){
     }).join('');
     // 구간별 라벨 — 원 사이트처럼 접선 방향으로 살짝 회전
     const labels = zones.map(z=>{
-      const isCurrent = ratingEn === z.key;
+      const isCurrent = score >= z.min && (z.max===100 ? score <= z.max : score < z.max);
       const midAngle = angleFor((z.min+z.max)/2);
       const p = polar((rO+rI)/2, midAngle);
       let rot = ((midAngle + 90) % 360 + 360) % 360;
@@ -1942,6 +1832,16 @@ function renderMacroPanel(fred){
     return `<svg viewBox="0 0 200 118" width="180" height="106" style="display:block;margin:0 auto">${wedges}${dividers}${labels}${needle}${scoreText}</svg>`;
   }
 
+  // 백엔드 rating_kr 대소문자 이슈와 무관하게 점수만으로 한글 등급 계산
+  function ratingKrFromScore(score){
+    if(score==null) return '';
+    if(score < 25) return '극단적 공포';
+    if(score < 45) return '공포';
+    if(score < 55) return '중립';
+    if(score < 75) return '탐욕';
+    return '극단적 탐욕';
+  }
+
   tbody.innerHTML = rows.map((r, i) => {
     const [sigLabel, sigCls] = macroGrade(r.key, r.val);
 
@@ -1950,7 +1850,7 @@ function renderMacroPanel(fred){
     if(r.key === 'fg' && r.val != null){
       const gaugeHtml = fngGaugeSvg(r.val, fng?.rating);
       const captionHtml = `<div style="font-size:11px;color:var(--text2);margin-top:2px">
-          ${fng?.rating_kr ?? ''}${fng?.prev_1w!=null?' · 1주전 '+Math.round(fng.prev_1w):''}${fng?.prev_1m!=null?' · 1개월전 '+Math.round(fng.prev_1m):''}
+          ${ratingKrFromScore(r.val)}${fng?.prev_1w!=null?' · 1주전 '+Math.round(fng.prev_1w):''}${fng?.prev_1m!=null?' · 1개월전 '+Math.round(fng.prev_1m):''}
         </div>`;
       const linkHtml = r.link ? `<a href="${r.link}" target="_blank"
         style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;
@@ -2676,379 +2576,6 @@ async function generateLiquidityInsight() {
 }
 
 
-
-/* ══════════════════════════════════════
-   📈 투자자 분석 JS
-══════════════════════════════════════ */
-const INV_DATA_URL = 'https://raw.githubusercontent.com/que4321/korea-market-dashboard/main/data/investor_data.json';
-const INV_STOCKS = {
-  '005930':'삼성전자','000660':'SK하이닉스','042700':'한미반도체',
-  '010140':'삼성중공업','015760':'한국전력','028050':'삼성E&A',
-  '035420':'NAVER','034020':'두산에너빌리티','033780':'KT&G',
-  '111770':'영원무역','002960':'한국쉘석유'
-};
-const KRX_TICKERS = INV_STOCKS;
-
-let invLoaded=false, invRawData=null, krxFiles=[], krxJsonResult=null;
-
-async function loadInvestorData() {
-  invLoaded = true;
-  document.getElementById('inv-ts').textContent = '데이터 불러오는 중...';
-  try {
-    const r = await fetch(INV_DATA_URL + '?v=' + Date.now(), {cache:'no-store'});
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    invRawData = await r.json();
-    const upd = invRawData.updated_at || '-';
-    document.getElementById('inv-ts').textContent = '업데이트: ' + upd + ' · 매일 18:00 KST 자동갱신';
-    const tEl = document.getElementById('ts-investor');
-    if (tEl) tEl.textContent = upd;
-  } catch(e) {
-    document.getElementById('inv-ts').textContent = '⚠ 실데이터 로드 실패 — 시뮬레이션 표시 중';
-    invRawData = null;
-  }
-  renderAllStocksTable();
-}
-
-function loadInvestor() { renderInvestor(); }
-
-function renderInvestor() {
-  // 개별 종목 차트는 renderAllStocksTable()에서 처리
-}
-
-function switchInvTab(mode, el) {}
-
-function renderAllStocksTable() {
-  const period = document.getElementById('inv-period').value;
-  const priceMode = document.getElementById('inv-price').value;
-  const nDays = period === '1M' ? 22 : 66;
-  const pKey = priceMode === 'avg' ? 'avg' : 'close';
-  const tbody = document.getElementById('inv-all-tbody');
-  if (!tbody) return;
-
-  let html = '';
-  Object.keys(INV_STOCKS).forEach(function(ticker) {
-    const name = INV_STOCKS[ticker];
-    let daily = [];
-    if (invRawData && invRawData.stocks && invRawData.stocks[ticker] && invRawData.stocks[ticker].daily) {
-      daily = invRawData.stocks[ticker].daily.slice(-nDays);
-    } else {
-      daily = invSimData(ticker, priceMode, nDays);
-    }
-    if (!daily.length) { html += '<tr><td style="text-align:left;padding:7px 10px">'+name+'</td><td colspan="7" style="color:var(--text3)">—</td></tr>'; return; }
-
-    const last = daily[daily.length-1];
-    const curP = last[pKey] || last.close;
-
-    function calcA(key) {
-      let ca=0,cq=0,tot=0;
-      daily.forEach(function(r){var net=r[key]||0,px=r[pKey]||r.close||0;tot+=net;if(net>0){ca+=net*px;cq+=net;}});
-      return {avg: cq>0?Math.round(ca/cq):null, tot:tot};
-    }
-    const inst=calcA('inst_net'), fore=calcA('fore_net'), pers=calcA('pers_net');
-
-    function fmtAvg(avg) {
-      if (!avg) return '<span style="color:var(--text3)">—</span>';
-      const d = curP - avg;
-      const cls = d >= 0 ? 'up' : 'down';
-      return '<span class="'+cls+'">'+avg.toLocaleString()+'</span><br><span style="font-size:10px;color:var(--text3)">'+(d>=0?'+':'')+d.toLocaleString()+'('+(((d/avg)*100).toFixed(1))+'%)</span>';
-    }
-    function fmtNet(tot) {
-      const v = Math.round(tot/1000);
-      const cls = tot >= 0 ? 'up' : 'down';
-      return '<span class="'+cls+'">'+(tot>=0?'+':'')+v.toLocaleString()+'천주</span>';
-    }
-
-    html += '<tr style="cursor:pointer" onclick="document.getElementById(&quot;inv-stock&quot;).value=&quot;'+ticker+'&quot;;loadInvestor()">'
-      +'<td style="text-align:left;padding:7px 10px;font-weight:500">'+name+'</td>'
-      +'<td class="num">'+curP.toLocaleString()+'</td>'
-      +'<td class="num">'+fmtAvg(inst.avg)+'</td>'
-      +'<td class="num">'+fmtAvg(fore.avg)+'</td>'
-      +'<td class="num">'+fmtAvg(pers.avg)+'</td>'
-      +'<td class="num">'+fmtNet(inst.tot)+'</td>'
-      +'<td class="num">'+fmtNet(fore.tot)+'</td>'
-      +'<td class="num">'+fmtNet(pers.tot)+'</td></tr>';
-  });
-  tbody.innerHTML = html;
-  loadInvestor();
-}
-
-/* KRX 파일 업로드 */
-function handleKrxDrop(e) {
-  e.preventDefault();
-  document.getElementById('krx-drop-zone').style.borderColor = '';
-  handleKrxFiles(e.dataTransfer.files);
-}
-
-function handleKrxFiles(files) {
-  krxFiles = Array.from(files);
-  const listEl = document.getElementById('krx-file-list');
-  const itemsEl = document.getElementById('krx-file-items');
-  listEl.style.display = 'block';
-  itemsEl.innerHTML = krxFiles.map(function(f){
-    return '<span style="background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:11px;color:var(--text2)">📄 '+f.name+'</span>';
-  }).join('');
-  document.getElementById('krx-convert-btn').style.display = 'inline-block';
-  document.getElementById('krx-download-btn').style.display = 'none';
-  document.getElementById('krx-github-btn').style.display = 'none';
-  setKrxStatus('파일 '+krxFiles.length+'개 선택됨. [JSON 변환] 버튼을 클릭하세요.', '#94a3b8');
-}
-
-function setKrxStatus(msg, color) {
-  const el = document.getElementById('krx-status');
-  el.style.display = 'block';
-  el.style.color = color || '#94a3b8';
-  el.innerHTML = msg;
-}
-
-function toKrxInt(v) {
-  if (v===undefined||v===null||v==='') return 0;
-  return parseInt(String(v).replace(/,/g,'').replace(/\+/g,'').trim()) || 0;
-}
-
-function fmtKrxDate(raw) {
-  if (!raw) return '';
-  let d = String(raw).replace(/\//g,'-').replace(/\./g,'-').trim();
-  if (d.length===8 && !d.includes('-')) d = d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6);
-  return d.length===10 ? d : '';
-}
-
-function parseKrxCsv(text) {
-  text = text.replace(/^\uFEFF/,'');
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return {type:'unknown', rows:[]};
-  const header = lines[0].split(',').map(function(h){return h.trim().replace(/"/g,'');});
-  const isSise = header.includes('종가') || header.includes('시가');
-  const isInvestor = header.some(function(h){return h.includes('기관')||h.includes('외국인')||h.includes('개인');});
-  const rows = [];
-  for (let i=1; i<lines.length; i++) {
-    const cols = lines[i].split(',').map(function(c){return c.trim().replace(/"/g,'');});
-    if (cols.length < 2 || !cols[0]) continue;
-    const obj = {};
-    header.forEach(function(h,idx){obj[h]=cols[idx]||'';});
-    const dateKey = Object.keys(obj).find(function(k){return ['일자','날짜','TRD_DD','기준일'].some(function(p){return k.includes(p);});});
-    const d = fmtKrxDate(obj[dateKey]||cols[0]);
-    if (!d) continue;
-    if (isSise && !isInvestor) {
-      const close = toKrxInt(obj['종가']||0);
-      const open = toKrxInt(obj['시가']||0)||close;
-      if (close>0) rows.push({date:d,close:close,open:open,avg:Math.round((open+close)/2)});
-    } else {
-      function findNet(keys) {
-        for (let ki=0; ki<keys.length; ki++) {
-          const k = keys[ki];
-          const fk = Object.keys(obj).find(function(ok){return ok===k||(ok.includes(k)&&ok.includes('순매수'));});
-          if (fk && obj[fk]!=='') return toKrxInt(obj[fk]);
-          const fk2 = Object.keys(obj).find(function(ok){return ok===k||ok.startsWith(k);});
-          if (fk2 && obj[fk2]!=='') return toKrxInt(obj[fk2]);
-        }
-        return 0;
-      }
-      rows.push({date:d, inst_net:findNet(['기관 합계','기관합계','기관']), fore_net:findNet(['외국인 합계','외국인합계','외국인']), pers_net:findNet(['개인'])});
-    }
-  }
-  const type = (isSise && !isInvestor) ? 'sise' : 'investor';
-  return {type:type, rows:rows.sort(function(a,b){return a.date.localeCompare(b.date);})};
-}
-
-function parseKrxExcel(arrayBuffer) {
-  const wb = XLSX.read(arrayBuffer, {type:'array'});
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  return parseKrxCsv(XLSX.utils.sheet_to_csv(ws));
-}
-
-function detectKrxTicker(filename) {
-  const m = filename.match(/(\d{6})/);
-  if (m && KRX_TICKERS[m[1]]) return m[1];
-  const keys = Object.keys(KRX_TICKERS);
-  for (let i=0; i<keys.length; i++) {
-    const code=keys[i], name=KRX_TICKERS[code];
-    if (filename.includes(name)||filename.includes(code)) return code;
-  }
-  return null;
-}
-
-async function convertKrxFiles() {
-  if (!krxFiles.length) return;
-  setKrxStatus('⏳ 파일 분석 중...', '#fbbf24');
-  const siseMap={}, investorMap={};
-  let log='';
-
-  for (let fi=0; fi<krxFiles.length; fi++) {
-    const file = krxFiles[fi];
-    const ticker = detectKrxTicker(file.name);
-    if (!ticker) { log+='⚠ <b>'+file.name+'</b>: 종목코드 인식 실패<br>'; continue; }
-    const name = KRX_TICKERS[ticker];
-    let parsed;
-    try {
-      if (file.name.toLowerCase().endsWith('.csv')) {
-        let decoded='';
-        try { const buf=await file.arrayBuffer(); decoded=new TextDecoder('euc-kr').decode(buf); } catch(e) { decoded=await file.text(); }
-        parsed = parseKrxCsv(decoded);
-      } else {
-        parsed = parseKrxExcel(await file.arrayBuffer());
-      }
-    } catch(e) { log+='❌ <b>'+file.name+'</b>: '+e.message+'<br>'; continue; }
-
-    if (!parsed.rows.length) { log+='⚠ <b>'+name+'('+ticker+')</b>: 데이터 없음<br>'; continue; }
-
-    if (parsed.type==='sise') {
-      if (!siseMap[ticker]) siseMap[ticker]={};
-      parsed.rows.forEach(function(r){siseMap[ticker][r.date]=r;});
-      log+='📈 <b>'+name+'('+ticker+')</b> 시세: '+parsed.rows.length+'거래일<br>';
-    } else {
-      if (!investorMap[ticker]) investorMap[ticker]={};
-      parsed.rows.forEach(function(r){investorMap[ticker][r.date]=r;});
-      log+='👥 <b>'+name+'('+ticker+')</b> 투자자: '+parsed.rows.length+'거래일<br>';
-    }
-  }
-
-  const KST = new Date().toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
-  const result = {updated_at:KST.replace(/\. /g,'-').replace(/\.$/,'')+' KST (수동업로드)', period:{start:'',end:''}, stocks:{}};
-  const allTickers = Array.from(new Set(Object.keys(siseMap).concat(Object.keys(investorMap))));
-
-  allTickers.forEach(function(ticker) {
-    const name=KRX_TICKERS[ticker], sise=siseMap[ticker]||{}, inv=investorMap[ticker]||{};
-    const dates=Array.from(new Set(Object.keys(sise).concat(Object.keys(inv)))).sort();
-    const rows=dates.map(function(d){
-      return {date:d, close:sise[d]?sise[d].close:0, open:sise[d]?sise[d].open:0, avg:sise[d]?sise[d].avg:0,
-              inst_net:inv[d]?inv[d].inst_net:0, fore_net:inv[d]?inv[d].fore_net:0, pers_net:inv[d]?inv[d].pers_net:0};
-    }).filter(function(r){return r.close>0||r.inst_net!==0;});
-    if (!rows.length) return;
-    result.stocks[ticker] = buildInvSummary(ticker, name, rows);
-    const last=rows[rows.length-1];
-    log+='✅ <b>'+name+'('+ticker+')</b>: '+rows.length+'거래일 | '+last.date+' | 종가:'+last.close.toLocaleString()+'원<br>';
-    if (!result.period.start||rows[0].date<result.period.start) result.period.start=rows[0].date;
-    if (!result.period.end||last.date>result.period.end) result.period.end=last.date;
-  });
-
-  const cnt=Object.keys(result.stocks).length;
-  setKrxStatus('<b style="color:#4ade80">변환 완료: '+cnt+'개 종목</b><br><br>'+log,'#94a3b8');
-  if (cnt>0) {
-    krxJsonResult=result; invRawData=result;
-    document.getElementById('krx-download-btn').style.display='inline-block';
-    document.getElementById('krx-github-btn').style.display='inline-block';
-    const ts=document.getElementById('inv-ts');
-    if(ts) ts.textContent='수동업로드 | '+KST+' | '+cnt+'종목';
-    renderAllStocksTable();
-  }
-}
-
-function calcAvgCost(rows, netKey, pxKey) {
-  let ca=0,cq=0,tot=0; const daily=[];
-  rows.forEach(function(r){const net=r[netKey]||0,px=r[pxKey]||r.close||0;tot+=net;if(net>0){ca+=net*px;cq+=net;}daily.push(cq>0?Math.round(ca/cq):null);});
-  return {avg_cost:cq>0?Math.round(ca/cq):null, total_net:tot, daily_avg:daily};
-}
-
-function buildInvSummary(ticker, name, rows) {
-  if (!rows.length) return {ticker:ticker,name:name,error:'데이터 없음'};
-  const last=rows[rows.length-1], cp=last.close;
-  function pct(a){return a?+((cp-a)/a*100).toFixed(2):null;}
-  function sec(pk){
-    const i=calcAvgCost(rows,'inst_net',pk),f=calcAvgCost(rows,'fore_net',pk),p=calcAvgCost(rows,'pers_net',pk);
-    return {inst:{avg_cost:i.avg_cost,total_net:i.total_net,pct:pct(i.avg_cost),daily_avg:i.daily_avg},
-            fore:{avg_cost:f.avg_cost,total_net:f.total_net,pct:pct(f.avg_cost),daily_avg:f.daily_avg},
-            pers:{avg_cost:p.avg_cost,total_net:p.total_net,pct:pct(p.avg_cost),daily_avg:p.daily_avg}};
-  }
-  return {ticker:ticker,name:name,last_date:last.date,cur_price:cp,trading_days:rows.length,close:sec('close'),avg_price:sec('avg'),daily:rows};
-}
-
-function downloadInvestorJson() {
-  if (!krxJsonResult) return;
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(krxJsonResult,null,2)],{type:'application/json'}));
-  a.download='investor_data.json'; a.click();
-}
-
-function showGithubUploadGuide() {
-  const el=document.getElementById('krx-github-guide');
-  el.style.display=el.style.display==='none'?'block':'none';
-}
-
-function downloadInvExcel() {
-  if (!invRawData && !krxJsonResult) { alert('데이터가 없습니다. CSV 변환 후 시도해 주세요.'); return; }
-
-  const period    = document.getElementById('inv-period').value;
-  const priceMode = document.getElementById('inv-price').value;
-  const nDays     = period === '1M' ? 22 : 66;
-  const pKey      = priceMode === 'avg' ? 'avg' : 'close';
-  const pLabel    = priceMode === 'avg' ? '시가+종가 평균' : '종가';
-  const periodLabel = period === '1M' ? '1개월' : '3개월';
-
-  const wb = XLSX.utils.book_new();
-
-  /* ── 시트1: 전체 종목 요약 표 ── */
-  const header = ['종목명','종목코드','현재가(원)',
-    '기관 평균단가','기관 대비(원)','기관 수익률(%)',
-    '외국인 평균단가','외국인 대비(원)','외국인 수익률(%)',
-    '개인 평균단가','개인 대비(원)','개인 수익률(%)',
-    '기관 누적순매수(천주)','외국인 누적순매수(천주)','개인 누적순매수(천주)'];
-
-  const rows = [];
-  Object.keys(INV_STOCKS).forEach(function(ticker) {
-    const name = INV_STOCKS[ticker];
-    let daily = [];
-    if (invRawData && invRawData.stocks && invRawData.stocks[ticker] && invRawData.stocks[ticker].daily)
-      daily = invRawData.stocks[ticker].daily.slice(-nDays);
-    else daily = invSimData(ticker, priceMode, nDays);
-
-    if (!daily.length) { rows.push([name, ticker, '', '', '', '', '', '', '', '', '', '', '', '', '']); return; }
-
-    const last = daily[daily.length-1];
-    const curP = last[pKey] || last.close;
-
-    function ca(key) {
-      let a=0,q=0,tot=0;
-      daily.forEach(function(r){var n=r[key]||0,p=r[pKey]||r.close||0;tot+=n;if(n>0){a+=n*p;q+=n;}});
-      return {avg:q>0?Math.round(a/q):null, tot:tot};
-    }
-    const inst=ca('inst_net'), fore=ca('fore_net'), pers=ca('pers_net');
-
-    function diff(avg) { return avg ? curP - avg : ''; }
-    function pct(avg)  { return avg ? +((curP-avg)/avg*100).toFixed(2) : ''; }
-
-    rows.push([
-      name, ticker, curP,
-      inst.avg||'', diff(inst.avg), pct(inst.avg),
-      fore.avg||'', diff(fore.avg), pct(fore.avg),
-      pers.avg||'', diff(pers.avg), pct(pers.avg),
-      Math.round(inst.tot/1000), Math.round(fore.tot/1000), Math.round(pers.tot/1000)
-    ]);
-  });
-
-  const ws1 = XLSX.utils.aoa_to_sheet([
-    ['투자자별 평균매입단가 분석 — ' + periodLabel + ' / ' + pLabel],
-    ['기준일: ' + (invRawData && invRawData.updated_at ? invRawData.updated_at : new Date().toLocaleDateString('ko-KR'))],
-    [],
-    header,
-    ...rows
-  ]);
-  ws1['!cols'] = [{wch:14},{wch:8},{wch:12},
-    {wch:14},{wch:12},{wch:10},
-    {wch:14},{wch:12},{wch:10},
-    {wch:14},{wch:12},{wch:10},
-    {wch:16},{wch:16},{wch:16}];
-  XLSX.utils.book_append_sheet(wb, ws1, '전체 종목 요약');
-
-  const today = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, '투자자분석_전체종목_' + today + '.xlsx');
-}
-
-function invSimData(ticker, priceMode, nDays) {
-  const bases={'005930':270500,'000660':195000,'042700':369000,'010140':29300,'015760':38750,'028050':50600,'035420':203500,'034020':110800,'033780':179800,'111770':89600,'002960':580000};
-  const base=bases[ticker]||50000;
-  const dates=[];
-  const now=new Date(2026,4,17);
-  for(let i=nDays+40;i>=0;i--){const t=new Date(now);t.setDate(t.getDate()-i);if(t.getDay()!==0&&t.getDay()!==6)dates.push(t.toISOString().slice(0,10));}
-  const ds=dates.slice(-nDays);
-  let price=base,seed=parseInt(ticker)%997;
-  function rnd(){seed=(seed*1664525+1013904223)&0xffffffff;return((seed>>>0)/0xffffffff);}
-  return ds.map(function(dt){
-    price=Math.round(price*(1+(rnd()-0.48)*0.015));
-    const open=Math.round(price*(1+(rnd()-0.5)*0.008));
-    const close=Math.round(price*(1+(rnd()-0.5)*0.008));
-    return{date:dt,close:close,open:open,avg:Math.round((open+close)/2),inst_net:Math.round(rnd()*800000-200000),fore_net:Math.round(rnd()*600000-150000),pers_net:Math.round(rnd()*400000-200000)};
-  });
-}
 
 
 /* ══════════════════════ M7 주가 & EPS 차트 ══════════════════════ */
