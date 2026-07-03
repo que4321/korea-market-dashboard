@@ -144,7 +144,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
   <button class="ntab" onclick="showPanel('us',this)" id="tab-us">🇺🇸 미국 시장</button>
   <button class="ntab" onclick="showPanel('capitalflow',this)" id="tab-capitalflow">💰 자금흐름(한국)</button>
   <button class="ntab" onclick="showPanel('kr',this)" id="tab-kr">🇰🇷 한국 시장</button>
-  <button class="ntab" onclick="showPanel('timing',this)" id="tab-timing">⏱ 매수시점(한국)</button>
+  <button class="ntab" onclick="showPanel('timing',this)" id="tab-timing">⏱ 매수시점(한국,미국)</button>
   <button class="ntab" onclick="showPanel('discovery',this)" id="tab-discovery">🔎 종목 발굴(한국)</button>
   <button class="ntab" onclick="showPanel('flowsignal',this)" id="tab-flowsignal">📡 연속수급(한국)</button>
   <button class="ntab" onclick="showPanel('scanner',this)" id="tab-scanner">🔍 저평가 스캐너</button>
@@ -683,6 +683,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         <thead>
           <tr style="border-bottom:1px solid var(--border);color:var(--text2)">
             <th style="text-align:left;padding:6px 8px;font-weight:500">종목</th>
+            <th style="text-align:right;padding:6px 8px;font-weight:500">현재가</th>
             <th style="text-align:right;padding:6px 8px;font-weight:500">외국인<br>순매수</th>
             <th style="text-align:right;padding:6px 8px;font-weight:500">기관<br>순매수</th>
             <th style="text-align:right;padding:6px 8px;font-weight:500">연기금<br>순매수</th>
@@ -692,7 +693,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
           </tr>
         </thead>
         <tbody id="timing-investor-body">
-          <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text2)">데이터 로딩 중...</td></tr>
+          <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text2)">데이터 로딩 중...</td></tr>
         </tbody>
       </table>
     </div>
@@ -863,6 +864,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <thead>
         <tr style="background:var(--bg3);border-bottom:1px solid var(--border2)">
           <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px">종목</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">현재가</th>
           <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px">투자자</th>
           <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--text3)">연속</th>
           <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">D-0</th>
@@ -874,7 +876,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         </tr>
       </thead>
       <tbody id="flow-tbody">
-        <tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text2)">
+        <tr><td colspan="10" style="text-align:center;padding:50px;color:var(--text2)">
           <div class="spinner" style="margin:0 auto 12px"></div>데이터 로딩 중...
         </td></tr>
       </tbody>
@@ -3113,7 +3115,7 @@ function renderInvestorFlow(items){
 
   const withFlow = items.filter(i => i.investor);
   if(!withFlow.length){
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text2)">수급 데이터 없음 — 투자자 수급 수집 후 확인</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text2)">수급 데이터 없음 — 투자자 수급 수집 후 확인</td></tr>';
     if(periodEl) periodEl.textContent = '';
     return;
   }
@@ -3127,18 +3129,14 @@ function renderInvestorFlow(items){
   const fmtShares = v => v==null ? '-' : (v>0?'+':'') + v.toLocaleString() + '주';
   const fmtPctFlow = v => v==null ? '-' : (v>0?'+':'') + v.toFixed(2) + '%p';
 
-  // 외국인+기관 동반 순매수 종목 우선 정렬
+  // 누적수량(외국인+기관+연기금 순매수 합계) 내림차순 정렬
   const sorted = [...items].sort((a,b)=>{
-    const score = it => {
+    const total = it => {
       const inv = it.investor;
-      if(!inv) return 9;
-      const fPos = (inv.foreign_net_1m||0) > 0;
-      const iPos = (inv.inst_net_1m||0) > 0;
-      if(fPos && iPos) return 0;
-      if(fPos || iPos) return 1;
-      return 2;
+      if(!inv) return -Infinity;
+      return (inv.foreign_net_1m||0) + (inv.inst_net_1m||0) + (inv.pension_net_1m||0);
     };
-    return score(a) - score(b);
+    return total(b) - total(a);
   });
 
   tbody.innerHTML = sorted.map(item => {
@@ -3146,7 +3144,8 @@ function renderInvestorFlow(items){
     if(!inv){
       return `<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:7px 8px">${item.name}</td>
-        <td colspan="6" style="text-align:center;padding:7px 8px;color:var(--text2)">데이터 없음</td>
+        <td style="text-align:right;padding:7px 8px">${item.technical?.price!=null ? item.technical.price.toLocaleString()+'₩' : '-'}</td>
+        <td colspan="7" style="text-align:center;padding:7px 8px;color:var(--text2)">데이터 없음</td>
       </tr>`;
     }
     const fNet = inv.foreign_net_1m, iNet = inv.inst_net_1m, pNet = inv.pension_net_1m;
@@ -3155,6 +3154,7 @@ function renderInvestorFlow(items){
     const pColor = pNet==null ? '' : pNet>0 ? 'color:#22c55e' : pNet<0 ? 'color:#ef4444' : '';
     const rChange = inv.foreign_ratio_change;
     const rColor  = rChange==null ? '' : rChange>0 ? 'color:#22c55e' : rChange<0 ? 'color:#ef4444' : '';
+    const priceTxt = item.technical?.price!=null ? item.technical.price.toLocaleString()+'₩' : '-';
 
     const bothBuy = (fNet||0) > 0 && (iNet||0) > 0;
     const eitherBuy = (fNet||0) > 0 || (iNet||0) > 0;
@@ -3166,6 +3166,7 @@ function renderInvestorFlow(items){
 
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
       <td style="padding:7px 8px;font-weight:${bothBuy?'600':'400'}">${item.name}</td>
+      <td style="text-align:right;padding:7px 8px">${priceTxt}</td>
       <td style="text-align:right;padding:7px 8px;${fColor}">${fmtShares(fNet)}</td>
       <td style="text-align:right;padding:7px 8px;${iColor}">${fmtShares(iNet)}</td>
       <td style="text-align:right;padding:7px 8px;${pColor}">${fmtShares(pNet)}</td>
@@ -3250,19 +3251,19 @@ let flowInv = 'all';
 async function loadFlowData(force=false){
   if(flowCache && !force){ renderFlowSignal(); return; }
   const tbody = document.getElementById('flow-tbody');
-  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text2)"><div class="spinner" style="margin:0 auto 12px"></div>데이터 로딩 중...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:50px;color:var(--text2)"><div class="spinner" style="margin:0 auto 12px"></div>데이터 로딩 중...</td></tr>';
   try{
     const r = await fetch(CONSECUTIVE_URL + '?t=' + Date.now());
     const json = await r.json();
     // consecutive_flow.json 구조: { consecutive_flow: {...} } 또는 기존 scanner.json 호환
     flowCache = json.consecutive_flow || json || null;
     if(!flowCache || !flowCache.signals){
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text3)">아직 데이터 없음 — 스크립트 첫 실행 후 확인 (매일 09:30 KST)</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:50px;color:var(--text3)">아직 데이터 없음 — 스크립트 첫 실행 후 확인 (매일 09:30 KST)</td></tr>';
       return;
     }
     renderFlowSignal();
   }catch(e){
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--red)">로드 실패: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:50px;color:var(--red)">로드 실패: ${e.message}</td></tr>`;
   }
 }
 
@@ -3354,7 +3355,7 @@ function renderFlowSignal(){
     const merged = [...crossSet].map(ticker=>{
       const a = mapA[ticker]; const b = mapB[ticker];
       return { ticker, name: a.name, totalA: a.total_net, totalB: b.total_net,
-               valsA: a.daily_net||[], valsB: b.daily_net||[] };
+               valsA: a.daily_net||[], valsB: b.daily_net||[], close: a.close ?? b.close };
     }).sort((a,b)=>b.totalA - a.totalA);
 
     for(const item of merged){
@@ -3372,15 +3373,18 @@ function renderFlowSignal(){
       }).join('');
 
       // 종목명 행 (헤더 역할)
-      const colspan = show5 ? 9 : 7;
+      const colspan = show5 ? 10 : 8;
+      const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
       rows.push(`<tr style="background:rgba(56,189,248,0.05);border-top:1px solid var(--border2)">
         <td colspan="${colspan}" style="padding:8px 12px;font-weight:700;font-size:13px">
           ${item.name} <span style="color:var(--text3);font-size:11px;font-weight:400;margin-left:4px">${item.ticker}</span>
+          <span style="color:var(--text2);font-size:12px;font-weight:600;margin-left:10px">${closeTxt}</span>
         </td>
       </tr>`);
       // A행 (외국인)
       rows.push(`<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
         <td style="padding:6px 12px 6px 20px;color:var(--text3);font-size:12px">└</td>
+        <td style="padding:6px 12px;text-align:right;color:var(--text3)"></td>
         <td style="padding:6px 12px;text-align:center"><span style="color:${metaA.color};font-size:11px;font-weight:700">${metaA.label}</span></td>
         <td style="padding:6px 12px;text-align:center;color:var(--yellow);font-weight:700">${flowDay}일</td>
         ${dayCellsA}
@@ -3389,6 +3393,7 @@ function renderFlowSignal(){
       // B행 (기관 or 연기금)
       rows.push(`<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:6px 12px 6px 20px;color:var(--text3);font-size:12px">└</td>
+        <td style="padding:6px 12px;text-align:right;color:var(--text3)"></td>
         <td style="padding:6px 12px;text-align:center"><span style="color:${metaB.color};font-size:11px;font-weight:700">${metaB.label}</span></td>
         <td style="padding:6px 12px;text-align:center;color:var(--yellow);font-weight:700">${flowDay}일</td>
         ${dayCellsB}
@@ -3409,8 +3414,10 @@ function renderFlowSignal(){
           return `<td style="${hide}padding:9px 12px;text-align:right;color:${c};font-family:'JetBrains Mono',monospace;font-size:12px">${v>0?'+':''}${v.toLocaleString()}</td>`;
         }).join('');
         const tc=item.total_net>0?'#22c55e':'#ef4444';
+        const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
         rows.push(`<tr style="border-bottom:1px solid var(--border)">
           <td style="padding:9px 12px"><span style="font-weight:600">${item.name}</span><span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span></td>
+          <td style="padding:9px 12px;text-align:right">${closeTxt}</td>
           <td style="padding:9px 12px;text-align:center"><span style="color:${meta.color};font-size:11px;font-weight:700">${meta.label}</span></td>
           <td style="padding:9px 12px;text-align:center;color:var(--yellow);font-weight:700">${item.consecutive_days}일</td>
           ${dayCells}
@@ -3422,7 +3429,7 @@ function renderFlowSignal(){
 
   document.getElementById('flow-tbody').innerHTML = rows.length
     ? rows.join('')
-    : '<tr><td colspan="9" style="text-align:center;padding:50px;color:var(--text3)">해당 조건의 종목 없음</td></tr>';
+    : '<tr><td colspan="10" style="text-align:center;padding:50px;color:var(--text3)">해당 조건의 종목 없음</td></tr>';
 }
 
 /* ══════════════════════ 자금흐름 ══════════════════════ */
