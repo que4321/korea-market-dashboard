@@ -1147,6 +1147,7 @@ const CAPITAL_FLOW_URL  = `https://gist.githubusercontent.com/que4321/${GIST_ID}
 const CONSECUTIVE_URL   = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/consecutive_flow.json`;
 const DISCOVERY_URL     = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/kospi_discovery.json`;
 const MACRO_URL         = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/macro.json`;
+const MACRO_INDICATORS_URL = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/macro_indicators.json`;
 const TIMING_URL        = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/timing.json`;
 const LIQUIDITY_URL     = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/liquidity.json`;
 
@@ -2029,32 +2030,38 @@ async function loadDiscoveryFile(){
 }
 
 async function loadMacroFile(){
+  if(!cachedData) cachedData = {};
+
+  // ① macro.json — kr_stocks/m7 (가격/EPS/investor 등, 정체가 불명확한 기존 파이프라인 그대로 유지)
   try {
     const url = MACRO_URL + '?nc=' + Date.now();
-    console.log('Macro fetch URL:', url);
     const r = await fetch(url, {cache:'no-store'});
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    const text = await r.text();
-    console.log('Macro 응답 길이:', text.length, 'bytes');
-    let macroData;
-    try {
-      macroData = JSON.parse(text);
-    } catch(pe) {
-      throw new Error(`JSON 파싱 실패: ${pe.message}`);
-    }
-    // macro.json 구조 (분리 후, 2026-07-01~): { macro: {cpi_yoy, core_pce, ...} }
-    // 과거 호환: 최상위에 kr_stocks/m7이 남아있을 수 있으므로 함께 보존
-    if(!cachedData) cachedData = {};
-    const macroInner = macroData.macro ?? {};
-    cachedData.macro = { ...(cachedData.macro||{}), ...macroData, ...macroInner };
-    console.log('✅ 거시경제 데이터 캐싱 완료:', cachedData.macro.updated_at);
-    if(document.getElementById('panel-macro').classList.contains('active')){
-      loadMacroData();
-    }
+    const macroData = JSON.parse(await r.text());
+    // ★ 2026-07-04부로 거시지표는 macro_indicators.json으로 분리됨 —
+    //   여기서는 kr_stocks/m7 등 종목 데이터만 병합하고, macro 지표 필드는 건드리지 않음
+    cachedData.macro = { ...(cachedData.macro||{}), ...macroData };
+    console.log('✅ macro.json(종목 데이터) 캐싱 완료');
   } catch(e) {
-    console.error('loadMacroFile 오류:', e.message);
-    const tsEl = document.getElementById('macro-ts');
-    if(tsEl) tsEl.textContent = '거시경제 로드 실패: ' + e.message;
+    console.error('loadMacroFile(macro.json) 오류:', e.message);
+  }
+
+  // ② macro_indicators.json — 거시경제 탭 전용 지표 (t10y, vix, cape 등)
+  try {
+    const url2 = MACRO_INDICATORS_URL + '?nc=' + Date.now();
+    console.log('Macro indicators fetch URL:', url2);
+    const r2 = await fetch(url2, {cache:'no-store'});
+    if(!r2.ok) throw new Error(`HTTP ${r2.status}`);
+    const indicatorsData = JSON.parse(await r2.text());
+    const macroInner = indicatorsData.macro ?? {};
+    cachedData.macro = { ...(cachedData.macro||{}), ...macroInner };
+    console.log('✅ 거시경제 지표 캐싱 완료:', cachedData.macro.updated_at);
+  } catch(e) {
+    console.error('loadMacroFile(macro_indicators.json) 오류:', e.message);
+  }
+
+  if(document.getElementById('panel-macro').classList.contains('active')){
+    loadMacroData();
   }
 }
 
