@@ -582,8 +582,18 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     </div>
     <!-- 합계 원본 변화량 비교 -->
     <div style="font-size:11px;color:var(--text3);margin-bottom:6px">④ TGA+RRP 합계 변화량 원본 ($B) · S&P500 — ③과 비교용</div>
-    <div style="position:relative;height:260px">
+    <div style="position:relative;height:260px;margin-bottom:24px">
       <canvas id="liqChart4"></canvas>
+    </div>
+    <!-- 지준금 -->
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">⑤ 지준금 (Reserve Balances, WRESBAL) · S&P500 — TGA/RRP 대비 더 직접적인 은행 유동성 지표</div>
+    <div style="position:relative;height:300px;margin-bottom:24px">
+      <canvas id="liqChart5"></canvas>
+    </div>
+    <!-- 롤링 상관계수 -->
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">⑥ 순유동성↔S&P500 롤링 상관계수 (26주 window) — 상관관계 레짐 변화 확인용</div>
+    <div style="position:relative;height:260px">
+      <canvas id="liqChart6"></canvas>
     </div>
   </div>
 
@@ -612,6 +622,8 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <span style="color:#f87171">■</span> <b>순유동성</b> = Fed총자산 − TGA − RRP &nbsp;|&nbsp;
     <span style="color:#fca5a5">—</span> <b>순유동성 4주MA</b> — 노이즈 제거<br>
     <span style="color:#34d399">■</span> <b>S&P500</b> — 우축 기준 &nbsp;|&nbsp; <span style="color:#a78bfa">■</span> <b>상관계수</b> — 피어슨 r (3년, 주간)<br>
+    <span style="color:#2dd4bf">■</span> <b>지준금(Reserves)</b> — 은행 시스템 유동성, TGA/RRP보다 직접적인 지표 &nbsp;|&nbsp;
+    <span style="color:#a78bfa">■</span> <b>롤링 상관계수(26주)</b> — 시기별 상관관계 레짐 변화 확인 (0선 아래 = 역상관)<br>
     💡 <b>순유동성↑</b> = 상승 압력 &nbsp;|&nbsp; <b>순유동성↓</b> = 하락 압력 &nbsp;|&nbsp; 매주 금요일 오전 8시 업데이트 (H.4.1 기준)<br>
     <span style="color:#34d399">■</span> <b>초록(+)</b> = 유동성 순공급 증가 → S&P500 상승 압력 &nbsp;|&nbsp;
     <span style="color:#f87171">■</span> <b>빨강(-)</b> = 유동성 순공급 감소 → S&P500 하락 압력<br>
@@ -2131,7 +2143,7 @@ async function loadLiquidityFile(){
 
 
 /* ══════════════════════ 미국 유동성 ══════════════════════ */
-let liqChartInst=null, liqChartInst2=null, liqChartInst3=null, liqChartInst4=null, liqDataCache=null;
+let liqChartInst=null, liqChartInst2=null, liqChartInst3=null, liqChartInst4=null, liqChartInst5=null, liqChartInst6=null, liqDataCache=null;
 
 function fmtB(v){ return v==null?'—':'$'+(v/1000).toFixed(0)+'B'; }
 function fmtChg(cur,prev,label){
@@ -2154,7 +2166,7 @@ function renderLiquidityChart(){
   const liq = liqDataCache;
   if(!liq){ document.getElementById('liq-update').textContent='데이터 없음 — Actions 실행 후 확인하세요'; return; }
 
-  const tga=liq.tga||[], rrp=liq.rrp||[], sp=liq.sp500||[];
+  const tga=liq.tga||[], rrp=liq.rrp||[], sp=liq.sp500||[], reserves=liq.reserves||[];
   document.getElementById('liq-update').textContent='업데이트: '+(liq.updated_at||'-')+' · 매주 금요일 08:00 KST 자동갱신';
 
   // 요약 카드
@@ -2215,6 +2227,26 @@ function renderLiquidityChart(){
   const tgaV=tga.map(d=>d.value/1000);       // TGA: 백만달러 → $B
   const rrpV=alignToLabels(rrp,labels).map(v=>v!=null?v:null);  // RRP: 이미 $B 단위
   const spV=alignToLabels(sp,labels);
+  const reservesV=alignToLabels(reserves,labels).map(v=>v!=null?v/1000:null);  // 지준금: 백만달러 → $B
+
+  // ── 순유동성↔S&P500 롤링 상관계수 (26주 window, 피어슨) ──
+  function rollingCorr(seriesA, seriesB, window) {
+    return seriesA.map((_, i) => {
+      if (i < window - 1) return null;
+      const a = seriesA.slice(i - window + 1, i + 1);
+      const b = seriesB.slice(i - window + 1, i + 1);
+      const pairs = a.map((v, j) => [v, b[j]]).filter(([x, y]) => x != null && y != null);
+      if (pairs.length < window * 0.8) return null;
+      const xs = pairs.map(p => p[0]), ys = pairs.map(p => p[1]);
+      const mean = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
+      const mx = mean(xs), my = mean(ys);
+      const cov = xs.reduce((s, v, k) => s + (v - mx) * (ys[k] - my), 0) / xs.length;
+      const sd = arr => Math.sqrt(arr.reduce((s, v) => s + (v - mean(arr)) ** 2, 0) / arr.length);
+      const sdx = sd(xs), sdy = sd(ys);
+      if (sdx === 0 || sdy === 0) return null;
+      return +(cov / (sdx * sdy)).toFixed(3);
+    });
+  }
 
   // ── 월간 변화량 계산 헬퍼 (nearest-date 매핑) ──
   function nearestVal(series, targetDate) {
@@ -2270,6 +2302,7 @@ function renderLiquidityChart(){
 
   // ── 차트 2: 순유동성 / S&P500 ──
   const netV = alignToLabels(liq.net_liquidity||[], labels);
+  const rollCorrV = rollingCorr(netV, spV, 26);  // 26주(약 6개월) 이동window 상관계수
   // ── 상관계수 계산 (피어슨) ──
   (()=>{
     const pairs = netV.map((n,i)=>[n,spV[i]]).filter(([n,s])=>n!=null&&s!=null);
@@ -2436,6 +2469,57 @@ function renderLiquidityChart(){
         x:xScale,
         y:{position:'left',title:{display:true,text:'순유동성 ($B)',color:'#475569',font:{size:11}},ticks:{color:'#f87171',callback:v=>'$'+Number(v).toFixed(0)+'B'},grid:{color:'#1a2840'}},
         y2:{position:'right',title:{display:true,text:'S&P500',color:'#475569',font:{size:11}},ticks:{color:'#34d399',callback:v=>Number(v).toLocaleString()},grid:{drawOnChartArea:false}}
+      }
+    }
+  });
+
+  // ── 차트 5: 지준금(Reserves) / S&P500 ──
+  if(liqChartInst5) liqChartInst5.destroy();
+  liqChartInst5 = new Chart(document.getElementById('liqChart5').getContext('2d'),{
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'지준금 ($B)',data:reservesV,borderColor:'#2dd4bf',backgroundColor:'rgba(45,212,191,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
+        {type:'line',label:'S&P500',data:spV,borderColor:'#34d399',backgroundColor:'transparent',borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',tension:0.3},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;if(v==null)return c.dataset.label+': —';return c.dataset.yAxisID==='y2'?'S&P500: '+Number(v).toLocaleString():'지준금: $'+Number(v).toFixed(0)+'B';}}}
+      },
+      scales:{
+        x:xScale,
+        y:{position:'left',title:{display:true,text:'지준금 ($B)',color:'#475569',font:{size:11}},ticks:{color:'#2dd4bf',callback:v=>'$'+Number(v).toFixed(0)+'B'},grid:{color:'#1a2840'}},
+        y2:{position:'right',title:{display:true,text:'S&P500',color:'#475569',font:{size:11}},ticks:{color:'#34d399',callback:v=>Number(v).toLocaleString()},grid:{drawOnChartArea:false}}
+      }
+    }
+  });
+
+  // ── 차트 6: 순유동성↔S&P500 롤링 상관계수 (26주) ──
+  if(liqChartInst6) liqChartInst6.destroy();
+  liqChartInst6 = new Chart(document.getElementById('liqChart6').getContext('2d'),{
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'롤링 상관계수 (26주)',data:rollCorrV,borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,0.10)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.3},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;if(v==null)return '상관계수: —';return '상관계수: '+Number(v).toFixed(3);}}}
+      },
+      scales:{
+        x:xScale,
+        y:{position:'left',min:-1,max:1,
+          title:{display:true,text:'피어슨 r',color:'#475569',font:{size:11}},
+          ticks:{color:'#a78bfa',stepSize:0.5,callback:v=>Number(v).toFixed(1)},
+          grid:{color:c=>c.tick.value===0?'#475569':'#1a2840'}}
       }
     }
   });
