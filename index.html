@@ -885,14 +885,20 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
           <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" id="flow-th-d3">D-3</th>
           <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" id="flow-th-d4">D-4</th>
           <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">누적</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" title="같은 기간 개인 순매수(+)/순매도(-) 합계">개인(동기간)</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" title="당일 거래량 ÷ 직전 20일 평균 거래량 × 100">거래량비율</th>
+          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" title="20일 이동평균 대비 현재가 이격도">이격도(20일)</th>
         </tr>
       </thead>
       <tbody id="flow-tbody">
-        <tr><td colspan="10" style="text-align:center;padding:50px;color:var(--text2)">
+        <tr><td colspan="13" style="text-align:center;padding:50px;color:var(--text2)">
           <div class="spinner" style="margin:0 auto 12px"></div>데이터 로딩 중...
         </td></tr>
       </tbody>
     </table>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:var(--text3)">
+    ⭐ 표시: 개인 순매도 + 거래량비율 150%↑ + 이격도 -5%~+10% 구간 동시 충족 종목 (참고용 신호이며 매매 추천이 아닙니다)
   </div>
 
   <!-- 갱신 안내 -->
@@ -3342,19 +3348,19 @@ let flowInv = 'all';
 async function loadFlowData(force=false){
   if(flowCache && !force){ renderFlowSignal(); return; }
   const tbody = document.getElementById('flow-tbody');
-  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:50px;color:var(--text2)"><div class="spinner" style="margin:0 auto 12px"></div>데이터 로딩 중...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:50px;color:var(--text2)"><div class="spinner" style="margin:0 auto 12px"></div>데이터 로딩 중...</td></tr>';
   try{
     const r = await fetch(CONSECUTIVE_URL + '?t=' + Date.now());
     const json = await r.json();
     // consecutive_flow.json 구조: { consecutive_flow: {...} } 또는 기존 scanner.json 호환
     flowCache = json.consecutive_flow || json || null;
     if(!flowCache || !flowCache.signals){
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:50px;color:var(--text3)">아직 데이터 없음 — 스크립트 첫 실행 후 확인 (매일 09:30 KST)</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:50px;color:var(--text3)">아직 데이터 없음 — 스크립트 첫 실행 후 확인 (매일 09:30 KST)</td></tr>';
       return;
     }
     renderFlowSignal();
   }catch(e){
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:50px;color:var(--red)">로드 실패: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:50px;color:var(--red)">로드 실패: ${e.message}</td></tr>`;
   }
 }
 
@@ -3435,6 +3441,28 @@ function renderFlowSignal(){
     : null;
   let rows=[];
 
+  // 개인수급/거래량비율/이격도 셀 공통 렌더 헬퍼
+  function extraCells(item){
+    const iv = item.individual_total;
+    const ivTxt = (iv===undefined||iv===null) ? '-' : `${iv>0?'+':''}${iv.toLocaleString()}`;
+    const ivColor = (iv===undefined||iv===null) ? 'var(--text3)' : (iv>0?'#ef4444':(iv<0?'#38bdf8':'var(--text3)'));
+    const vr = item.volume_ratio_pct;
+    const vrTxt = (vr===undefined||vr===null) ? '-' : `${vr.toFixed(0)}%`;
+    const vrColor = (vr!=null && vr>=150) ? '#fbbf24' : 'var(--text2)';
+    const dp = item.ma20_disparity_pct;
+    const dpTxt = (dp===undefined||dp===null) ? '-' : `${dp>0?'+':''}${dp.toFixed(1)}%`;
+    const dpColor = (dp===undefined||dp===null) ? 'var(--text3)' : (dp>10?'#ef4444':(dp<-5?'#38bdf8':'#22c55e'));
+    return `
+        <td style="padding:9px 12px;text-align:right;color:${ivColor};font-family:'JetBrains Mono',monospace;font-size:12px">${ivTxt}</td>
+        <td style="padding:9px 12px;text-align:right;color:${vrColor};font-family:'JetBrains Mono',monospace;font-size:12px">${vrTxt}</td>
+        <td style="padding:9px 12px;text-align:right;color:${dpColor};font-family:'JetBrains Mono',monospace;font-size:12px">${dpTxt}</td>`;
+  }
+  function recommendBadge(item){
+    return item.recommend
+      ? `<span title="개인 순매도 + 거래량비율 150%↑ + 이격도 -5%~+10%" style="margin-left:6px;color:#fbbf24;font-size:12px">⭐추천</span>`
+      : '';
+  }
+
   if(crossSet){
     // ── 교차 필터: 종목당 1행, 투자자 컬럼에 두 유형 병기 ──
     const [keyA, keyB] = invKeys;
@@ -3446,7 +3474,11 @@ function renderFlowSignal(){
     const merged = [...crossSet].map(ticker=>{
       const a = mapA[ticker]; const b = mapB[ticker];
       return { ticker, name: a.name, totalA: a.total_net, totalB: b.total_net,
-               valsA: a.daily_net||[], valsB: b.daily_net||[], close: a.close ?? b.close };
+               valsA: a.daily_net||[], valsB: b.daily_net||[], close: a.close ?? b.close,
+               individual_total: a.individual_total ?? b.individual_total,
+               volume_ratio_pct: a.volume_ratio_pct ?? b.volume_ratio_pct,
+               ma20_disparity_pct: a.ma20_disparity_pct ?? b.ma20_disparity_pct,
+               recommend: a.recommend || b.recommend };
     }).sort((a,b)=>b.totalA - a.totalA);
 
     for(const item of merged){
@@ -3463,14 +3495,16 @@ function renderFlowSignal(){
         return `<td style="${hide}padding:5px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px">${v>0?'+':''}${v.toLocaleString()}</td>`;
       }).join('');
 
-      // 종목명 행 (헤더 역할)
+      // 종목명 행 (헤더 역할) — 개인/거래량비율/이격도는 종목 단위 정보이므로 여기 한 번만 표기
       const colspan = show5 ? 10 : 8;
       const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
       rows.push(`<tr style="background:rgba(56,189,248,0.05);border-top:1px solid var(--border2)">
         <td colspan="${colspan}" style="padding:8px 12px;font-weight:700;font-size:13px">
           ${item.name} <span style="color:var(--text3);font-size:11px;font-weight:400;margin-left:4px">${item.ticker}</span>
           <span style="color:var(--text2);font-size:12px;font-weight:600;margin-left:10px">${closeTxt}</span>
+          ${recommendBadge(item)}
         </td>
+        ${extraCells(item)}
       </tr>`);
       // A행 (외국인)
       rows.push(`<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
@@ -3480,6 +3514,7 @@ function renderFlowSignal(){
         <td style="padding:6px 12px;text-align:center;color:var(--yellow);font-weight:700">${flowDay}일</td>
         ${dayCellsA}
         <td style="padding:6px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.totalA>0?'+':''}${item.totalA.toLocaleString()}</td>
+        <td colspan="3"></td>
       </tr>`);
       // B행 (기관 or 연기금)
       rows.push(`<tr style="border-bottom:1px solid var(--border)">
@@ -3489,6 +3524,7 @@ function renderFlowSignal(){
         <td style="padding:6px 12px;text-align:center;color:var(--yellow);font-weight:700">${flowDay}일</td>
         ${dayCellsB}
         <td style="padding:6px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.totalB>0?'+':''}${item.totalB.toLocaleString()}</td>
+        <td colspan="3"></td>
       </tr>`);
     }
   } else {
@@ -3507,12 +3543,13 @@ function renderFlowSignal(){
         const tc=item.total_net>0?'#22c55e':'#ef4444';
         const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
         rows.push(`<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:9px 12px"><span style="font-weight:600">${item.name}</span><span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span></td>
+          <td style="padding:9px 12px"><span style="font-weight:600">${item.name}</span><span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span>${recommendBadge(item)}</td>
           <td style="padding:9px 12px;text-align:right">${closeTxt}</td>
           <td style="padding:9px 12px;text-align:center"><span style="color:${meta.color};font-size:11px;font-weight:700">${meta.label}</span></td>
           <td style="padding:9px 12px;text-align:center;color:var(--yellow);font-weight:700">${item.consecutive_days}일</td>
           ${dayCells}
           <td style="padding:9px 12px;text-align:right;color:${tc};font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.total_net>0?'+':''}${item.total_net.toLocaleString()}</td>
+          ${extraCells(item)}
         </tr>`);
       }
     }
@@ -3520,7 +3557,7 @@ function renderFlowSignal(){
 
   document.getElementById('flow-tbody').innerHTML = rows.length
     ? rows.join('')
-    : '<tr><td colspan="10" style="text-align:center;padding:50px;color:var(--text3)">해당 조건의 종목 없음</td></tr>';
+    : '<tr><td colspan="13" style="text-align:center;padding:50px;color:var(--text3)">해당 조건의 종목 없음</td></tr>';
 }
 
 /* ══════════════════════ 자금흐름 ══════════════════════ */
