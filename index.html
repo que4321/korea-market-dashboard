@@ -839,6 +839,13 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <button id="flow-btn-foreign_pension" onclick="setFlowInv('foreign_pension')"
         style="padding:7px 14px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;">외국인&amp;연기금</button>
     </div>
+    <!-- 수량/금액 단위 -->
+    <div style="display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden">
+      <button id="flow-btn-unit-volume" onclick="setFlowUnit('volume')"
+        style="padding:7px 14px;background:rgba(56,189,248,.15);color:var(--accent);border:none;cursor:pointer;font-size:12px;font-weight:600;">매수량</button>
+      <button id="flow-btn-unit-value" onclick="setFlowUnit('value')"
+        style="padding:7px 14px;background:var(--bg2);color:var(--text2);border:none;cursor:pointer;font-size:12px;font-weight:600;">매수금액</button>
+    </div>
   </div>
 
   <!-- 요약 카드 5개 -->
@@ -898,7 +905,8 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     </table>
   </div>
   <div style="margin-top:8px;font-size:11px;color:var(--text3)">
-    ⭐ 표시: 개인 순매도 + 거래량비율 150%↑ + 이격도 -5%~+10% 구간 동시 충족 종목 (참고용 신호이며 매매 추천이 아닙니다)
+    ⭐ 표시: 개인 순매도 + 거래량비율 150%↑ + 이격도 -5%~+10% 구간 동시 충족 종목 (참고용 신호이며 매매 추천이 아닙니다)<br>
+    상단 <b>매수량 / 매수금액</b> 버튼으로 D-0~D-4·누적·개인(동기간) 값의 단위를 주(株) 수량 ↔ 금액(억원)으로 전환할 수 있습니다.
   </div>
 
   <!-- 갱신 안내 -->
@@ -3344,6 +3352,7 @@ function renderDiscoveryPanel(){
 let flowCache = null;
 let flowDay = 3;
 let flowInv = 'all';
+let flowUnit = 'volume'; // 'volume'(매수량,주) | 'value'(매수금액,원)
 
 async function loadFlowData(force=false){
   if(flowCache && !force){ renderFlowSignal(); return; }
@@ -3378,6 +3387,15 @@ function setFlowInv(type){
   ['all','foreign','institution','pension','foreign_institution','foreign_pension'].forEach(t=>{
     const el = document.getElementById('flow-btn-'+t);
     if(el){el.style.background=t===type?'rgba(56,189,248,.15)':'var(--bg2)';el.style.color=t===type?'var(--accent)':'var(--text2)';}
+  });
+  renderFlowSignal();
+}
+
+function setFlowUnit(unit){
+  flowUnit = unit;
+  ['volume','value'].forEach(u=>{
+    const el = document.getElementById('flow-btn-unit-'+u);
+    if(el){el.style.background=u===unit?'rgba(56,189,248,.15)':'var(--bg2)';el.style.color=u===unit?'var(--accent)':'var(--text2)';}
   });
   renderFlowSignal();
 }
@@ -3442,9 +3460,19 @@ function renderFlowSignal(){
   let rows=[];
 
   // 개인수급/거래량비율/이격도 셀 공통 렌더 헬퍼
+  // flowUnit에 따라 수량(주) 또는 금액(원→억원)으로 표시
+  function fmtNetVal(v){
+    if(v===undefined||v===null) return '-';
+    if(flowUnit==='value'){
+      const eok = v/1e8;
+      return `${eok>0?'+':''}${eok.toFixed(1)}억`;
+    }
+    return `${v>0?'+':''}${v.toLocaleString()}`;
+  }
+
   function extraCells(item){
-    const iv = item.individual_total;
-    const ivTxt = (iv===undefined||iv===null) ? '-' : `${iv>0?'+':''}${iv.toLocaleString()}`;
+    const iv = flowUnit==='value' ? item.individual_total_value : item.individual_total;
+    const ivTxt = fmtNetVal(iv);
     const ivColor = (iv===undefined||iv===null) ? 'var(--text3)' : (iv>0?'#ef4444':(iv<0?'#38bdf8':'var(--text3)'));
     const vr = item.volume_ratio_pct;
     const vrTxt = (vr===undefined||vr===null) ? '-' : `${vr.toFixed(0)}%`;
@@ -3473,26 +3501,36 @@ function renderFlowSignal(){
 
     const merged = [...crossSet].map(ticker=>{
       const a = mapA[ticker]; const b = mapB[ticker];
-      return { ticker, name: a.name, totalA: a.total_net, totalB: b.total_net,
-               valsA: a.daily_net||[], valsB: b.daily_net||[], close: a.close ?? b.close,
+      return { ticker, name: a.name,
+               totalA_vol: a.total_net, totalA_val: a.total_net_value,
+               totalB_vol: b.total_net, totalB_val: b.total_net_value,
+               valsA_vol: a.daily_net||[], valsA_val: a.daily_net_value||[],
+               valsB_vol: b.daily_net||[], valsB_val: b.daily_net_value||[],
+               close: a.close ?? b.close,
                individual_total: a.individual_total ?? b.individual_total,
+               individual_total_value: a.individual_total_value ?? b.individual_total_value,
                volume_ratio_pct: a.volume_ratio_pct ?? b.volume_ratio_pct,
                ma20_disparity_pct: a.ma20_disparity_pct ?? b.ma20_disparity_pct,
                recommend: a.recommend || b.recommend };
-    }).sort((a,b)=>b.totalA - a.totalA);
+    }).sort((a,b)=>b.totalA_vol - a.totalA_vol);
 
     for(const item of merged){
+      const totalA = flowUnit==='value' ? item.totalA_val : item.totalA_vol;
+      const totalB = flowUnit==='value' ? item.totalB_val : item.totalB_vol;
+      const valsA  = flowUnit==='value' ? item.valsA_val  : item.valsA_vol;
+      const valsB  = flowUnit==='value' ? item.valsB_val  : item.valsB_vol;
+
       const dayCellsA = [0,1,2,3,4].map(i=>{
         const hide = (!show5 && i>=3) ? 'display:none;' : '';
-        const v = item.valsA[i];
+        const v = valsA[i];
         if(v===undefined) return `<td style="${hide}padding:5px 12px;text-align:right;color:var(--text3)">-</td>`;
-        return `<td style="${hide}padding:5px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px">${v>0?'+':''}${v.toLocaleString()}</td>`;
+        return `<td style="${hide}padding:5px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px">${fmtNetVal(v)}</td>`;
       }).join('');
       const dayCellsB = [0,1,2,3,4].map(i=>{
         const hide = (!show5 && i>=3) ? 'display:none;' : '';
-        const v = item.valsB[i];
+        const v = valsB[i];
         if(v===undefined) return `<td style="${hide}padding:5px 12px;text-align:right;color:var(--text3)">-</td>`;
-        return `<td style="${hide}padding:5px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px">${v>0?'+':''}${v.toLocaleString()}</td>`;
+        return `<td style="${hide}padding:5px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px">${fmtNetVal(v)}</td>`;
       }).join('');
 
       // 종목명 행 (헤더 역할) — 개인/거래량비율/이격도는 종목 단위 정보이므로 여기 한 번만 표기
@@ -3513,7 +3551,7 @@ function renderFlowSignal(){
         <td style="padding:6px 12px;text-align:center"><span style="color:${metaA.color};font-size:11px;font-weight:700">${metaA.label}</span></td>
         <td style="padding:6px 12px;text-align:center;color:var(--yellow);font-weight:700">${flowDay}일</td>
         ${dayCellsA}
-        <td style="padding:6px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.totalA>0?'+':''}${item.totalA.toLocaleString()}</td>
+        <td style="padding:6px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${fmtNetVal(totalA)}</td>
         <td colspan="3"></td>
       </tr>`);
       // B행 (기관 or 연기금)
@@ -3523,7 +3561,7 @@ function renderFlowSignal(){
         <td style="padding:6px 12px;text-align:center"><span style="color:${metaB.color};font-size:11px;font-weight:700">${metaB.label}</span></td>
         <td style="padding:6px 12px;text-align:center;color:var(--yellow);font-weight:700">${flowDay}일</td>
         ${dayCellsB}
-        <td style="padding:6px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.totalB>0?'+':''}${item.totalB.toLocaleString()}</td>
+        <td style="padding:6px 12px;text-align:right;color:#22c55e;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${fmtNetVal(totalB)}</td>
         <td colspan="3"></td>
       </tr>`);
     }
@@ -3532,15 +3570,16 @@ function renderFlowSignal(){
       const items=[...(signals[invKey]||[])].sort((a,b)=>b.total_net-a.total_net);
       const meta=INV[invKey];
       for(const item of items){
-        const vals=item.daily_net||[];
+        const vals = flowUnit==='value' ? (item.daily_net_value||[]) : (item.daily_net||[]);
+        const total = flowUnit==='value' ? item.total_net_value : item.total_net;
         const dayCells=[0,1,2,3,4].map(i=>{
           const hide = (!show5 && i>=3) ? 'display:none;' : '';
           const v=vals[i];
           if(v===undefined) return `<td style="${hide}padding:9px 12px;text-align:right;color:var(--text3)">-</td>`;
           const c=v>0?'#22c55e':'#ef4444';
-          return `<td style="${hide}padding:9px 12px;text-align:right;color:${c};font-family:'JetBrains Mono',monospace;font-size:12px">${v>0?'+':''}${v.toLocaleString()}</td>`;
+          return `<td style="${hide}padding:9px 12px;text-align:right;color:${c};font-family:'JetBrains Mono',monospace;font-size:12px">${fmtNetVal(v)}</td>`;
         }).join('');
-        const tc=item.total_net>0?'#22c55e':'#ef4444';
+        const tc=total>0?'#22c55e':'#ef4444';
         const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
         rows.push(`<tr style="border-bottom:1px solid var(--border)">
           <td style="padding:9px 12px"><span style="font-weight:600">${item.name}</span><span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span>${recommendBadge(item)}</td>
@@ -3548,7 +3587,7 @@ function renderFlowSignal(){
           <td style="padding:9px 12px;text-align:center"><span style="color:${meta.color};font-size:11px;font-weight:700">${meta.label}</span></td>
           <td style="padding:9px 12px;text-align:center;color:var(--yellow);font-weight:700">${item.consecutive_days}일</td>
           ${dayCells}
-          <td style="padding:9px 12px;text-align:right;color:${tc};font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${item.total_net>0?'+':''}${item.total_net.toLocaleString()}</td>
+          <td style="padding:9px 12px;text-align:right;color:${tc};font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700">${fmtNetVal(total)}</td>
           ${extraCells(item)}
         </tr>`);
       }
