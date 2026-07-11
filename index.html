@@ -891,7 +891,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
           <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">D-2</th>
           <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" id="flow-th-d3">D-3</th>
           <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" id="flow-th-d4">D-4</th>
-          <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)">누적</th>
+          <th id="flow-th-total" onclick="toggleFlowSort()" style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3);cursor:pointer;user-select:none" title="클릭하여 정렬 순서 전환">누적<span id="flow-th-total-arrow" style="margin-left:3px;color:var(--accent)">▼</span></th>
           <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" title="같은 기간 개인 순매수(+)/순매도(-) 합계">개인(동기간)</th>
           <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" title="당일 거래량 ÷ 직전 20일 평균 거래량 × 100">거래량비율</th>
           <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--text3)" title="20일 이동평균 대비 현재가 이격도">이격도(20일)</th>
@@ -3353,6 +3353,7 @@ let flowCache = null;
 let flowDay = 3;
 let flowInv = 'all';
 let flowUnit = 'volume'; // 'volume'(매수량,주) | 'value'(매수금액,원)
+let flowSortDir = 'desc'; // 누적 컬럼 정렬 방향: 'desc' | 'asc'
 
 async function loadFlowData(force=false){
   if(flowCache && !force){ renderFlowSignal(); return; }
@@ -3397,6 +3398,13 @@ function setFlowUnit(unit){
     const el = document.getElementById('flow-btn-unit-'+u);
     if(el){el.style.background=u===unit?'rgba(56,189,248,.15)':'var(--bg2)';el.style.color=u===unit?'var(--accent)':'var(--text2)';}
   });
+  renderFlowSignal();
+}
+
+function toggleFlowSort(){
+  flowSortDir = flowSortDir==='desc' ? 'asc' : 'desc';
+  const arrow = document.getElementById('flow-th-total-arrow');
+  if(arrow) arrow.textContent = flowSortDir==='desc' ? '▼' : '▲';
   renderFlowSignal();
 }
 
@@ -3512,7 +3520,11 @@ function renderFlowSignal(){
                volume_ratio_pct: a.volume_ratio_pct ?? b.volume_ratio_pct,
                ma20_disparity_pct: a.ma20_disparity_pct ?? b.ma20_disparity_pct,
                recommend: a.recommend || b.recommend };
-    }).sort((a,b)=>b.totalA_vol - a.totalA_vol);
+    }).sort((a,b)=>{
+      const av = flowUnit==='value' ? (a.totalA_val ?? 0) : (a.totalA_vol ?? 0);
+      const bv = flowUnit==='value' ? (b.totalA_val ?? 0) : (b.totalA_vol ?? 0);
+      return flowSortDir==='desc' ? bv-av : av-bv;
+    });
 
     for(const item of merged){
       const totalA = flowUnit==='value' ? item.totalA_val : item.totalA_vol;
@@ -3567,7 +3579,11 @@ function renderFlowSignal(){
     }
   } else {
     for(const invKey of invKeys){
-      const items=[...(signals[invKey]||[])].sort((a,b)=>b.total_net-a.total_net);
+      const items=[...(signals[invKey]||[])].sort((a,b)=>{
+        const av = flowUnit==='value' ? (a.total_net_value ?? 0) : (a.total_net ?? 0);
+        const bv = flowUnit==='value' ? (b.total_net_value ?? 0) : (b.total_net ?? 0);
+        return flowSortDir==='desc' ? bv-av : av-bv;
+      });
       const meta=INV[invKey];
       for(const item of items){
         const vals = flowUnit==='value' ? (item.daily_net_value||[]) : (item.daily_net||[]);
