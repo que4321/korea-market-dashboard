@@ -1076,6 +1076,21 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       <div class="mval" id="wr-real" style="color:#2dd4bf">—</div>
       <div class="msub" id="wr-real-date">—</div>
     </div>
+    <div class="mcard" style="flex:1;min-width:120px">
+      <div class="mlabel">SOFR-FedFunds 스프레드</div>
+      <div class="mval" id="wr-sofr" style="color:#f472b6">—</div>
+      <div class="msub" id="wr-sofr-date">—</div>
+    </div>
+    <div class="mcard" style="flex:1;min-width:120px">
+      <div class="mlabel">원/달러</div>
+      <div class="mval" id="wr-krw" style="color:#60a5fa">—</div>
+      <div class="msub" id="wr-krw-date">—</div>
+    </div>
+    <div class="mcard" style="flex:1;min-width:120px">
+      <div class="mlabel">엔/달러</div>
+      <div class="mval" id="wr-jpy" style="color:#fb923c">—</div>
+      <div class="msub" id="wr-jpy-date">—</div>
+    </div>
   </div>
 
   <!-- 차트 -->
@@ -1098,8 +1113,23 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     </div>
 
     <div style="font-size:11px;color:var(--text3);margin-bottom:6px">③ 미국 실질금리 추이 (10Y 명목금리 − Core PCE YoY)</div>
-    <div style="position:relative;height:260px">
+    <div style="position:relative;height:260px;margin-bottom:10px">
       <canvas id="wrChart3"></canvas>
+    </div>
+    <div style="font-size:11px;color:var(--text3);line-height:1.7;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:24px">
+      💡 <b style="color:var(--text2)">해석 기준</b> — 실질금리가 <b style="color:#f87171">1.5~2.0% 이상</b>으로 과도하게 치솟으면 주식 밸류에이션에 부담이 커져 시장 발작(급락) 위험이 높아지는 구간이니 주식 비중 축소를 고려할 만합니다.
+      반대로 실질금리가 <b style="color:#34d399">고점을 찍고 하향 안정화</b>되는 구간에서는 성장주·기술주 매수 타이밍으로 활용할 수 있습니다.
+      (참고용 경험적 기준이며 절대적 매매 신호는 아닙니다)
+    </div>
+
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">④ SOFR − Fed Funds 스프레드 — 단기 자금시장 신용경색 조기 신호</div>
+    <div style="position:relative;height:260px;margin-bottom:24px">
+      <canvas id="wrChart4"></canvas>
+    </div>
+
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">⑤ 원/달러 · 엔/달러 환율 추이</div>
+    <div style="position:relative;height:280px">
+      <canvas id="wrChart5"></canvas>
     </div>
   </div>
 
@@ -1112,6 +1142,8 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     <span style="color:#fbbf24">■</span> <b>한미 10Y 스프레드</b> = 한국 10Y − 미국 10Y &nbsp;|&nbsp;
     <span style="color:#a78bfa">■</span> <b>미일 10Y 스프레드</b> = 일본 10Y − 미국 10Y &nbsp;|&nbsp; 월별 데이터는 다음 갱신 전까지 직전 값이 이어짐(forward-fill)<br>
     <span style="color:#2dd4bf">■</span> <b>미국 실질금리</b> = 미국 10Y − Core PCE YoY(FRED PCEPILFE) — 밸류에이션·글로벌 유동성에 영향<br>
+    <span style="color:#f472b6">■</span> <b>SOFR-FedFunds 스프레드</b> = 미국 SOFR(담보부 익일물 금리, FRED SOFR) − Fed Funds — 단기 자금시장 스트레스 조기 신호 (2019년 9월 레포 위기·2020년 3월 팬데믹 때 급등 전례). 과거 TED 스프레드는 LIBOR 폐지(2022)로 산출 중단되어 SOFR 기반으로 대체함<br>
+    <span style="color:#60a5fa">■</span> <b>원/달러</b> / <span style="color:#fb923c">■</span> <b>엔/달러</b> — FRED DEXKOUS/DEXJPUS, 일별 (뉴욕시장 정오 고시환율)<br>
     💡 <b>미일 스프레드 축소</b> = 엔캐리트레이드 청산 압력 ↑ (엔화 강세·안전자산 선호 위험) &nbsp;|&nbsp;
     <b>한미 스프레드 마이너스 확대</b> = 원화 약세·외국인 자금 유출 압력<br>
     한국(pykrx), 일본·미국(FRED)은 매일 자동 수집(평일) &nbsp;|&nbsp; 일본·한국 기준금리 등 월간 지표는 실제 발표 전까지 값이 그대로 유지됩니다.
@@ -2641,7 +2673,7 @@ function renderLiquidityChart(){
 
 
 /* ══════════════════════ 세계금리 (엔캐리트레이드 모니터링) ══════════════════════ */
-let worldRatesCache=null, wrChartInst1=null, wrChartInst2=null, wrChartInst3=null;
+let worldRatesCache=null, wrChartInst1=null, wrChartInst2=null, wrChartInst3=null, wrChartInst4=null, wrChartInst5=null;
 
 async function loadWorldRatesFile(){
   try {
@@ -2672,6 +2704,7 @@ function renderWorldRatesChart(){
   const jpPolicy = wr.japan_policy_proxy||[], jp10 = wr.japan_10y||[];
   const krBase = wr.kr_base_rate||[], kr10 = wr.kr_10y||[];
   const pce = wr.us_core_pce_yoy||[];
+  const sofr = wr.us_sofr||[], fxKrw = wr.fx_krw||[], fxJpy = wr.fx_jpy||[];
 
   document.getElementById('wr-ts').textContent = '업데이트: '+(wr.updated_at||'-')+' · 평일 07:30 KST 자동갱신 (일본·한국 기준금리 등 월간 지표는 발표 전까지 직전값 유지)';
   document.getElementById('wr-update').textContent = '업데이트: '+(wr.updated_at||'-')+' · 미국(일별)·한국 10Y(일별)·일본/한국기준금리(월별)';
@@ -2683,6 +2716,10 @@ function renderWorldRatesChart(){
   if(bojP){ document.getElementById('wr-boj').textContent = bojP.value.toFixed(3)+'%'; document.getElementById('wr-boj-date').textContent = bojP.date; }
   const bokP = wrLastPoint(krBase);
   if(bokP){ document.getElementById('wr-bok').textContent = bokP.value.toFixed(2)+'%'; document.getElementById('wr-bok-date').textContent = bokP.date; }
+  const krwP = wrLastPoint(fxKrw);
+  if(krwP){ document.getElementById('wr-krw').textContent = krwP.value.toFixed(1); document.getElementById('wr-krw-date').textContent = krwP.date; }
+  const jpyP = wrLastPoint(fxJpy);
+  if(jpyP){ document.getElementById('wr-jpy').textContent = jpyP.value.toFixed(2); document.getElementById('wr-jpy-date').textContent = jpyP.date; }
 
   // 차트용 라벨: 미국 10Y(일별, 가장 촘촘함) 기준
   const labels = us10.map(d=>d.date);
@@ -2693,6 +2730,15 @@ function renderWorldRatesChart(){
   const jp10V = alignToLabels(jp10, labels);
   const kr10V = alignToLabels(kr10, labels);
   const pceV  = alignToLabels(pce, labels);
+  const sofrV = alignToLabels(sofr, labels);
+  const krwV  = alignToLabels(fxKrw, labels);
+  const jpyV  = alignToLabels(fxJpy, labels);
+
+  const sofrSpread = sofrV.map((v,i)=> (v!=null && fedV[i]!=null) ? +(v-fedV[i]).toFixed(3) : null);
+
+  for(let i=labels.length-1;i>=0;i--){
+    if(sofrSpread[i]!=null){ document.getElementById('wr-sofr').textContent=(sofrSpread[i]>=0?'+':'')+sofrSpread[i].toFixed(3)+'%p'; document.getElementById('wr-sofr-date').textContent=labels[i]; break; }
+  }
 
   const krUsSpread = kr10V.map((v,i)=> (v!=null && us10V[i]!=null) ? +(v-us10V[i]).toFixed(3) : null);
   const jpUsSpread = jp10V.map((v,i)=> (v!=null && us10V[i]!=null) ? +(v-us10V[i]).toFixed(3) : null);
@@ -2780,6 +2826,54 @@ function renderWorldRatesChart(){
       scales:{
         x:xScale,
         y:{position:'left',title:{display:true,text:'실질금리 (%)',color:'#475569',font:{size:11}},ticks:{color:'#2dd4bf',callback:v=>Number(v).toFixed(1)+'%'},grid:{color:c=>c.tick.value===0?'#475569':'#1a2840'}}
+      }
+    }
+  });
+
+  // ── 차트 4: SOFR - Fed Funds 스프레드 ──
+  if(wrChartInst4) wrChartInst4.destroy();
+  wrChartInst4 = new Chart(document.getElementById('wrChart4').getContext('2d'),{
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'SOFR-FedFunds 스프레드',data:sofrSpread,borderColor:'#f472b6',backgroundColor:'rgba(244,114,182,0.10)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.2},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;return v==null?'스프레드: —':'스프레드: '+(v>=0?'+':'')+Number(v).toFixed(3)+'%p';}}}
+      },
+      scales:{
+        x:xScale,
+        y:{position:'left',title:{display:true,text:'스프레드 (%p)',color:'#475569',font:{size:11}},ticks:{color:'#f472b6',callback:v=>(v>=0?'+':'')+Number(v).toFixed(2)},grid:{color:c=>c.tick.value===0?'#475569':'#1a2840'}}
+      }
+    }
+  });
+
+  // ── 차트 5: 원/달러 · 엔/달러 환율 ──
+  if(wrChartInst5) wrChartInst5.destroy();
+  wrChartInst5 = new Chart(document.getElementById('wrChart5').getContext('2d'),{
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'원/달러',data:krwV,borderColor:'#60a5fa',backgroundColor:'transparent',borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y',tension:0.2},
+        {type:'line',label:'엔/달러',data:jpyV,borderColor:'#fb923c',backgroundColor:'transparent',borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',tension:0.2},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;return v==null?c.dataset.label+': —':c.dataset.label+': '+Number(v).toFixed(2);}}}
+      },
+      scales:{
+        x:xScale,
+        y:{position:'left',title:{display:true,text:'원/달러',color:'#60a5fa',font:{size:11}},ticks:{color:'#60a5fa'},grid:{color:'#1a2840'}},
+        y2:{position:'right',title:{display:true,text:'엔/달러',color:'#fb923c',font:{size:11}},ticks:{color:'#fb923c'},grid:{drawOnChartArea:false}}
       }
     }
   });
