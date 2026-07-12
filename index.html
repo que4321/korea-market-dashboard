@@ -140,6 +140,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 
 <div class="nav" style="display:flex;align-items:center;gap:0;flex-wrap:wrap">
   <button class="ntab active" onclick="showPanel('macro',this)" id="tab-macro">🌐 거시경제</button>
+  <button class="ntab" onclick="showPanel('worldrates',this)" id="tab-worldrates">💹 세계금리</button>
   <button class="ntab" onclick="showPanel('liquidity',this)" id="tab-liquidity">💧 미국 유동성</button>
   <button class="ntab" onclick="showPanel('us',this)" id="tab-us">🇺🇸 미국 시장</button>
   <button class="ntab" onclick="showPanel('capitalflow',this)" id="tab-capitalflow">💰 자금흐름(한국)</button>
@@ -1033,10 +1034,96 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 </div>
 
 <!-- ══════════════════════════════════════
+     패널: 세계금리 (엔캐리트레이드 모니터링)
+══════════════════════════════════════ -->
+<div id="panel-worldrates" class="panel">
+
+  <!-- 헤더 -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div class="ts" id="wr-ts">데이터 로딩 중...</div>
+    <button onclick="loadWorldRatesFile()" style="font-size:12px;cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);">↻ 새로고침</button>
+  </div>
+
+  <!-- 요약 카드 -->
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+    <div class="mcard" style="flex:1;min-width:120px">
+      <div class="mlabel">미국 Fed Funds</div>
+      <div class="mval" id="wr-fed" style="color:#38bdf8">—</div>
+      <div class="msub" id="wr-fed-date">—</div>
+    </div>
+    <div class="mcard" style="flex:1;min-width:120px">
+      <div class="mlabel">일본 정책금리(콜금리)</div>
+      <div class="mval" id="wr-boj" style="color:#f87171">—</div>
+      <div class="msub" id="wr-boj-date">—</div>
+    </div>
+    <div class="mcard" style="flex:1;min-width:120px">
+      <div class="mlabel">한국은행 기준금리</div>
+      <div class="mval" id="wr-bok" style="color:#34d399">—</div>
+      <div class="msub" id="wr-bok-date">—</div>
+    </div>
+    <div class="mcard" style="flex:1;min-width:120px">
+      <div class="mlabel">한미 10Y 스프레드</div>
+      <div class="mval" id="wr-krus" style="color:#fbbf24">—</div>
+      <div class="msub" id="wr-krus-date">—</div>
+    </div>
+    <div class="mcard" style="flex:1;min-width:120px">
+      <div class="mlabel">미일 10Y 스프레드</div>
+      <div class="mval" id="wr-jpus" style="color:#a78bfa">—</div>
+      <div class="msub" id="wr-jpus-date">—</div>
+    </div>
+    <div class="mcard" style="flex:1;min-width:120px">
+      <div class="mlabel">미국 실질금리</div>
+      <div class="mval" id="wr-real" style="color:#2dd4bf">—</div>
+      <div class="msub" id="wr-real-date">—</div>
+    </div>
+  </div>
+
+  <!-- 차트 -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head" style="margin-bottom:14px">
+      <div>
+        <div class="ctitle">기준금리 비교 · 10Y 스프레드 · 실질금리 (3년)</div>
+        <div class="csub" id="wr-update">데이터 로딩 중...</div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">① 기준금리 3종 비교 — 미국 Fed Funds · 일본 정책금리(콜금리) · 한국은행 기준금리</div>
+    <div style="position:relative;height:300px;margin-bottom:24px">
+      <canvas id="wrChart1"></canvas>
+    </div>
+
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">② 한미 · 미일 10Y 국채금리 스프레드 추이 — 엔캐리트레이드 청산 리스크 모니터링</div>
+    <div style="position:relative;height:300px;margin-bottom:24px">
+      <canvas id="wrChart2"></canvas>
+    </div>
+
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">③ 미국 실질금리 추이 (10Y 명목금리 − Core PCE YoY)</div>
+    <div style="position:relative;height:260px">
+      <canvas id="wrChart3"></canvas>
+    </div>
+  </div>
+
+  <!-- 비고 -->
+  <div style="font-size:11px;color:var(--text3);line-height:1.8;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 18px">
+    <div style="font-weight:700;color:var(--text2);margin-bottom:6px">📖 읽는 법 / 비고</div>
+    <span style="color:#38bdf8">■</span> <b>미국 Fed Funds</b> — FRED DFF, 일별 &nbsp;|&nbsp;
+    <span style="color:#f87171">■</span> <b>일본 정책금리</b> — FRED IRSTCI01JPM156N(무담보 콜금리), BOJ 정책금리 프록시, 월별 &nbsp;|&nbsp;
+    <span style="color:#34d399">■</span> <b>한국은행 기준금리</b> — ECOS 722Y001, 월별<br>
+    <span style="color:#fbbf24">■</span> <b>한미 10Y 스프레드</b> = 한국 10Y − 미국 10Y &nbsp;|&nbsp;
+    <span style="color:#a78bfa">■</span> <b>미일 10Y 스프레드</b> = 일본 10Y − 미국 10Y &nbsp;|&nbsp; 월별 데이터는 다음 갱신 전까지 직전 값이 이어짐(forward-fill)<br>
+    <span style="color:#2dd4bf">■</span> <b>미국 실질금리</b> = 미국 10Y − Core PCE YoY(FRED PCEPILFE) — 밸류에이션·글로벌 유동성에 영향<br>
+    💡 <b>미일 스프레드 축소</b> = 엔캐리트레이드 청산 압력 ↑ (엔화 강세·안전자산 선호 위험) &nbsp;|&nbsp;
+    <b>한미 스프레드 마이너스 확대</b> = 원화 약세·외국인 자금 유출 압력<br>
+    한국(pykrx), 일본·미국(FRED)은 매일 자동 수집(평일) &nbsp;|&nbsp; 일본·한국 기준금리 등 월간 지표는 실제 발표 전까지 값이 그대로 유지됩니다.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
      패널: 자금흐름
 ══════════════════════════════════════ -->
 <div id="panel-capitalflow" class="panel">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+
     <div style="font-size:13px;font-weight:700;color:var(--accent)">💰 국내 자금흐름 — KOSPI 투자자별 수급 + 국채 수익률</div>
   </div>
   <div class="ts" id="cf-updated" style="color:var(--text3);margin-bottom:16px">로딩 중...</div>
@@ -1176,6 +1263,7 @@ const MACRO_URL         = `https://gist.githubusercontent.com/que4321/${GIST_ID}
 const MACRO_INDICATORS_URL = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/macro_indicators.json`;
 const TIMING_URL        = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/timing.json`;
 const LIQUIDITY_URL     = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/liquidity.json`;
+const WORLD_RATES_URL   = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/world_rates.json`;
 
 let dashLoaded=false, histData=[];
 let chartInstances={};
@@ -1213,6 +1301,18 @@ function showPanel(id,el){
   }
   if(id==='flowsignal') loadFlowData();
   if(id==='macro') loadMacroData();
+  if(id==='worldrates'){
+    if(worldRatesCache){
+      renderWorldRatesChart();
+    } else {
+      const tsEl = document.getElementById('wr-ts');
+      if(tsEl) tsEl.textContent = '데이터 로딩 중...';
+      loadWorldRatesFile().then(()=>{
+        if(worldRatesCache) renderWorldRatesChart();
+        else if(tsEl) tsEl.textContent = '데이터 없음 — 새로고침 시도';
+      });
+    }
+  }
   if(id==='timing'){
     if(cachedData?.macro?.m7 && cachedData?.macro?.kr_stocks){ renderTimingPanel('kr'); }
     else { loadTimingFile().then(()=>renderTimingPanel('kr')); }
@@ -2534,6 +2634,152 @@ function renderLiquidityChart(){
           title:{display:true,text:'피어슨 r',color:'#475569',font:{size:11}},
           ticks:{color:'#a78bfa',stepSize:0.5,callback:v=>Number(v).toFixed(1)},
           grid:{color:c=>c.tick.value===0?'#475569':'#1a2840'}}
+      }
+    }
+  });
+}
+
+
+/* ══════════════════════ 세계금리 (엔캐리트레이드 모니터링) ══════════════════════ */
+let worldRatesCache=null, wrChartInst1=null, wrChartInst2=null, wrChartInst3=null;
+
+async function loadWorldRatesFile(){
+  try {
+    const url = WORLD_RATES_URL + '?nc=' + Date.now();
+    const r = await fetch(url, {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = JSON.parse(await r.text());
+    worldRatesCache = data.world_rates || data;
+    console.log('✅ 세계금리 데이터 캐싱 완료:', worldRatesCache.updated_at);
+    if(document.getElementById('panel-worldrates').classList.contains('active')){
+      renderWorldRatesChart();
+    }
+  } catch(e) {
+    console.error('loadWorldRatesFile 오류:', e.message);
+  }
+}
+
+function wrLastPoint(arr){
+  if(!arr || !arr.length) return null;
+  return arr[arr.length-1];
+}
+
+function renderWorldRatesChart(){
+  const wr = worldRatesCache;
+  if(!wr){ document.getElementById('wr-update').textContent='데이터 없음 — Actions 실행 후 확인하세요'; return; }
+
+  const usFed = wr.us_fed_funds||[], us10 = wr.us_10y||[];
+  const jpPolicy = wr.japan_policy_proxy||[], jp10 = wr.japan_10y||[];
+  const krBase = wr.kr_base_rate||[], kr10 = wr.kr_10y||[];
+  const pce = wr.us_core_pce_yoy||[];
+
+  document.getElementById('wr-ts').textContent = '업데이트: '+(wr.updated_at||'-')+' · 평일 07:30 KST 자동갱신 (일본·한국 기준금리 등 월간 지표는 발표 전까지 직전값 유지)';
+  document.getElementById('wr-update').textContent = '업데이트: '+(wr.updated_at||'-')+' · 미국(일별)·한국 10Y(일별)·일본/한국기준금리(월별)';
+
+  // 요약 카드
+  const fedP = wrLastPoint(usFed);
+  if(fedP){ document.getElementById('wr-fed').textContent = fedP.value.toFixed(2)+'%'; document.getElementById('wr-fed-date').textContent = fedP.date; }
+  const bojP = wrLastPoint(jpPolicy);
+  if(bojP){ document.getElementById('wr-boj').textContent = bojP.value.toFixed(3)+'%'; document.getElementById('wr-boj-date').textContent = bojP.date; }
+  const bokP = wrLastPoint(krBase);
+  if(bokP){ document.getElementById('wr-bok').textContent = bokP.value.toFixed(2)+'%'; document.getElementById('wr-bok-date').textContent = bokP.date; }
+
+  // 차트용 라벨: 미국 10Y(일별, 가장 촘촘함) 기준
+  const labels = us10.map(d=>d.date);
+  const fedV  = alignToLabels(usFed, labels);
+  const bojV  = alignToLabels(jpPolicy, labels);
+  const bokV  = alignToLabels(krBase, labels);
+  const us10V = labels.map((_,i)=>us10[i]!=null?us10[i].value:null);
+  const jp10V = alignToLabels(jp10, labels);
+  const kr10V = alignToLabels(kr10, labels);
+  const pceV  = alignToLabels(pce, labels);
+
+  const krUsSpread = kr10V.map((v,i)=> (v!=null && us10V[i]!=null) ? +(v-us10V[i]).toFixed(3) : null);
+  const jpUsSpread = jp10V.map((v,i)=> (v!=null && us10V[i]!=null) ? +(v-us10V[i]).toFixed(3) : null);
+  const realRate   = us10V.map((v,i)=> (v!=null && pceV[i]!=null) ? +(v-pceV[i]).toFixed(3) : null);
+
+  // 요약 카드: 스프레드/실질금리 최신값
+  for(let i=labels.length-1;i>=0;i--){
+    if(krUsSpread[i]!=null){ document.getElementById('wr-krus').textContent=(krUsSpread[i]>=0?'+':'')+krUsSpread[i].toFixed(2)+'%p'; document.getElementById('wr-krus-date').textContent=labels[i]; break; }
+  }
+  for(let i=labels.length-1;i>=0;i--){
+    if(jpUsSpread[i]!=null){ document.getElementById('wr-jpus').textContent=(jpUsSpread[i]>=0?'+':'')+jpUsSpread[i].toFixed(2)+'%p'; document.getElementById('wr-jpus-date').textContent=labels[i]; break; }
+  }
+  for(let i=labels.length-1;i>=0;i--){
+    if(realRate[i]!=null){ document.getElementById('wr-real').textContent=realRate[i].toFixed(2)+'%'; document.getElementById('wr-real-date').textContent=labels[i]; break; }
+  }
+
+  const xScale = {ticks:{color:'#475569',maxRotation:0,maxTicksLimit:12,callback:function(v){const l=this.getLabelForValue(v);return l?l.slice(0,7):''}},grid:{color:'#1a2840'}};
+  const ttBase = {backgroundColor:'#0d1422',borderColor:'#1a2840',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8'};
+
+  // ── 차트 1: 기준금리 3종 비교 ──
+  if(wrChartInst1) wrChartInst1.destroy();
+  wrChartInst1 = new Chart(document.getElementById('wrChart1').getContext('2d'),{
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'미국 Fed Funds',data:fedV,borderColor:'#38bdf8',backgroundColor:'transparent',borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y',tension:0.2},
+        {type:'line',label:'일본 정책금리(콜금리)',data:bojV,borderColor:'#f87171',backgroundColor:'transparent',borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y',tension:0.2},
+        {type:'line',label:'한국은행 기준금리',data:bokV,borderColor:'#34d399',backgroundColor:'transparent',borderWidth:2,pointRadius:0,pointHoverRadius:4,yAxisID:'y',tension:0.2},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;return v==null?c.dataset.label+': —':c.dataset.label+': '+Number(v).toFixed(3)+'%';}}}
+      },
+      scales:{
+        x:xScale,
+        y:{position:'left',title:{display:true,text:'기준금리 (%)',color:'#475569',font:{size:11}},ticks:{color:'#94a3b8',callback:v=>Number(v).toFixed(1)+'%'},grid:{color:'#1a2840'}}
+      }
+    }
+  });
+
+  // ── 차트 2: 한미·미일 10Y 스프레드 ──
+  if(wrChartInst2) wrChartInst2.destroy();
+  wrChartInst2 = new Chart(document.getElementById('wrChart2').getContext('2d'),{
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'한미 10Y 스프레드',data:krUsSpread,borderColor:'#fbbf24',backgroundColor:'rgba(251,191,36,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.2},
+        {type:'line',label:'미일 10Y 스프레드',data:jpUsSpread,borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.2},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;return v==null?c.dataset.label+': —':c.dataset.label+': '+(v>=0?'+':'')+Number(v).toFixed(2)+'%p';}}}
+      },
+      scales:{
+        x:xScale,
+        y:{position:'left',title:{display:true,text:'스프레드 (%p)',color:'#475569',font:{size:11}},ticks:{color:'#94a3b8',callback:v=>(v>=0?'+':'')+Number(v).toFixed(1)},grid:{color:c=>c.tick.value===0?'#475569':'#1a2840'}}
+      }
+    }
+  });
+
+  // ── 차트 3: 미국 실질금리 ──
+  if(wrChartInst3) wrChartInst3.destroy();
+  wrChartInst3 = new Chart(document.getElementById('wrChart3').getContext('2d'),{
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'미국 실질금리 (10Y-CorePCE)',data:realRate,borderColor:'#2dd4bf',backgroundColor:'rgba(45,212,191,0.10)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.2},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;return v==null?'실질금리: —':'실질금리: '+Number(v).toFixed(2)+'%';}}}
+      },
+      scales:{
+        x:xScale,
+        y:{position:'left',title:{display:true,text:'실질금리 (%)',color:'#475569',font:{size:11}},ticks:{color:'#2dd4bf',callback:v=>Number(v).toFixed(1)+'%'},grid:{color:c=>c.tick.value===0?'#475569':'#1a2840'}}
       }
     }
   });
