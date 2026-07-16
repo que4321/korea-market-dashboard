@@ -731,13 +731,29 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
           <td style="padding:4px 8px">매일 09:00 KST (평일)</td>
           <td style="padding:4px 8px">MA / RSI / 거래량 / 눌림목</td>
         </tr>
-        <tr>
+        <tr style="border-bottom:1px solid var(--border)">
           <td style="padding:4px 8px"><code>macro_scan.py</code></td>
           <td style="padding:4px 8px">매주 월요일 08:30 KST</td>
           <td style="padding:4px 8px">거시지표 + M7 주가·EPS + 한국 주가 (기술지표도 동일 계산되나 매일 갱신본으로 대체됨)</td>
         </tr>
+        <tr>
+          <td style="padding:4px 8px"><code>fair_value_scan.py</code></td>
+          <td style="padding:4px 8px">매주 월요일 09:20 KST</td>
+          <td style="padding:4px 8px">적정주가(PER/PBR) — 산출식은 아래 비고 참고</td>
+        </tr>
       </tbody>
     </table>
+
+    <div style="font-weight:600;margin:14px 0 6px;color:var(--text)">비고 — 적정주가 산출식</div>
+    <ul style="margin:0;padding-left:18px;line-height:1.7">
+      <li><b>PER(업종PER) 방식</b> — 대부분의 한국 종목 기본값: <code>적정주가 = 추정EPS(내년 컨센서스) × 동일업종 평균PER</code>. 업종PER은 네이버 금융에서 종목별로 개별 조회.</li>
+      <li><b>PER(PEG) 방식</b> — 업종PER을 못 구했을 때만 대체 사용: <code>적정주가 = 추정EPS × 예상 EPS성장률(%)</code>(성장률을 그대로 적정PER로 간주, 5~40% 범위로 제한). 미국 M7+MU 종목은 전부 이 방식(업종PER 미적용).</li>
+      <li><b>PER(PEG,하한)</b> — 업종PER도 없고 성장률도 역성장(음수)이면: <code>적정주가 = 기준EPS(직전 연간 실적) × 5(하한PER)</code>로 보수적 산출.</li>
+      <li><b>PBR 방식</b> — 한국전력 등 자산가치 기반이 더 적합한 종목: <code>적정주가 = BPS × 최근 3년 평균 PBR</code>.</li>
+      <li>EPS 성장률 = (추정EPS − 기준EPS) / 기준EPS × 100. 한국은 WiseReport 연간실적표(직전 실제 연간 vs 익년(E) 추정), 미국은 yfinance 애널리스트 컨센서스(연간 기준) 사용.</li>
+      <li>⚠️ 반도체 등 씨클리컬 업종은 이번 사이클 피크/저점 EPS에 평상시 업종PER을 곱하면 값이 실제보다 과도하게 크거나 작게 나올 수 있음 — 참고용 지표로만 활용 권장.</li>
+      <li>"산정불가"는 추정EPS(컨센서스) 자체가 없는 종목(소형주 등 애널리스트 커버리지 부재)에 해당.</li>
+    </ul>
   </div>
 </div>
 
