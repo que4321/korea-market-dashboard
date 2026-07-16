@@ -673,10 +673,12 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
           <th style="text-align:center;padding:6px 8px;font-weight:500">거래량<br>추세</th>
           <th style="text-align:center;padding:6px 8px;font-weight:500">이평선<br>배열</th>
           <th style="text-align:center;padding:6px 8px;font-weight:500">매수<br>신호</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">적정주가<br>(PEG)</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">괴리율</th>
         </tr>
       </thead>
       <tbody id="timing-body">
-        <tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
+        <tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
       </tbody>
     </table>
   </div>
@@ -2262,12 +2264,15 @@ async function loadTimingFile(){
       if(!cachedData.macro.kr_stocks[name]) cachedData.macro.kr_stocks[name] = {};
       cachedData.macro.kr_stocks[name].technical = v.technical;
       if(v.ticker) cachedData.macro.kr_stocks[name].ticker = v.ticker;
+      if(v.fair_value) cachedData.macro.kr_stocks[name].fair_value = v.fair_value;
     }
     for(const [sym, v] of Object.entries(timingData.m7 || {})){
       if(!cachedData.macro.m7[sym]) cachedData.macro.m7[sym] = {};
       cachedData.macro.m7[sym].technical = v.technical;
+      if(v.fair_value) cachedData.macro.m7[sym].fair_value = v.fair_value;
     }
     cachedData.macro.technical_updated = timingData.technical_updated || null;
+    cachedData.macro.fair_value_updated = timingData.fair_value_updated || null;
 
     console.log('✅ 매수시점 데이터 캐싱 완료:', timingData.technical_updated,
                 '| kr_stocks:', Object.keys(timingData.kr_stocks||{}).length,
@@ -3426,13 +3431,15 @@ function switchTimingTab(tab, el){
 
 function renderTimingPanel(tab){
   const macro = cachedData?.macro;
-  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
+  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
 
   const ts = document.getElementById('timing-ts');
   if(ts){
     const techUpdated = macro.technical_updated;
+    const fvUpdated = macro.fair_value_updated;
     ts.textContent = techUpdated
       ? '업데이트: ' + techUpdated + ' · 매일 09:00 KST(평일) 자동갱신'
+        + (fvUpdated ? ' · 적정주가 ' + fvUpdated + ' (매주 월요일 09:20 KST)' : '')
       : '업데이트: ' + (macro.updated_at||'-') + ' · 매주 월요일 08:30 KST 자동갱신';
   }
 
@@ -3443,7 +3450,7 @@ function renderTimingPanel(tab){
   const tbody = document.getElementById('timing-body');
   const devbar = document.getElementById('timing-devbar');
 
-  if(!items.length){ tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
+  if(!items.length){ tbody.innerHTML='<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
 
   // 정렬: RSI매수신호 → 눌림목 → 정배열 → 완전정배열 → 기타
   items.sort((a,b)=>{
@@ -3502,6 +3509,18 @@ function renderTimingPanel(tab){
     return `<span style="color:${c}">${v}</span>`;
   };
 
+  // 적정주가(PEG) 괴리율: (현재가-적정주가)/적정주가 → 음수=저평가(현재가가 적정가 아래)
+  const fairGap = (price, fair) => (price==null || fair==null || fair<=0) ? null : (price - fair) / fair * 100;
+  const fairBadge = fv => {
+    if(!fv || !fv.valid || fv.fair_price==null) return '<span style="color:var(--text2);font-size:11px">산정불가</span>';
+    return fmt(fv.fair_price);
+  };
+  const gapBadge = gap => {
+    if(gap==null) return '-';
+    const c = gap<=-20 ? '#22c55e;font-weight:700' : gap<=-5 ? '#86efac' : gap>=20 ? '#ef4444' : 'var(--text2)';
+    return `<span style="color:${c}">${(gap>0?'+':'')+gap.toFixed(1)}%</span>`;
+  };
+
   tbody.innerHTML = items.map(item=>{
     const t = item.technical||{};
     const rsiBuy  = t.rsi_buy_signal;
@@ -3523,6 +3542,10 @@ function renderTimingPanel(tab){
     else if(pullback) sigCell = `<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">눌림목(${t.pullback_at||''})</span>`;
     else if(sell)     sigCell = '<span style="background:#ef4444;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">이탈주의</span>';
 
+    // 적정주가(PEG) / 괴리율
+    const fv  = item.fair_value || null;
+    const gap = fv && fv.valid ? fairGap(t.price, fv.fair_price) : null;
+
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
       <td style="padding:7px 8px;font-weight:${rsiBuy||pullback?'600':'400'};white-space:nowrap">
         <span style="color:${dotColor};margin-right:4px">●</span>${item.name}
@@ -3538,6 +3561,8 @@ function renderTimingPanel(tab){
       <td style="text-align:center;padding:7px 8px">${volBadge(t.vol_trend)}</td>
       <td style="text-align:center;padding:7px 8px;color:${alignColor[align]||'var(--text2)'};font-size:12px">${align}</td>
       <td style="text-align:center;padding:7px 8px">${sigCell}</td>
+      <td style="text-align:right;padding:7px 8px;font-size:12px">${fairBadge(fv)}</td>
+      <td style="text-align:right;padding:7px 8px">${gapBadge(gap)}</td>
     </tr>`;
   }).join('');
 
