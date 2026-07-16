@@ -3511,8 +3511,12 @@ function renderTimingPanel(tab){
 
   // 적정주가 괴리율: (현재가-적정주가)/적정주가 → 음수=저평가(현재가가 적정가 아래)
   const fairGap = (price, fair) => (price==null || fair==null || fair<=0) ? null : (price - fair) / fair * 100;
-  const methodLabel = m => m ? m.replace('PER(PEG)','PER').replace(/PBR\(\d+Y avg\)/,'PBR') : '';
+  const methodLabel = m => m ? m.replace('PER(PEG,하한)','PER(하한)').replace('PER(업종PER)','PER(업종)').replace('PER(PEG)','PER').replace(/PBR\(\d+Y avg\)/,'PBR') : '';
   const fairFormula = fv => {
+    if(fv.method === 'PER(업종PER)'){
+      if(fv.industry_per==null || fv.eps==null) return '';
+      return `업종PER ${fv.industry_per}×추정EPS ${fmt(fv.eps)}`;
+    }
     if(fv.method && fv.method.startsWith('PER')){
       if(fv.growth_rate_used==null || fv.eps==null) return '';
       return `PER ${fv.growth_rate_used}×EPS ${fmt(fv.eps)}`;
