@@ -664,6 +664,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
           <th style="text-align:left;padding:6px 8px;font-weight:500">종목</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">현재가</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">적정주가</th>
+          <th style="text-align:left;padding:6px 8px;font-weight:500">산출식</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">괴리율</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA5</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA20</th>
@@ -678,7 +679,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         </tr>
       </thead>
       <tbody id="timing-body">
-        <tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
+        <tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
       </tbody>
     </table>
   </div>
@@ -3447,7 +3448,7 @@ function switchTimingTab(tab, el){
 
 function renderTimingPanel(tab){
   const macro = cachedData?.macro;
-  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
+  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
 
   const ts = document.getElementById('timing-ts');
   if(ts){
@@ -3466,7 +3467,7 @@ function renderTimingPanel(tab){
   const tbody = document.getElementById('timing-body');
   const devbar = document.getElementById('timing-devbar');
 
-  if(!items.length){ tbody.innerHTML='<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
+  if(!items.length){ tbody.innerHTML='<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
 
   // 정렬: RSI매수신호 → 눌림목 → 정배열 → 완전정배열 → 기타
   items.sort((a,b)=>{
@@ -3545,8 +3546,12 @@ function renderTimingPanel(tab){
   };
   const fairBadge = fv => {
     if(!fv || !fv.valid || fv.fair_price==null) return '<span style="color:var(--text2);font-size:11px">산정불가</span>';
+    return fmt(fv.fair_price);
+  };
+  const fairFormulaCell = fv => {
+    if(!fv || !fv.valid || fv.fair_price==null) return '';
     const formula = fairFormula(fv);
-    return `${fmt(fv.fair_price)} <span style="color:var(--text3);font-size:10px">${formula || methodLabel(fv.method)}</span>`;
+    return `<span style="color:var(--text3);font-size:11px;white-space:nowrap">${formula || methodLabel(fv.method)}</span>`;
   };
   const gapBadge = gap => {
     if(gap==null) return '-';
@@ -3587,6 +3592,7 @@ function renderTimingPanel(tab){
       </td>
       <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
       <td style="text-align:right;padding:7px 8px;font-size:12px">${fairBadge(fv)}</td>
+      <td style="text-align:left;padding:7px 8px">${fairFormulaCell(fv)}</td>
       <td style="text-align:right;padding:7px 8px">${gapBadge(gap)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma5)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma20)}</td>
