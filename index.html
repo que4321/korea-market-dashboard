@@ -663,6 +663,8 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         <tr style="border-bottom:1px solid var(--border);color:var(--text2)">
           <th style="text-align:left;padding:6px 8px;font-weight:500">종목</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">현재가</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">적정주가</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">괴리율</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA5</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA20</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA50</th>
@@ -673,8 +675,6 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
           <th style="text-align:center;padding:6px 8px;font-weight:500">거래량<br>추세</th>
           <th style="text-align:center;padding:6px 8px;font-weight:500">이평선<br>배열</th>
           <th style="text-align:center;padding:6px 8px;font-weight:500">매수<br>신호</th>
-          <th style="text-align:right;padding:6px 8px;font-weight:500">적정주가<br>(PEG)</th>
-          <th style="text-align:right;padding:6px 8px;font-weight:500">괴리율</th>
         </tr>
       </thead>
       <tbody id="timing-body">
@@ -3509,11 +3509,12 @@ function renderTimingPanel(tab){
     return `<span style="color:${c}">${v}</span>`;
   };
 
-  // 적정주가(PEG) 괴리율: (현재가-적정주가)/적정주가 → 음수=저평가(현재가가 적정가 아래)
+  // 적정주가 괴리율: (현재가-적정주가)/적정주가 → 음수=저평가(현재가가 적정가 아래)
   const fairGap = (price, fair) => (price==null || fair==null || fair<=0) ? null : (price - fair) / fair * 100;
+  const methodLabel = m => m ? m.replace('PER(PEG)','PER').replace(/PBR\(\d+Y avg\)/,'PBR') : '';
   const fairBadge = fv => {
     if(!fv || !fv.valid || fv.fair_price==null) return '<span style="color:var(--text2);font-size:11px">산정불가</span>';
-    return fmt(fv.fair_price);
+    return `${fmt(fv.fair_price)}<br><span style="color:var(--text3);font-size:10px">${methodLabel(fv.method)}</span>`;
   };
   const gapBadge = gap => {
     if(gap==null) return '-';
@@ -3542,15 +3543,19 @@ function renderTimingPanel(tab){
     else if(pullback) sigCell = `<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">눌림목(${t.pullback_at||''})</span>`;
     else if(sell)     sigCell = '<span style="background:#ef4444;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">이탈주의</span>';
 
-    // 적정주가(PEG) / 괴리율
+    // 적정주가 / 괴리율 — 현재가가 적정주가보다 낮으면(저평가) 종목명 옆에 ★ 표시
     const fv  = item.fair_value || null;
     const gap = fv && fv.valid ? fairGap(t.price, fv.fair_price) : null;
+    const undervalued = gap != null && gap < 0;
+    const nameStar = undervalued ? '<span style="color:#22c55e;margin-left:4px" title="적정주가 대비 저평가">★</span>' : '';
 
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
       <td style="padding:7px 8px;font-weight:${rsiBuy||pullback?'600':'400'};white-space:nowrap">
-        <span style="color:${dotColor};margin-right:4px">●</span>${item.name}
+        <span style="color:${dotColor};margin-right:4px">●</span>${item.name}${nameStar}
       </td>
       <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
+      <td style="text-align:right;padding:7px 8px;font-size:12px">${fairBadge(fv)}</td>
+      <td style="text-align:right;padding:7px 8px">${gapBadge(gap)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma5)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma20)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t[ma_mid_key])}</td>
@@ -3561,8 +3566,6 @@ function renderTimingPanel(tab){
       <td style="text-align:center;padding:7px 8px">${volBadge(t.vol_trend)}</td>
       <td style="text-align:center;padding:7px 8px;color:${alignColor[align]||'var(--text2)'};font-size:12px">${align}</td>
       <td style="text-align:center;padding:7px 8px">${sigCell}</td>
-      <td style="text-align:right;padding:7px 8px;font-size:12px">${fairBadge(fv)}</td>
-      <td style="text-align:right;padding:7px 8px">${gapBadge(gap)}</td>
     </tr>`;
   }).join('');
 
