@@ -2232,7 +2232,20 @@ async function loadMacroFile(){
     const macroData = JSON.parse(await r.text());
     // ★ 2026-07-04부로 거시지표는 macro_indicators.json으로 분리됨 —
     //   여기서는 kr_stocks/m7 등 종목 데이터만 병합하고, macro 지표 필드는 건드리지 않음
-    cachedData.macro = { ...(cachedData.macro||{}), ...macroData };
+    // ⚠ kr_stocks/m7은 loadTimingFile()이 병렬로 채우는 technical/fair_value와
+    //   충돌하지 않도록 종목 단위(deep)로 병합한다. 얕은 스프레드(...macroData)로
+    //   kr_stocks/m7 객체 전체를 덮어쓰면, fetch 완료 순서에 따라 timing.json이
+    //   먼저 채운 fair_value/technical이 랜덤하게 사라지는 레이스 컨디션이 생긴다.
+    const { kr_stocks: mKr, m7: mM7, ...restMacro } = macroData;
+    cachedData.macro = { ...(cachedData.macro||{}), ...restMacro };
+    if(!cachedData.macro.kr_stocks) cachedData.macro.kr_stocks = {};
+    if(!cachedData.macro.m7) cachedData.macro.m7 = {};
+    for(const [name, v] of Object.entries(mKr || {})){
+      cachedData.macro.kr_stocks[name] = { ...(cachedData.macro.kr_stocks[name]||{}), ...v };
+    }
+    for(const [sym, v] of Object.entries(mM7 || {})){
+      cachedData.macro.m7[sym] = { ...(cachedData.macro.m7[sym]||{}), ...v };
+    }
     console.log('✅ macro.json(종목 데이터) 캐싱 완료');
   } catch(e) {
     console.error('loadMacroFile(macro.json) 오류:', e.message);
