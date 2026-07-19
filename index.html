@@ -1351,7 +1351,7 @@ const US_TICKER_MAP = {
 };
 function tossStockUrl(ticker){
   if(ticker==null) return null;
-  const code = String(ticker).trim().replace(/^A/i,'').padStart(6,'0');
+  const code = String(ticker).trim().replace(/^A/i,'').replace(/\.[A-Za-z]+$/,'').padStart(6,'0');
   if(!/^\d{6}$/.test(code)) return null;
   return `https://www.tossinvest.com/stocks/A${code}/order`;
 }
