@@ -1327,6 +1327,23 @@ const WORLD_RATES_URL   = `https://gist.githubusercontent.com/que4321/${GIST_ID}
 let dashLoaded=false, histData=[];
 let chartInstances={};
 
+// ── 토스증권 종목 페이지 딥링크 ──
+// 참고: 이 기능은 Toss Open API(TOSS_CLIENT_ID/SECRET) 인증이 필요 없다.
+//      토스증권은 종목코드(A+6자리)만으로 접근 가능한 공개 URL 패턴을 제공하므로,
+//      단순 새 탭 열기(window.open)만으로 동작한다.
+function tossStockUrl(ticker){
+  if(ticker==null) return null;
+  const code = String(ticker).trim().replace(/^A/i,'').padStart(6,'0');
+  if(!/^\d{6}$/.test(code)) return null;
+  return `https://www.tossinvest.com/stocks/A${code}/order`;
+}
+function openToss(ticker, ev){
+  if(ev) ev.stopPropagation();
+  const url = tossStockUrl(ticker);
+  if(!url){ return; }
+  window.open(url, '_blank', 'noopener');
+}
+
 const STOCKS={TSLA:'테슬라',GOOGL:'알파벳(구글)',NVDA:'엔비디아',MU:'마이크론',AMZN:'아마존',MSFT:'마이크로소프트',AAPL:'애플',META:'메타'};
 
 function showPanel(id,el){
@@ -3642,10 +3659,14 @@ function renderTimingPanel(tab){
     const gap = fv && fv.valid ? fairGap(t.price, fv.fair_price) : null;
     const undervalued = gap != null && gap < 0;
     const nameStar = undervalued ? '<span style="color:#22c55e;margin-left:4px" title="적정주가 대비 저평가">★</span>' : '';
+    const tossable = isKR && item.ticker && tossStockUrl(item.ticker);
+    const nameCell = tossable
+      ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${item.ticker}',event)">${item.name}</span>`
+      : item.name;
 
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
       <td style="padding:7px 8px;font-weight:${rsiBuy||pullback?'600':'400'};white-space:nowrap">
-        <span style="color:${dotColor};margin-right:4px">●</span>${item.name}${nameStar}
+        <span style="color:${dotColor};margin-right:4px">●</span>${nameCell}${nameStar}
       </td>
       <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
       <td style="text-align:right;padding:7px 8px;font-size:12px">${fairBadge(fv)}</td>
@@ -3813,10 +3834,13 @@ function renderDiscoveryPanel(){
     const pullbackBadge = `<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">${t.pullback_at||'-'}</span>`;
     const rsiCell = t.rsi_weekly==null ? '-' :
       (t.rsi_weekly<=30 ? `<span style="color:#22c55e;font-weight:700">${t.rsi_weekly}</span>` : t.rsi_weekly);
+    const nameCell = tossStockUrl(item.code)
+      ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${item.code}',event)">${item.name}</span>`
+      : item.name;
 
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
       <td style="padding:7px 8px;font-weight:${rsiBuy?'700':'600'}">
-        ${rsiBuy?'<span style="color:#22c55e;margin-right:4px">★</span>':''}${item.name}
+        ${rsiBuy?'<span style="color:#22c55e;margin-right:4px">★</span>':''}${nameCell}
         <span style="color:var(--text2);font-size:11px;margin-left:4px">${item.code}</span>
       </td>
       <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
@@ -4032,9 +4056,12 @@ function renderFlowSignal(){
       // 종목명 행 (헤더 역할) — 개인/거래량비율/이격도는 종목 단위 정보이므로 여기 한 번만 표기
       const colspan = show5 ? 10 : 8;
       const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
+      const nameCellCross = tossStockUrl(item.ticker)
+        ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${item.ticker}',event)">${item.name}</span>`
+        : item.name;
       rows.push(`<tr style="background:rgba(56,189,248,0.05);border-top:1px solid var(--border2)">
         <td colspan="${colspan}" style="padding:8px 12px;font-weight:700;font-size:13px">
-          ${item.name} <span style="color:var(--text3);font-size:11px;font-weight:400;margin-left:4px">${item.ticker}</span>
+          ${nameCellCross} <span style="color:var(--text3);font-size:11px;font-weight:400;margin-left:4px">${item.ticker}</span>
           <span style="color:var(--text2);font-size:12px;font-weight:600;margin-left:10px">${closeTxt}</span>
           ${recommendBadge(item)}
         </td>
@@ -4081,8 +4108,11 @@ function renderFlowSignal(){
         }).join('');
         const tc=total>0?'#22c55e':'#ef4444';
         const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
+        const nameCellFlow = tossStockUrl(item.ticker)
+          ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${item.ticker}',event)">${item.name}</span>`
+          : `<span style="font-weight:600">${item.name}</span>`;
         rows.push(`<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:9px 12px"><span style="font-weight:600">${item.name}</span><span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span>${recommendBadge(item)}</td>
+          <td style="padding:9px 12px">${nameCellFlow}<span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span>${recommendBadge(item)}</td>
           <td style="padding:9px 12px;text-align:right">${closeTxt}</td>
           <td style="padding:9px 12px;text-align:center"><span style="color:${meta.color};font-size:11px;font-weight:700">${meta.label}</span></td>
           <td style="padding:9px 12px;text-align:center;color:var(--yellow);font-weight:700">${item.consecutive_days}일</td>
