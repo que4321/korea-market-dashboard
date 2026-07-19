@@ -12,7 +12,7 @@ TODAY = datetime.now(KST).strftime('%Y-%m-%d')
 HISTORY_PATH = 'data/history.json'
 MAX_DAYS = 90
 
-US_TICKERS = ['TSLA','GOOGL','NVDA','MU','AMZN','MSFT','AAPL','META']
+US_TICKERS = ['TSLA','GOOGL','NVDA','MU','AMZN','MSFT','AAPL','META','SPCX','SKHY','NBIS','MRVL']
 
 
 def get_price(ticker):
