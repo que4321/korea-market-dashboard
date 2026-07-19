@@ -1194,7 +1194,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
       </div>
     </div>
 
-    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">글로벌 M2(78일 지연 적용)와 SOXX를 표시구간 시작일=100 기준으로 지수화하여 같은 축에 표시 — 채권→금→주식 순으로 유동성이 흘러가는 지연 반영</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">글로벌 M2(좌축, 78일 지연 적용) — 채권→금→주식 순으로 유동성이 흘러가는 지연 반영 · SOXX(우축) — 각 축은 자체 데이터 범위로 자동 확대되어 표시됩니다</div>
     <div style="position:relative;height:340px">
       <canvas id="glChart1"></canvas>
     </div>
@@ -1206,7 +1206,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
     (인민은행 M2는 실시간 무료 공식 API가 없어 제외. FRED/IMF/World Bank 경유 데이터는 모두 2019년 이후 업데이트가 끊겨 있음)<br>
     <span style="color:#fb923c">■</span> <b>SOXX</b> — iShares 반도체 ETF, yfinance 일별<br>
     💡 <b>M2 지연(78일)</b>: 유동성이 풀려도 곧바로 주식시장에 들어오지 않고 채권 → 금 → 주식 순으로 흘러가는 데 시차가 있다는 가설을 반영한 것으로, 위 입력창에서 지연 일수를 조정하며 상관관계를 눈으로 확인할 수 있습니다.<br>
-    📐 <b>지수화(Index=100)</b>: 실제 M2 잔액은 완만하게 우상향만 하는 지표라 원래 단위(조 달러) 그대로 겹쳐 그리면 SOXX의 등락과 비교하기 어렵습니다. 그래서 표시구간 시작일 값을 100으로 맞춰 두 선을 같은 축 위에서 "몇 % 움직였는지"로 비교합니다 (TradingView의 M2 Global Liquidity Index와 동일한 표시 방식) — 요약 카드의 실제 값(달러·SOXX 가격)과는 별개입니다.<br>
+    📐 <b>좌·우축 자동확대</b>: 글로벌 M2(좌축)와 SOXX(우축)는 각각 자기 데이터의 실제 변동 범위에 맞춰 축이 자동으로 확대되어 표시됩니다 — 두 선의 "모양"이 비슷한지를 보는 용도이며, 실제 변동폭(%) 차이는 요약 카드의 절대값을 참고하세요. (M2는 원래 완만하게만 움직이는 지표라 SOXX만큼 크게 출렁이진 않습니다)<br>
     유로존·일본 M2는 월간 발표라 다음 갱신 전까지 직전 값이 이어집니다(forward-fill) &nbsp;|&nbsp; 미국(FRED)·SOXX(yfinance)는 매일 자동 수집(평일).
   </div>
 </div>
@@ -3053,18 +3053,14 @@ function renderGlobalLiquidityChart(){
     return glNearestValue(fullLabels, globalM2Full, shifted);
   });
 
-  // ── 지수화(indexed): 표시구간 첫 유효값 = 100 기준으로 정규화 (TradingView 스타일, 단일 축) ──
-  function toIndexed(arr){
-    const base = arr.find(v=>v!=null);
-    if(base==null || base===0) return arr.map(()=>null);
-    return arr.map(v=>v==null?null:(v/base*100));
+  function glFormatTrillion(v){
+    if(v==null) return '—';
+    return (v/1e12).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'조';
   }
-  const displayM2Idx   = toIndexed(displayM2);
-  const displaySoxxIdx = toIndexed(displaySoxx);
 
-  // 요약 카드
+  // 요약 카드 (조 달러 단위로 축약 표시)
   const m2P = glLastPoint(globalM2Full.map((v,i)=>({date:fullLabels[i], value:v})).filter(p=>p.value!=null));
-  if(m2P){ document.getElementById('gl-m2').textContent = m2P.value.toLocaleString(undefined,{maximumFractionDigits:0}); document.getElementById('gl-m2-date').textContent = m2P.date; }
+  if(m2P){ document.getElementById('gl-m2').textContent = glFormatTrillion(m2P.value)+' 달러'; document.getElementById('gl-m2-date').textContent = m2P.date; }
   const soxxP = glLastPoint(soxx);
   if(soxxP){ document.getElementById('gl-soxx').textContent = soxxP.value.toFixed(2); document.getElementById('gl-soxx-date').textContent = soxxP.date; }
 
@@ -3076,8 +3072,8 @@ function renderGlobalLiquidityChart(){
     data:{
       labels: displayLabels,
       datasets:[
-        {type:'line',label:`글로벌 M2 (${lagDays}일 지연, 시작=100)`,data:displayM2Idx,borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.2},
-        {type:'line',label:'SOXX (시작=100)',data:displaySoxxIdx,borderColor:'#fb923c',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,pointHoverRadius:4,yAxisID:'y',tension:0.15},
+        {type:'line',label:`글로벌 M2 (${lagDays}일 지연)`,data:displayM2,borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.2},
+        {type:'line',label:'SOXX',data:displaySoxx,borderColor:'#fb923c',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',tension:0.15},
       ]
     },
     options:{
@@ -3085,11 +3081,12 @@ function renderGlobalLiquidityChart(){
       interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{labels:{color:'#94a3b8',font:{size:11}}},
-        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;return v==null?c.dataset.label+': —':c.dataset.label+': '+Number(v).toFixed(1);}}}
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;if(v==null)return c.dataset.label+': —';return c.dataset.label==='SOXX'?c.dataset.label+': '+Number(v).toFixed(2):c.dataset.label+': '+glFormatTrillion(v)+' 달러';}}}
       },
       scales:{
         x:xScale,
-        y:{position:'left',title:{display:true,text:'지수 (시작일=100)',color:'#94a3b8',font:{size:11}},ticks:{color:'#94a3b8'},grid:{color:'#1a2840'}}
+        y:{position:'left',title:{display:true,text:'글로벌 M2 (조 달러)',color:'#38bdf8',font:{size:11}},ticks:{color:'#38bdf8',callback:v=>glFormatTrillion(v)},grid:{color:'#1a2840'}},
+        y2:{position:'right',title:{display:true,text:'SOXX',color:'#fb923c',font:{size:11}},ticks:{color:'#fb923c'},grid:{drawOnChartArea:false}}
       }
     }
   });
