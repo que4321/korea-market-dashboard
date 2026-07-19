@@ -141,6 +141,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 <div class="nav" style="display:flex;align-items:center;gap:0;flex-wrap:wrap">
   <button class="ntab active" onclick="showPanel('macro',this)" id="tab-macro">🌐 거시경제</button>
   <button class="ntab" onclick="showPanel('worldrates',this)" id="tab-worldrates">💹 세계금리</button>
+  <button class="ntab" onclick="showPanel('globalliquidity',this)" id="tab-globalliquidity">🌊 세계유동성</button>
   <button class="ntab" onclick="showPanel('liquidity',this)" id="tab-liquidity">💧 미국 유동성</button>
   <button class="ntab" onclick="showPanel('us',this)" id="tab-us">🇺🇸 미국 시장</button>
   <button class="ntab" onclick="showPanel('capitalflow',this)" id="tab-capitalflow">💰 자금흐름(한국)</button>
@@ -663,9 +664,6 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         <tr style="border-bottom:1px solid var(--border);color:var(--text2)">
           <th style="text-align:left;padding:6px 8px;font-weight:500">종목</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">현재가</th>
-          <th style="text-align:right;padding:6px 8px;font-weight:500">적정주가</th>
-          <th style="text-align:left;padding:6px 8px;font-weight:500">산출식</th>
-          <th style="text-align:right;padding:6px 8px;font-weight:500">괴리율</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA5</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA20</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA50</th>
@@ -679,7 +677,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         </tr>
       </thead>
       <tbody id="timing-body">
-        <tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
+        <tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
       </tbody>
     </table>
   </div>
@@ -732,29 +730,13 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
           <td style="padding:4px 8px">매일 09:00 KST (평일)</td>
           <td style="padding:4px 8px">MA / RSI / 거래량 / 눌림목</td>
         </tr>
-        <tr style="border-bottom:1px solid var(--border)">
+        <tr>
           <td style="padding:4px 8px"><code>macro_scan.py</code></td>
           <td style="padding:4px 8px">매주 월요일 08:30 KST</td>
           <td style="padding:4px 8px">거시지표 + M7 주가·EPS + 한국 주가 (기술지표도 동일 계산되나 매일 갱신본으로 대체됨)</td>
         </tr>
-        <tr>
-          <td style="padding:4px 8px"><code>fair_value_scan.py</code></td>
-          <td style="padding:4px 8px">매주 월요일 09:20 KST</td>
-          <td style="padding:4px 8px">적정주가(PER/PBR) — 산출식은 아래 비고 참고</td>
-        </tr>
       </tbody>
     </table>
-
-    <div style="font-weight:600;margin:14px 0 6px;color:var(--text)">비고 — 적정주가 산출식</div>
-    <ul style="margin:0;padding-left:18px;line-height:1.7">
-      <li><b>PER(업종PER) 방식</b> — 대부분의 한국 종목 기본값: <code>적정주가 = 추정EPS(내년 컨센서스) × 동일업종 평균PER</code>. 업종PER은 네이버 금융에서 종목별로 개별 조회.</li>
-      <li><b>PER(PEG) 방식</b> — 업종PER을 못 구했을 때만 대체 사용: <code>적정주가 = 추정EPS × 예상 EPS성장률(%)</code>(성장률을 그대로 적정PER로 간주, 5~40% 범위로 제한). 미국 M7+MU 종목은 전부 이 방식(업종PER 미적용).</li>
-      <li><b>PER(PEG,하한)</b> — 업종PER도 없고 성장률도 역성장(음수)이면: <code>적정주가 = 기준EPS(직전 연간 실적) × 5(하한PER)</code>로 보수적 산출.</li>
-      <li><b>PBR 방식</b> — 한국전력 등 자산가치 기반이 더 적합한 종목: <code>적정주가 = BPS × 최근 3년 평균 PBR</code>.</li>
-      <li>EPS 성장률 = (추정EPS − 기준EPS) / 기준EPS × 100. 한국은 WiseReport 연간실적표(직전 실제 연간 vs 익년(E) 추정), 미국은 yfinance 애널리스트 컨센서스(연간 기준) 사용.</li>
-      <li>⚠️ 반도체 등 씨클리컬 업종은 이번 사이클 피크/저점 EPS에 평상시 업종PER을 곱하면 값이 실제보다 과도하게 크거나 작게 나올 수 있음 — 참고용 지표로만 활용 권장.</li>
-      <li>"산정불가"는 추정EPS(컨센서스) 자체가 없는 종목(소형주 등 애널리스트 커버리지 부재)에 해당.</li>
-    </ul>
   </div>
 </div>
 
@@ -1178,6 +1160,57 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
 </div>
 
 <!-- ══════════════════════════════════════
+     패널: 세계유동성 (글로벌 M2 vs SOXX)
+══════════════════════════════════════ -->
+<div id="panel-globalliquidity" class="panel">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div class="ts" id="gl-ts">데이터 로딩 중...</div>
+    <button onclick="loadGlobalLiquidityFile()" style="font-size:12px;cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);">↻ 새로고침</button>
+  </div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+    <div class="mcard" style="flex:1;min-width:140px">
+      <div class="mlabel">글로벌 M2 (미+유+일)</div>
+      <div class="mval" id="gl-m2" style="color:#38bdf8">—</div>
+      <div class="msub" id="gl-m2-date">—</div>
+    </div>
+    <div class="mcard" style="flex:1;min-width:140px">
+      <div class="mlabel">SOXX (반도체 ETF)</div>
+      <div class="mval" id="gl-soxx" style="color:#fb923c">—</div>
+      <div class="msub" id="gl-soxx-date">—</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head" style="margin-bottom:14px">
+      <div>
+        <div class="ctitle">글로벌 M2 vs SOXX (2025년~)</div>
+        <div class="csub" id="gl-update">데이터 로딩 중...</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">
+        <label for="gl-lag-input">M2 지연(일):</label>
+        <input id="gl-lag-input" type="number" value="78" min="0" max="365" style="width:56px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 6px" onchange="renderGlobalLiquidityChart()">
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">글로벌 M2(좌축, 78일 지연 적용) — 채권→금→주식 순으로 유동성이 흘러가는 지연 반영 · SOXX(우축)</div>
+    <div style="position:relative;height:340px">
+      <canvas id="glChart1"></canvas>
+    </div>
+  </div>
+
+  <div style="font-size:11px;color:var(--text3);line-height:1.8;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 18px">
+    <div style="font-weight:700;color:var(--text2);margin-bottom:6px">📖 읽는 법 / 비고</div>
+    <span style="color:#38bdf8">■</span> <b>글로벌 M2</b> = 미국 M2(FRED M2SL) + 유로존 M2(ECB SDW, EUR→USD) + 일본 M2(BOJ API, JPY→USD) — <b>중국 제외</b>
+    (인민은행 M2는 실시간 무료 공식 API가 없어 제외. FRED/IMF/World Bank 경유 데이터는 모두 2019년 이후 업데이트가 끊겨 있음)<br>
+    <span style="color:#fb923c">■</span> <b>SOXX</b> — iShares 반도체 ETF, yfinance 일별<br>
+    💡 <b>M2 지연(78일)</b>: 유동성이 풀려도 곧바로 주식시장에 들어오지 않고 채권 → 금 → 주식 순으로 흘러가는 데 시차가 있다는 가설을 반영한 것으로, 위 입력창에서 지연 일수를 조정하며 상관관계를 눈으로 확인할 수 있습니다.<br>
+    유로존·일본 M2는 월간 발표라 다음 갱신 전까지 직전 값이 이어집니다(forward-fill) &nbsp;|&nbsp; 미국(FRED)·SOXX(yfinance)는 매일 자동 수집(평일).
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
      패널: 자금흐름
 ══════════════════════════════════════ -->
 <div id="panel-capitalflow" class="panel">
@@ -1323,60 +1356,12 @@ const MACRO_INDICATORS_URL = `https://gist.githubusercontent.com/que4321/${GIST_
 const TIMING_URL        = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/timing.json`;
 const LIQUIDITY_URL     = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/liquidity.json`;
 const WORLD_RATES_URL   = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/world_rates.json`;
+const GLOBAL_LIQUIDITY_URL = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/global_liquidity.json`;
 
 let dashLoaded=false, histData=[];
 let chartInstances={};
 
-// ── 토스증권 종목 페이지 딥링크 ──
-// 참고: 이 기능은 Toss Open API(TOSS_CLIENT_ID/SECRET) 인증이 필요 없다.
-//      한국 종목은 종목코드(A+6자리)만으로 접근 가능한 공개 URL 패턴을 제공하므로,
-//      단순 새 탭 열기(window.open)만으로 동작한다.
-// 매수시점(kr) 탭 고정 워치리스트의 name→ticker 폴백 맵.
-// timing.json의 kr_stocks[name].ticker 필드가 항상 채워지지 않아, 여기서 직접 보정한다.
-const KR_TICKER_MAP = {
-  '삼성전자':'005930', 'SK하이닉스':'000660', '한미반도체':'042700',
-  '삼성중공업':'010140', '삼성E&A':'028050', 'NAVER':'035420',
-  '한국쉘석유':'002960', '한국전력':'015760', '현대차':'005380',
-  '기아':'000270', '두산에너빌리티':'034020'
-};
-// 미국 M7 종목(고정 8종목, 매수시점 미국 탭 + 미국시장 탭 공용) — 티커→토스 내부 종목코드.
-// ⚠ 미국 종목은 KR과 달리 티커만으로 URL을 만들 수 없다(토스 내부 고유코드 필요, 티커 기호로 직접 매핑 불가).
-//   아래 코드는 실제 토스증권 페이지를 검색해 확인한 값이며, 이 8종목 고정 리스트 밖(예: S&P500 전체)으로는
-//   확장하려면 토스 Open API(TOSS_CLIENT_ID/SECRET)로 종목코드를 조회해 별도 JSON에 저장해두는 절차가 필요하다.
-const US_TICKER_MAP = {
-  'TSLA':'US20100629001', 'AAPL':'US19801212001', 'MSFT':'US19860313001',
-  'NVDA':'US19990122001', 'AMZN':'US19970515001', 'GOOGL':'US20040819002',
-  'META':'US20120518001', 'MU':'US19890516001',
-  'SPCX':'NAS2606012004', 'SKHY':'NAS2607010002', 'NBIS':'US20110524001', 'MRVL':'US20000627001'
-};
-function tossStockUrl(ticker){
-  if(ticker==null) return null;
-  const code = String(ticker).trim().replace(/^A/i,'').replace(/\.[A-Za-z]+$/,'').padStart(6,'0');
-  if(!/^\d{6}$/.test(code)) return null;
-  return `https://www.tossinvest.com/stocks/A${code}/order`;
-}
-function tossUsStockUrl(symbol){
-  if(symbol==null) return null;
-  const code = US_TICKER_MAP[String(symbol).trim().toUpperCase()];
-  return code ? `https://www.tossinvest.com/stocks/${code}/order` : null;
-}
-function resolveTicker(item){
-  return item?.ticker || KR_TICKER_MAP[item?.name] || null;
-}
-function openToss(ticker, ev){
-  if(ev) ev.stopPropagation();
-  const url = tossStockUrl(ticker);
-  if(!url){ return; }
-  window.open(url, '_blank', 'noopener');
-}
-function openTossUs(symbol, ev){
-  if(ev) ev.stopPropagation();
-  const url = tossUsStockUrl(symbol);
-  if(!url){ return; }
-  window.open(url, '_blank', 'noopener');
-}
-
-const STOCKS={TSLA:'테슬라',GOOGL:'알파벳(구글)',NVDA:'엔비디아',MU:'마이크론',AMZN:'아마존',MSFT:'마이크로소프트',AAPL:'애플',META:'메타',SPCX:'스페이스X',SKHY:'SK하이닉스(ADR)',NBIS:'네비우스그룹',MRVL:'마벨테크놀로지'};
+const STOCKS={TSLA:'테슬라',GOOGL:'알파벳(구글)',NVDA:'엔비디아',MU:'마이크론',AMZN:'아마존',MSFT:'마이크로소프트',AAPL:'애플',META:'메타'};
 
 function showPanel(id,el){
   document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
@@ -1417,6 +1402,18 @@ function showPanel(id,el){
       if(tsEl) tsEl.textContent = '데이터 로딩 중...';
       loadWorldRatesFile().then(()=>{
         if(worldRatesCache) renderWorldRatesChart();
+        else if(tsEl) tsEl.textContent = '데이터 없음 — 새로고침 시도';
+      });
+    }
+  }
+  if(id==='globalliquidity'){
+    if(globalLiquidityCache){
+      renderGlobalLiquidityChart();
+    } else {
+      const tsEl = document.getElementById('gl-ts');
+      if(tsEl) tsEl.textContent = '데이터 로딩 중...';
+      loadGlobalLiquidityFile().then(()=>{
+        if(globalLiquidityCache) renderGlobalLiquidityChart();
         else if(tsEl) tsEl.textContent = '데이터 없음 — 새로고침 시도';
       });
     }
@@ -1783,10 +1780,8 @@ function renderUS(d){
     const [rl,rc]=rsiLabel(s.rsi);
     const [pl,pc2]=pcLabel(s.opt_pc);
     const maDir=s.ma200_pct!=null?(s.ma200_pct>0?`<span class="up">200MA +${f(s.ma200_pct,1)}%</span>`:`<span class="down">200MA ${f(s.ma200_pct,1)}%</span>`):'—';
-    const tossUrl = tossUsStockUrl(tk);
-    const headAttrs = tossUrl ? `style="cursor:pointer" title="토스증권에서 보기" onclick="openTossUs('${tk}',event)"` : '';
     return`<div class="scard">
-      <div class="scard-head" ${headAttrs}>
+      <div class="scard-head">
         <div><div class="sticker">${tk}</div><div class="sname">${name}</div></div>
         <div><div class="sprice ${dCls(s.chg)}">${s.price!=null?'$'+f(s.price,2):'—'}</div><div class="schg ${dCls(s.chg)}">${dTxt(s.chg)}</div></div>
       </div>
@@ -2283,20 +2278,7 @@ async function loadMacroFile(){
     const macroData = JSON.parse(await r.text());
     // ★ 2026-07-04부로 거시지표는 macro_indicators.json으로 분리됨 —
     //   여기서는 kr_stocks/m7 등 종목 데이터만 병합하고, macro 지표 필드는 건드리지 않음
-    // ⚠ kr_stocks/m7은 loadTimingFile()이 병렬로 채우는 technical/fair_value와
-    //   충돌하지 않도록 종목 단위(deep)로 병합한다. 얕은 스프레드(...macroData)로
-    //   kr_stocks/m7 객체 전체를 덮어쓰면, fetch 완료 순서에 따라 timing.json이
-    //   먼저 채운 fair_value/technical이 랜덤하게 사라지는 레이스 컨디션이 생긴다.
-    const { kr_stocks: mKr, m7: mM7, ...restMacro } = macroData;
-    cachedData.macro = { ...(cachedData.macro||{}), ...restMacro };
-    if(!cachedData.macro.kr_stocks) cachedData.macro.kr_stocks = {};
-    if(!cachedData.macro.m7) cachedData.macro.m7 = {};
-    for(const [name, v] of Object.entries(mKr || {})){
-      cachedData.macro.kr_stocks[name] = { ...(cachedData.macro.kr_stocks[name]||{}), ...v };
-    }
-    for(const [sym, v] of Object.entries(mM7 || {})){
-      cachedData.macro.m7[sym] = { ...(cachedData.macro.m7[sym]||{}), ...v };
-    }
+    cachedData.macro = { ...(cachedData.macro||{}), ...macroData };
     console.log('✅ macro.json(종목 데이터) 캐싱 완료');
   } catch(e) {
     console.error('loadMacroFile(macro.json) 오류:', e.message);
@@ -2345,15 +2327,12 @@ async function loadTimingFile(){
       if(!cachedData.macro.kr_stocks[name]) cachedData.macro.kr_stocks[name] = {};
       cachedData.macro.kr_stocks[name].technical = v.technical;
       if(v.ticker) cachedData.macro.kr_stocks[name].ticker = v.ticker;
-      if(v.fair_value) cachedData.macro.kr_stocks[name].fair_value = v.fair_value;
     }
     for(const [sym, v] of Object.entries(timingData.m7 || {})){
       if(!cachedData.macro.m7[sym]) cachedData.macro.m7[sym] = {};
       cachedData.macro.m7[sym].technical = v.technical;
-      if(v.fair_value) cachedData.macro.m7[sym].fair_value = v.fair_value;
     }
     cachedData.macro.technical_updated = timingData.technical_updated || null;
-    cachedData.macro.fair_value_updated = timingData.fair_value_updated || null;
 
     console.log('✅ 매수시점 데이터 캐싱 완료:', timingData.technical_updated,
                 '| kr_stocks:', Object.keys(timingData.kr_stocks||{}).length,
@@ -2987,6 +2966,127 @@ function renderWorldRatesChart(){
 }
 
 
+/* ══════════════════════ 세계유동성 (글로벌 M2 vs SOXX) ══════════════════════ */
+let globalLiquidityCache=null, glChartInst1=null;
+
+async function loadGlobalLiquidityFile(){
+  try {
+    const url = GLOBAL_LIQUIDITY_URL + '?nc=' + Date.now();
+    const r = await fetch(url, {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = JSON.parse(await r.text());
+    globalLiquidityCache = data.global_liquidity || data;
+    console.log('✅ 세계유동성 데이터 캐싱 완료:', globalLiquidityCache.updated_at);
+    if(document.getElementById('panel-globalliquidity').classList.contains('active')){
+      renderGlobalLiquidityChart();
+    }
+  } catch(e) {
+    console.error('loadGlobalLiquidityFile 오류:', e.message);
+  }
+}
+
+function glLastPoint(arr){
+  if(!arr || !arr.length) return null;
+  return arr[arr.length-1];
+}
+
+/* 날짜 문자열에서 일수를 빼고 YYYY-MM-DD로 반환 */
+function glShiftDate(dateStr, days){
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0,10);
+}
+
+/* datesFull(오름차순 정렬)에서 targetDate 이하의 가장 최근 날짜의 값을 반환 */
+function glNearestValue(datesFull, valuesFull, targetDate){
+  let lo = 0, hi = datesFull.length - 1, ans = null;
+  while(lo <= hi){
+    const mid = (lo + hi) >> 1;
+    if(datesFull[mid] <= targetDate){ ans = valuesFull[mid]; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+  return ans;
+}
+
+function renderGlobalLiquidityChart(){
+  const gl = globalLiquidityCache;
+  if(!gl){ document.getElementById('gl-update').textContent='데이터 없음 — Actions 실행 후 확인하세요'; return; }
+
+  const usM2 = gl.us_m2||[], eurUsd = gl.eur_usd||[], jpyUsd = gl.jpy_usd||[];
+  const euM2 = gl.eu_m2||[], jpM2 = gl.jp_m2||[], soxx = gl.soxx||[];
+
+  document.getElementById('gl-ts').textContent = '업데이트: '+(gl.updated_at||'-')+' · 평일 08:00 KST 자동갱신 (중국 M2 제외)';
+  document.getElementById('gl-update').textContent = '업데이트: '+(gl.updated_at||'-')+' · 미국(FRED)·SOXX(yfinance) 일별, 유로존(ECB)·일본(BOJ) 월별';
+
+  if(!soxx.length){
+    document.getElementById('gl-update').textContent = '데이터 없음 — Actions 실행 로그를 확인하세요 (ECB/BOJ 시리즈 키 검증 필요할 수 있음)';
+    return;
+  }
+
+  // ── 전체 기간 라벨(soxx 일별 기준) 위에 각 시계열 정렬 ──
+  const fullLabels = soxx.map(d=>d.date);
+  const usM2V   = alignToLabels(usM2, fullLabels);
+  const eurUsdV = alignToLabels(eurUsd, fullLabels);
+  const jpyUsdV = alignToLabels(jpyUsd, fullLabels);
+  const euM2V   = alignToLabels(euM2, fullLabels);
+  const jpM2V   = alignToLabels(jpM2, fullLabels);
+  const soxxV   = fullLabels.map((_,i)=>soxx[i]!=null?soxx[i].value:null);
+
+  const globalM2Full = fullLabels.map((_,i)=>{
+    const us = usM2V[i];
+    const eu = (euM2V[i]!=null && eurUsdV[i]!=null) ? euM2V[i]*eurUsdV[i] : null;
+    const jp = (jpM2V[i]!=null && jpyUsdV[i]!=null && jpyUsdV[i]!==0) ? jpM2V[i]/jpyUsdV[i] : null;
+    if(us==null || eu==null || jp==null) return null;
+    return us + eu + jp; // 미국 M2는 Billions USD, eu/jp는 자국통화 단위 그대로 환산 → 실제로는 단위 정합성 주의 필요
+  });
+
+  // ── 표시 구간: 2025-01-01 이후 ──
+  const DISPLAY_START = '2025-01-01';
+  const displayIdx = fullLabels.map((d,i)=>i).filter(i=>fullLabels[i] >= DISPLAY_START);
+  const displayLabels = displayIdx.map(i=>fullLabels[i]);
+  const displaySoxx   = displayIdx.map(i=>soxxV[i]);
+
+  const lagDays = parseInt(document.getElementById('gl-lag-input').value, 10) || 0;
+  const displayM2 = displayLabels.map(d=>{
+    const shifted = glShiftDate(d, lagDays);
+    return glNearestValue(fullLabels, globalM2Full, shifted);
+  });
+
+  // 요약 카드
+  const m2P = glLastPoint(globalM2Full.map((v,i)=>({date:fullLabels[i], value:v})).filter(p=>p.value!=null));
+  if(m2P){ document.getElementById('gl-m2').textContent = m2P.value.toLocaleString(undefined,{maximumFractionDigits:0}); document.getElementById('gl-m2-date').textContent = m2P.date; }
+  const soxxP = glLastPoint(soxx);
+  if(soxxP){ document.getElementById('gl-soxx').textContent = soxxP.value.toFixed(2); document.getElementById('gl-soxx-date').textContent = soxxP.date; }
+
+  const xScale = {ticks:{color:'#475569',maxRotation:0,maxTicksLimit:12,callback:function(v){const l=this.getLabelForValue(v);return l?l.slice(0,7):''}},grid:{color:'#1a2840'}};
+  const ttBase = {backgroundColor:'#0d1422',borderColor:'#1a2840',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8'};
+
+  if(glChartInst1) glChartInst1.destroy();
+  glChartInst1 = new Chart(document.getElementById('glChart1').getContext('2d'),{
+    data:{
+      labels: displayLabels,
+      datasets:[
+        {type:'line',label:`글로벌 M2 (${lagDays}일 지연)`,data:displayM2,borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,yAxisID:'y',tension:0.2},
+        {type:'line',label:'SOXX',data:displaySoxx,borderColor:'#fb923c',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,pointHoverRadius:4,yAxisID:'y2',tension:0.15},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#94a3b8',font:{size:11}}},
+        tooltip:{...ttBase,callbacks:{label:c=>{const v=c.raw;if(v==null)return c.dataset.label+': —';return c.dataset.label+': '+Number(v).toLocaleString(undefined,{maximumFractionDigits:1});}}}
+      },
+      scales:{
+        x:xScale,
+        y:{position:'left',title:{display:true,text:'글로벌 M2',color:'#38bdf8',font:{size:11}},ticks:{color:'#38bdf8'},grid:{color:'#1a2840'}},
+        y2:{position:'right',title:{display:true,text:'SOXX',color:'#fb923c',font:{size:11}},ticks:{color:'#fb923c'},grid:{drawOnChartArea:false}}
+      }
+    }
+  });
+}
+
+
 /* ══════════════════════ 유동성 AI 해석 ══════════════════════ */
 async function generateLiquidityInsight() {
   const liq = liqDataCache;
@@ -3003,7 +3103,6 @@ async function generateLiquidityInsight() {
   const rrp  = liq.rrp  || [];
   const net  = liq.net_liquidity || [];
   const sp   = liq.sp500 || [];
-  const res  = liq.reserves || [];
 
   const last  = arr => arr.length ? arr[arr.length-1] : null;
   const prev4 = arr => arr.length > 4 ? arr[arr.length-5] : null;
@@ -3012,7 +3111,6 @@ async function generateLiquidityInsight() {
   const rrpL = last(rrp),  rrpP = prev4(rrp);
   const netL = last(net),  netP = prev4(net);
   const spL  = last(sp),   spP  = prev4(sp);
-  const resL = last(res),  resP = prev4(res);
 
   const chgPct = (c, p) => p && p.value ? (((c.value - p.value) / Math.abs(p.value)) * 100).toFixed(1) : 'N/A';
   const fmtB   = v => v != null ? '$' + (v/1000).toFixed(0) + 'B' : '-';
@@ -3049,7 +3147,6 @@ async function generateLiquidityInsight() {
 • TGA(재무부 현금잔고): ${fmtB(tgaL?.value)} (4주 전 대비 ${chgPct(tgaL,tgaP)}%)
 • RRP(역레포 잔고): ${fmtBd(rrpL?.value)} (4주 전 대비 ${chgPct(rrpL,rrpP)}%)
 • 순유동성(Fed총자산-TGA-RRP): ${netL ? '$'+Number(netL.value).toFixed(0)+'B' : '-'} (4주 전 대비 ${chgPct(netL,netP)}%)
-• 지준금(Reserve Balances): ${fmtB(resL?.value)} (4주 전 대비 ${chgPct(resL,resP)}%)
 • S&P500: ${spL ? Number(spL.value).toLocaleString() : '-'} (4주 전 대비 ${chgPct(spL,spP)}%)
 • 합계 변화량 8주MA: ${ma8Last != null ? (ma8Last>0?'+':'')+ma8Last+'B' : '-'} (4주 전: ${ma8Prev4 != null ? (ma8Prev4>0?'+':'')+ma8Prev4+'B' : '-'})
 
@@ -3057,7 +3154,6 @@ async function generateLiquidityInsight() {
 - TGA 증가 = 유동성 흡수(부정적), TGA 감소 = 유동성 공급(긍정적)
 - RRP 감소 = 유동성 공급(긍정적), RRP 증가 = 유동성 흡수(부정적)
 - 순유동성 증가 = 시장 우호적, 감소 = 비우호적
-- 지준금은 TGA/RRP보다 은행 시스템에 더 직접적인 유동성 지표이므로, 순유동성과 지준금의 방향이 같이 움직이면(둘 다 증가/둘 다 감소) 신호가 서로 확인(교차검증)되어 판단 신뢰도가 높아지고, 방향이 엇갈리면 신호 상충으로 보고 판단을 유보
 - 8주MA 양수 = 유동성 순공급 추세, 음수 = 유동성 순흡수 추세
 
 아래 형식으로 작성:
@@ -3065,8 +3161,6 @@ async function generateLiquidityInsight() {
 • TGA: [상황 요약]
 • RRP: [상황 요약]  
 • 순유동성: [상황 요약]
-• 지준금: [상황 요약]
-• 순유동성×지준금 교차검증: [같은 방향인지 여부와 신뢰도]
 • 8주MA 추세: [방향 및 의미]
 • 종합 판단: [시장 영향 1~2문장]
 • 핵심 변수: [앞으로 주목할 지표]
@@ -3078,65 +3172,33 @@ async function generateLiquidityInsight() {
     const tgaTrend = tgaL && tgaP ? (tgaL.value > tgaP.value ? '증가' : '감소') : '—';
     const rrpTrend = rrpL && rrpP ? (rrpL.value > rrpP.value ? '증가' : '감소') : '—';
     const netTrend = netL && netP ? (netL.value > netP.value ? '증가' : '감소') : '—';
-    const resTrend = resL && resP ? (resL.value > resP.value ? '증가' : '감소') : '—';
     const spTrend  = spL  && spP  ? (spL.value  > spP.value  ? '상승' : '하락') : '—';
     const ma8Dir   = ma8Last != null ? (ma8Last > 50 ? '양수 (유동성 공급 우세)' : ma8Last > 0 ? '소폭 양수 (중립)' : ma8Last > -50 ? '소폭 음수 (중립)' : '음수 (유동성 흡수 우세)') : '—';
     const tgaChgPct = tgaL && tgaP ? ((tgaL.value-tgaP.value)/Math.abs(tgaP.value)*100).toFixed(1) : null;
     const netChgPct = netL && netP ? ((netL.value-netP.value)/Math.abs(netP.value)*100).toFixed(1) : null;
-    const resChgPct = resL && resP ? ((resL.value-resP.value)/Math.abs(resP.value)*100).toFixed(1) : null;
     const spChgPct  = spL  && spP  ? ((spL.value -spP.value )/Math.abs(spP.value )*100).toFixed(1) : null;
 
-    // ── 순유동성 × 지준금 통합(교차검증) 해석 수식 ──
-    // 두 지표 모두 방향이 같으면(둘 다 증가/둘 다 감소) 은행 시스템 유동성으로 재확인된 것으로 보고 신뢰도를 높이고,
-    // 방향이 엇갈리면 신호 상충으로 판단해 단정적 결론을 피한다. 변화폭(%)은 두 지표 절대 변화율의 평균으로 계산.
-    let crossCheck = '— 데이터 부족';
-    let crossNote  = '지준금 데이터가 충분하지 않아 교차검증 불가';
-    let sameDir = null;
-    if (netTrend !== '—' && resTrend !== '—') {
-      sameDir = (netTrend === resTrend);
-      const netMag = netChgPct != null ? Math.abs(parseFloat(netChgPct)) : 0;
-      const resMag = resChgPct != null ? Math.abs(parseFloat(resChgPct)) : 0;
-      const avgMag = ((netMag + resMag) / 2).toFixed(1);
-      if (sameDir && netTrend === '증가') {
-        crossCheck = '🟢🟢 이중 확인 (교차검증 일치)';
-        crossNote  = '순유동성·지준금 동반 증가 (평균 변화폭 ' + avgMag + '%) - 은행 시스템 유동성 공급이 실제로 확인되어 신뢰도 높은 우호적 신호';
-      } else if (sameDir && netTrend === '감소') {
-        crossCheck = '🔴🔴 이중 확인 (교차검증 일치)';
-        crossNote  = '순유동성·지준금 동반 감소 (평균 변화폭 ' + avgMag + '%) - 은행 시스템에서도 유동성 흡수가 확인되어 신뢰도 높은 비우호적 신호';
-      } else {
-        crossCheck = '🟡 신호 상충 (교차검증 불일치)';
-        crossNote  = '순유동성(' + netTrend + (netChgPct ? ' ' + netChgPct + '%' : '') + ')과 지준금(' + resTrend + (resChgPct ? ' ' + resChgPct + '%' : '') + ')의 방향이 엇갈림 - 단일 지표만으로 판단 시 오독 위험, 추가 확인 필요';
-      }
-    }
-
-    // 종합 판단 (TGA/RRP/순유동성/지준금 4개 신호 통합, 데이터 없는 신호는 비율 계산에서 제외)
+    // 종합 판단
     let judge = '';
     const signals = [];
     if(tgaTrend==='감소') signals.push('TGA↓(+)');
-    else if(tgaTrend==='증가') signals.push('TGA↑(-)');
+    else signals.push('TGA↑(-)');
     if(rrpTrend==='감소') signals.push('RRP↓(+)');
-    else if(rrpTrend==='증가') signals.push('RRP↑(-)');
+    else signals.push('RRP↑(-)');
     if(netTrend==='증가') signals.push('순유동성↑(+)');
-    else if(netTrend==='감소') signals.push('순유동성↓(-)');
-    if(resTrend==='증가') signals.push('지준금↑(+)');
-    else if(resTrend==='감소') signals.push('지준금↓(-)');
+    else signals.push('순유동성↓(-)');
     const posCount = signals.filter(s=>s.includes('(+)')).length;
-    const posRatio = signals.length ? posCount / signals.length : 0;
-    if(posRatio >= 0.75) judge = '🟢 유동성 우호적 — 시장 상승 압력';
-    else if(posRatio >= 0.5) judge = '🟡 유동성 혼조 — 방향성 불명확';
+    if(posCount>=3) judge = '🟢 유동성 우호적 — 시장 상승 압력';
+    else if(posCount===2) judge = '🟡 유동성 혼조 — 방향성 불명확';
     else judge = '🔴 유동성 비우호적 — 시장 하락 압력';
-    if (sameDir === false) judge += ' (단, 순유동성·지준금 신호 상충 — 해석 주의)';
 
     const liqDate = tgaL?.date?.slice(0,7) || '-';
     const arrow = '->';
     const dash  = '-';
     const tgaMsg = tgaTrend==='감소' ? '감소: 정부 지출 증가, 시중 유동성 공급 (+)' : '증가: 정부 지출 감소/세수 증가, 유동성 흡수 (-)';
     const netMsg = netTrend==='증가' ? '증가: Fed QT 속도 둔화 또는 TGA 감소 효과' : '감소: QT 지속 또는 TGA 축적 압력';
-    const resMsg = resTrend==='증가' ? '증가: 은행 시스템 유동성 확충 (지급준비금 확대)' : '감소: 은행 시스템 유동성 축소 - QT 지속 시 유의';
     const ma8Msg = ma8Last>0 ? '순공급 추세 유지 - S&P500 지지 요인' : '순흡수 추세 - S&P500 상방 제한 요인';
-    const keyVar = sameDir === false
-      ? '순유동성·지준금 방향 불일치 해소 여부 (다음 주기 교차검증 재확인 필요)'
-      : (tgaTrend==='증가' ? 'TGA 축적 지속 여부 (부채한도 협상/세수 동향)' : 'Fed QT 중단 또는 속도 조절 여부');
+    const keyVar = tgaTrend==='증가' ? 'TGA 축적 지속 여부 (부채한도 협상/세수 동향)' : 'Fed QT 중단 또는 속도 조절 여부';
     const lines = [
       '■ 현재 유동성 신호 (' + liqDate + ' 기준)',
       '',
@@ -3148,12 +3210,6 @@ async function generateLiquidityInsight() {
       '',
       '• 순유동성(Fed총자산-TGA-RRP): $' + (netL ? Number(netL.value).toFixed(0) : '-') + 'B - 4주 전 대비 ' + netTrend + (netChgPct ? ' (' + netChgPct + '%)' : ''),
       '  -> 순유동성 ' + netMsg,
-      '',
-      '• 지준금(Reserve Balances): ' + fmtB(resL ? resL.value : null) + ' - 4주 전 대비 ' + resTrend + (resChgPct ? ' (' + resChgPct + '%)' : ''),
-      '  -> 지준금 ' + resMsg,
-      '',
-      '• 순유동성×지준금 교차검증: ' + crossCheck,
-      '  -> ' + crossNote,
       '',
       '• 합계 8주MA: ' + (ma8Last!=null ? (ma8Last>0?'+':'') + ma8Last + 'B' : '-') + ' (' + ma8Dir + ')',
       '  -> ' + ma8Msg,
@@ -3556,15 +3612,13 @@ function switchTimingTab(tab, el){
 
 function renderTimingPanel(tab){
   const macro = cachedData?.macro;
-  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
+  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
 
   const ts = document.getElementById('timing-ts');
   if(ts){
     const techUpdated = macro.technical_updated;
-    const fvUpdated = macro.fair_value_updated;
     ts.textContent = techUpdated
       ? '업데이트: ' + techUpdated + ' · 매일 09:00 KST(평일) 자동갱신'
-        + (fvUpdated ? ' · 적정주가 ' + fvUpdated + ' (매주 월요일 09:20 KST)' : '')
       : '업데이트: ' + (macro.updated_at||'-') + ' · 매주 월요일 08:30 KST 자동갱신';
   }
 
@@ -3575,7 +3629,7 @@ function renderTimingPanel(tab){
   const tbody = document.getElementById('timing-body');
   const devbar = document.getElementById('timing-devbar');
 
-  if(!items.length){ tbody.innerHTML='<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
+  if(!items.length){ tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
 
   // 정렬: RSI매수신호 → 눌림목 → 정배열 → 완전정배열 → 기타
   items.sort((a,b)=>{
@@ -3634,39 +3688,6 @@ function renderTimingPanel(tab){
     return `<span style="color:${c}">${v}</span>`;
   };
 
-  // 적정주가 괴리율: (현재가-적정주가)/적정주가 → 음수=저평가(현재가가 적정가 아래)
-  const fairGap = (price, fair) => (price==null || fair==null || fair<=0) ? null : (price - fair) / fair * 100;
-  const methodLabel = m => m ? m.replace('PER(PEG,하한)','PER(하한)').replace('PER(업종PER)','PER(업종)').replace('PER(PEG)','PER').replace(/PBR\(\d+Y avg\)/,'PBR') : '';
-  const fairFormula = fv => {
-    if(fv.method === 'PER(업종PER)'){
-      if(fv.industry_per==null || fv.eps==null) return '';
-      return `업종PER ${fv.industry_per}×추정EPS ${fmt(fv.eps)}`;
-    }
-    if(fv.method && fv.method.startsWith('PER')){
-      if(fv.growth_rate_used==null || fv.eps==null) return '';
-      return `PER ${fv.growth_rate_used}×EPS ${fmt(fv.eps)}`;
-    }
-    if(fv.method && fv.method.startsWith('PBR')){
-      if(fv.avg_pbr==null || fv.bps==null) return '';
-      return `PBR ${fv.avg_pbr}×BPS ${fmt(fv.bps)}`;
-    }
-    return '';
-  };
-  const fairBadge = fv => {
-    if(!fv || !fv.valid || fv.fair_price==null) return '<span style="color:var(--text2);font-size:11px">산정불가</span>';
-    return fmt(fv.fair_price);
-  };
-  const fairFormulaCell = fv => {
-    if(!fv || !fv.valid || fv.fair_price==null) return '';
-    const formula = fairFormula(fv);
-    return `<span style="color:var(--text3);font-size:11px;white-space:nowrap">${formula || methodLabel(fv.method)}</span>`;
-  };
-  const gapBadge = gap => {
-    if(gap==null) return '-';
-    const c = gap<=-20 ? '#22c55e;font-weight:700' : gap<=-5 ? '#86efac' : gap>=20 ? '#ef4444' : 'var(--text2)';
-    return `<span style="color:${c}">${(gap>0?'+':'')+gap.toFixed(1)}%</span>`;
-  };
-
   tbody.innerHTML = items.map(item=>{
     const t = item.technical||{};
     const rsiBuy  = t.rsi_buy_signal;
@@ -3688,28 +3709,11 @@ function renderTimingPanel(tab){
     else if(pullback) sigCell = `<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">눌림목(${t.pullback_at||''})</span>`;
     else if(sell)     sigCell = '<span style="background:#ef4444;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">이탈주의</span>';
 
-    // 적정주가 / 괴리율 — 현재가가 적정주가보다 낮으면(저평가) 종목명 옆에 ★ 표시
-    const fv  = item.fair_value || null;
-    const gap = fv && fv.valid ? fairGap(t.price, fv.fair_price) : null;
-    const undervalued = gap != null && gap < 0;
-    const nameStar = undervalued ? '<span style="color:#22c55e;margin-left:4px" title="적정주가 대비 저평가">★</span>' : '';
-    const resolvedTicker = isKR ? resolveTicker(item) : null;
-    const krTossable = resolvedTicker && tossStockUrl(resolvedTicker);
-    const usTossable = !isKR && tossUsStockUrl(item.name);
-    const nameCell = krTossable
-      ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${resolvedTicker}',event)">${item.name}</span>`
-      : usTossable
-      ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openTossUs('${item.name}',event)">${item.name}</span>`
-      : item.name;
-
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
       <td style="padding:7px 8px;font-weight:${rsiBuy||pullback?'600':'400'};white-space:nowrap">
-        <span style="color:${dotColor};margin-right:4px">●</span>${nameCell}${nameStar}
+        <span style="color:${dotColor};margin-right:4px">●</span>${item.name}
       </td>
       <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
-      <td style="text-align:right;padding:7px 8px;font-size:12px">${fairBadge(fv)}</td>
-      <td style="text-align:left;padding:7px 8px">${fairFormulaCell(fv)}</td>
-      <td style="text-align:right;padding:7px 8px">${gapBadge(gap)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma5)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma20)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t[ma_mid_key])}</td>
@@ -3872,13 +3876,10 @@ function renderDiscoveryPanel(){
     const pullbackBadge = `<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">${t.pullback_at||'-'}</span>`;
     const rsiCell = t.rsi_weekly==null ? '-' :
       (t.rsi_weekly<=30 ? `<span style="color:#22c55e;font-weight:700">${t.rsi_weekly}</span>` : t.rsi_weekly);
-    const nameCell = tossStockUrl(item.code)
-      ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${item.code}',event)">${item.name}</span>`
-      : item.name;
 
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
       <td style="padding:7px 8px;font-weight:${rsiBuy?'700':'600'}">
-        ${rsiBuy?'<span style="color:#22c55e;margin-right:4px">★</span>':''}${nameCell}
+        ${rsiBuy?'<span style="color:#22c55e;margin-right:4px">★</span>':''}${item.name}
         <span style="color:var(--text2);font-size:11px;margin-left:4px">${item.code}</span>
       </td>
       <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
@@ -4094,12 +4095,9 @@ function renderFlowSignal(){
       // 종목명 행 (헤더 역할) — 개인/거래량비율/이격도는 종목 단위 정보이므로 여기 한 번만 표기
       const colspan = show5 ? 10 : 8;
       const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
-      const nameCellCross = tossStockUrl(item.ticker)
-        ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${item.ticker}',event)">${item.name}</span>`
-        : item.name;
       rows.push(`<tr style="background:rgba(56,189,248,0.05);border-top:1px solid var(--border2)">
         <td colspan="${colspan}" style="padding:8px 12px;font-weight:700;font-size:13px">
-          ${nameCellCross} <span style="color:var(--text3);font-size:11px;font-weight:400;margin-left:4px">${item.ticker}</span>
+          ${item.name} <span style="color:var(--text3);font-size:11px;font-weight:400;margin-left:4px">${item.ticker}</span>
           <span style="color:var(--text2);font-size:12px;font-weight:600;margin-left:10px">${closeTxt}</span>
           ${recommendBadge(item)}
         </td>
@@ -4146,11 +4144,8 @@ function renderFlowSignal(){
         }).join('');
         const tc=total>0?'#22c55e':'#ef4444';
         const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
-        const nameCellFlow = tossStockUrl(item.ticker)
-          ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${item.ticker}',event)">${item.name}</span>`
-          : `<span style="font-weight:600">${item.name}</span>`;
         rows.push(`<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:9px 12px">${nameCellFlow}<span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span>${recommendBadge(item)}</td>
+          <td style="padding:9px 12px"><span style="font-weight:600">${item.name}</span><span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span>${recommendBadge(item)}</td>
           <td style="padding:9px 12px;text-align:right">${closeTxt}</td>
           <td style="padding:9px 12px;text-align:center"><span style="color:${meta.color};font-size:11px;font-weight:700">${meta.label}</span></td>
           <td style="padding:9px 12px;text-align:center;color:var(--yellow);font-weight:700">${item.consecutive_days}일</td>
