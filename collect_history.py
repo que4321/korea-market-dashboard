@@ -12,7 +12,7 @@ import yfinance as yf
 HIST_FILE = Path("data/history.json")
 MAX_DAYS  = 90  # 최근 90일치만 유지
 
-US_STOCKS = ["TSLA","GOOGL","NVDA","MU","AMZN","MSFT","AAPL","META"]
+US_STOCKS = ["TSLA","GOOGL","NVDA","MU","AMZN","MSFT","AAPL","META","SPCX","SKHY","NBIS","MRVL"]
 
 def safe(fn, default=None):
     try: return fn()
