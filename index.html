@@ -732,7 +732,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         </tr>
         <tr>
           <td style="padding:4px 8px"><code>macro_scan.py</code></td>
-          <td style="padding:4px 8px">매주 월요일 08:30 KST</td>
+          <td style="padding:4px 8px">매일 08:30 KST (평일)</td>
           <td style="padding:4px 8px">거시지표 + M7 주가·EPS + 한국 주가 (기술지표도 동일 계산되나 매일 갱신본으로 대체됨)</td>
         </tr>
       </tbody>
@@ -1896,7 +1896,7 @@ async function loadMacroData(){
 
     renderMacroPanel(fred);
     document.getElementById('macro-ts').textContent =
-      '업데이트: ' + (fred.updatedAt ?? '—') + ' · 매주 월요일 08:30 KST 자동갱신';
+      '업데이트: ' + (fred.updatedAt ?? '—') + ' · 평일 08:30 KST 자동갱신';
 
     // 종합 신호에 세계금리(실질금리/SOFR스프레드)·세계유동성(글로벌 M2 추세)까지 반영하기 위해 추가 로드
     if(!worldRatesCache) await loadWorldRatesFile();
@@ -3692,7 +3692,7 @@ function renderTimingPanel(tab){
     const techUpdated = macro.technical_updated;
     ts.textContent = techUpdated
       ? '업데이트: ' + techUpdated + ' · 매일 09:00 KST(평일) 자동갱신'
-      : '업데이트: ' + (macro.updated_at||'-') + ' · 매주 월요일 08:30 KST 자동갱신';
+      : '업데이트: ' + (macro.updated_at||'-') + ' · 평일 08:30 KST 자동갱신';
   }
 
   const items = tab==='kr'
