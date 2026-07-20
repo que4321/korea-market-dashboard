@@ -1897,6 +1897,11 @@ async function loadMacroData(){
     renderMacroPanel(fred);
     document.getElementById('macro-ts').textContent =
       '업데이트: ' + (fred.updatedAt ?? '—') + ' · 매주 월요일 08:30 KST 자동갱신';
+
+    // 종합 신호에 세계금리(실질금리/SOFR스프레드)·세계유동성(글로벌 M2 추세)까지 반영하기 위해 추가 로드
+    if(!worldRatesCache) await loadWorldRatesFile();
+    if(!globalLiquidityCache) await loadGlobalLiquidityFile();
+    renderMacroSignal(fred.vix, fred.t10y, fred.spread10_2, fred.wti, fred);
   } catch(e) {
     console.error('loadMacroData 오류:', e);
     document.getElementById('macro-ts').textContent = '로드 실패: ' + e.message;
@@ -1927,6 +1932,8 @@ function macroGrade(key, val){
     cci:     [[80,'소비위축','b-danger'],[100,'보통','b-warn'],[999,'소비낙관','b-ok']],
     cpi:     [[2,'목표범위','b-ok'],[3,'주의','b-warn'],[4,'긴축 압력','b-danger'],[999,'고인플레','b-danger']],
     core_pce:[[2,'목표(완화)','b-ok'],[2.5,'주의','b-warn'],[3,'긴축 압력','b-danger'],[999,'고인플레','b-danger']],
+    realrate:[[1.0,'양호','b-ok'],[1.5,'보통','b-neu'],[2.0,'주의','b-warn'],[999,'과열(발작 위험)','b-danger']],
+    sofrspread:[[0.05,'정상','b-ok'],[0.15,'주의','b-warn'],[999,'경계(신용경색)','b-danger']],
   };
   const rules = cfg[key];
   if(!rules) return [val.toFixed(2),'b-neu','—'];
@@ -2143,21 +2150,35 @@ function renderMacroPanel(fred){
     </tr>`;
   }).join('');
 
-  renderMacroSignal(fred.vix, fred.t10y, spread, fred.wti, fred);
+  // renderMacroSignal은 loadMacroData()에서 world_rates/global_liquidity 캐시를 확보한 뒤 별도 호출됨
 }
 
 
 function renderMacroSignal(vix, t10y, spread, wti, fred){
   const fng = fred.fng;
+
+  // ── world_rates.json / global_liquidity.json 기반 확장 지표 계산 ──
+  function wrLatest(arr){ if(!arr || !arr.length) return null; return arr[arr.length-1].value; }
+  const wr = worldRatesCache;
+  const realRate    = (t10y!=null && fred.corePce!=null) ? +(t10y - fred.corePce).toFixed(2) : null;
+  const sofrLatest   = wr ? wrLatest(wr.us_sofr) : null;
+  const fedFundsLatest = wr ? wrLatest(wr.us_fed_funds) : null;
+  const sofrSpread   = (sofrLatest!=null && fedFundsLatest!=null) ? +(sofrLatest - fedFundsLatest).toFixed(3) : null;
+  const m2Trend      = globalLiquidityCache ? glM2TrendSignal(globalLiquidityCache, 78) : null;
+
   const items = [
     {label:'CNN F&G',       val:fng?.score ?? null, key:'fg'},
     {label:'VIX',          val:vix,           key:'vix'},
+    {label:'SKEW',         val:fred.skew,     key:'skew'},
     {label:'10년물',        val:t10y,          key:'t10y'},
     {label:'장단기 스프레드', val:spread,        key:'spread'},
+    {label:'실질금리(10Y-CorePCE)', val:realRate, key:'realrate'},
+    {label:'SOFR-FedFunds', val:sofrSpread,    key:'sofrspread'},
     {label:'WTI',          val:wti,           key:'wti'},
     {label:'실업률',        val:fred.unemp,    key:'unemp'},
     {label:'M2 증가율',     val:fred.m2,       key:'m2'},
     {label:'HY 스프레드',   val:fred.hySpread, key:'hy'},
+    {label:'CAPE',         val:fred.cape,     key:'cape'},
     {label:'소비자신뢰',     val:fred.cci,      key:'cci'},
   ];
 
@@ -2171,7 +2192,13 @@ function renderMacroSignal(vix, t10y, spread, wti, fred){
         <span style="color:var(--text2);font-size:13px">${it.label}</span>
         <span class="badge ${cls}" style="font-size:12px;padding:3px 8px;font-weight:600">${it.val!=null?val+' '+label:'—'}</span>
       </div>`;
-    }).join('');
+    }).join('') + (m2Trend ? `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--bg3);border-radius:6px">
+        <span style="color:var(--text2);font-size:13px">글로벌 M2 추세(78일 지연 기준)</span>
+        <span class="badge ${m2Trend.changePct>0?'b-ok':m2Trend.changePct<0?'b-danger':'b-neu'}" style="font-size:12px;padding:3px 8px;font-weight:600">
+          ${m2Trend.changePct>=0?'+':''}${m2Trend.changePct.toFixed(2)}% (30일) ${m2Trend.changePct>0?'상승 전환':'하락 전환'}
+        </span>
+      </div>` : '');
   }
 
   // 종합 판단
@@ -2183,20 +2210,25 @@ function renderMacroSignal(vix, t10y, spread, wti, fred){
 
   let risk=0, ok=0;
   if(vix!=null){    vix>25?risk++:vix<18?ok++:null; }
+  if(fred.skew!=null){ fred.skew>=140?risk++:fred.skew<120?ok++:null; }
   if(t10y!=null){   t10y>4.5?risk++:t10y<3.5?ok++:null; }
   if(spread!=null){ spread<0?risk+=2:spread>0.5?ok++:null; }
+  if(realRate!=null){ realRate>=1.5?risk++:realRate<1.0?ok++:null; }
+  if(sofrSpread!=null){ sofrSpread>=0.15?risk++:sofrSpread<0.05?ok++:null; }
   if(wti!=null){    wti>90?risk++:wti<65?ok++:null; }
   if(fred.unemp!=null){ fred.unemp>5?risk++:fred.unemp<4?ok++:null; }
   if(fred.hySpread!=null){ fred.hySpread>5?risk++:fred.hySpread<3?ok++:null; }
+  if(fred.cape!=null){ fred.cape>=30?risk++:fred.cape<20?ok++:null; }
+  if(m2Trend!=null){ m2Trend.changePct<0?risk++:m2Trend.changePct>0?ok++:null; }
 
   const icon  = document.getElementById('macro-overall-icon');
   const title = document.getElementById('macro-overall-title');
   const desc  = document.getElementById('macro-overall-desc');
-  if(risk>=3){      icon.textContent='🔴'; title.textContent='위험 신호 다수';  title.style.color='var(--red)'; }
-  else if(risk>=2){ icon.textContent='🟠'; title.textContent='주의 구간';      title.style.color='#fb923c'; }
-  else if(ok>=3){   icon.textContent='🟢'; title.textContent='우호적 환경';    title.style.color='var(--green)'; }
+  if(risk>=5){      icon.textContent='🔴'; title.textContent='위험 신호 다수';  title.style.color='var(--red)'; }
+  else if(risk>=3){ icon.textContent='🟠'; title.textContent='주의 구간';      title.style.color='#fb923c'; }
+  else if(ok>=5){   icon.textContent='🟢'; title.textContent='우호적 환경';    title.style.color='var(--green)'; }
   else {            icon.textContent='🟡'; title.textContent='혼조 / 중립';    title.style.color='var(--yellow)'; }
-  desc.textContent = `위험신호 ${risk}개 / 긍정신호 ${ok}개 (FRED 지표 ${known.length}개 분석)`;
+  desc.textContent = `위험신호 ${risk}개 / 긍정신호 ${ok}개 (거시경제·세계금리·세계유동성 통합 ${known.length + (m2Trend?1:0)}개 지표 분석)`;
 }
 
 async function loadScanner(){
@@ -3007,6 +3039,41 @@ function glNearestValue(datesFull, valuesFull, targetDate){
     else hi = mid - 1;
   }
   return ans;
+}
+
+/* 글로벌 M2(미+유+일, USD 합산) 일별 시리즈 계산 — 차트/종합신호 양쪽에서 재사용 */
+function glComputeGlobalM2Series(gl){
+  if(!gl) return null;
+  const soxx = gl.soxx||[];
+  if(!soxx.length) return null;
+  const dates = soxx.map(d=>d.date);
+  const usM2V   = alignToLabels(gl.us_m2||[], dates);
+  const eurUsdV = alignToLabels(gl.eur_usd||[], dates);
+  const jpyUsdV = alignToLabels(gl.jpy_usd||[], dates);
+  const euM2V   = alignToLabels(gl.eu_m2||[], dates);
+  const jpM2V   = alignToLabels(gl.jp_m2||[], dates);
+  const values = dates.map((_,i)=>{
+    const us = usM2V[i];
+    const eu = (euM2V[i]!=null && eurUsdV[i]!=null) ? euM2V[i]*eurUsdV[i] : null;
+    const jp = (jpM2V[i]!=null && jpyUsdV[i]!=null && jpyUsdV[i]!==0) ? jpM2V[i]/jpyUsdV[i] : null;
+    if(us==null || eu==null || jp==null) return null;
+    return us + eu + jp;
+  });
+  return {dates, values};
+}
+
+/* 글로벌 M2가 최근 약 30일간 상승/하락 추세인지 판정 (78일 지연 반영 시점 기준) */
+function glM2TrendSignal(gl, lagDays){
+  const series = glComputeGlobalM2Series(gl);
+  if(!series || !series.dates.length) return null;
+  const lastDate = series.dates[series.dates.length - 1];
+  const refDate = glShiftDate(lastDate, lagDays);
+  const now30 = glNearestValue(series.dates, series.values, refDate);
+  const prevDate = glShiftDate(refDate, 30);
+  const prev30 = glNearestValue(series.dates, series.values, prevDate);
+  if(now30 == null || prev30 == null || prev30 === 0) return null;
+  const changePct = (now30 - prev30) / prev30 * 100;
+  return { changePct, asOfDate: refDate };
 }
 
 function renderGlobalLiquidityChart(){
