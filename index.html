@@ -2381,7 +2381,18 @@ async function loadMacroFile(){
     const macroData = JSON.parse(await r.text());
     // ★ 2026-07-04부로 거시지표는 macro_indicators.json으로 분리됨 —
     //   여기서는 kr_stocks/m7 등 종목 데이터만 병합하고, macro 지표 필드는 건드리지 않음
-    cachedData.macro = { ...(cachedData.macro||{}), ...macroData };
+    // ⚠ kr_stocks/m7은 loadTimingFile()이 병렬로 채워넣는 technical/fair_value 필드를
+    //   덮어쓰지 않도록, 종목 단위로 깊은 병합한다 (얕은 스프레드로 통째로 교체 금지 — race condition 방지)
+    const { kr_stocks: newKr, m7: newM7, ...restMacro } = macroData;
+    cachedData.macro = { ...(cachedData.macro||{}), ...restMacro };
+    if(!cachedData.macro.kr_stocks) cachedData.macro.kr_stocks = {};
+    if(!cachedData.macro.m7) cachedData.macro.m7 = {};
+    for(const [name, v] of Object.entries(newKr || {})){
+      cachedData.macro.kr_stocks[name] = { ...(cachedData.macro.kr_stocks[name]||{}), ...v };
+    }
+    for(const [sym, v] of Object.entries(newM7 || {})){
+      cachedData.macro.m7[sym] = { ...(cachedData.macro.m7[sym]||{}), ...v };
+    }
     console.log('✅ macro.json(종목 데이터) 캐싱 완료');
   } catch(e) {
     console.error('loadMacroFile(macro.json) 오류:', e.message);
@@ -2419,8 +2430,8 @@ async function loadTimingFile(){
     } catch(pe) {
       throw new Error(`JSON 파싱 실패: ${pe.message}`);
     }
-    // timing.json 구조: { kr_stocks: {종목: {technical}}, m7: {심볼: {technical}}, technical_updated }
-    // → 기존 cachedData.macro.kr_stocks/m7 의 prices/eps는 보존하고 technical 필드만 병합
+    // timing.json 구조: { kr_stocks: {종목: {technical, fair_value}}, m7: {심볼: {technical, fair_value}}, technical_updated, fair_value_updated }
+    // → 기존 cachedData.macro.kr_stocks/m7 의 prices/eps는 보존하고 technical/fair_value 필드만 병합
     if(!cachedData) cachedData = {};
     if(!cachedData.macro) cachedData.macro = {};
     if(!cachedData.macro.kr_stocks) cachedData.macro.kr_stocks = {};
@@ -2429,17 +2440,21 @@ async function loadTimingFile(){
     for(const [name, v] of Object.entries(timingData.kr_stocks || {})){
       if(!cachedData.macro.kr_stocks[name]) cachedData.macro.kr_stocks[name] = {};
       cachedData.macro.kr_stocks[name].technical = v.technical;
+      if(v.fair_value) cachedData.macro.kr_stocks[name].fair_value = v.fair_value;
       if(v.ticker) cachedData.macro.kr_stocks[name].ticker = v.ticker;
     }
     for(const [sym, v] of Object.entries(timingData.m7 || {})){
       if(!cachedData.macro.m7[sym]) cachedData.macro.m7[sym] = {};
       cachedData.macro.m7[sym].technical = v.technical;
+      if(v.fair_value) cachedData.macro.m7[sym].fair_value = v.fair_value;
     }
     cachedData.macro.technical_updated = timingData.technical_updated || null;
+    cachedData.macro.fair_value_updated = timingData.fair_value_updated || null;
 
     console.log('✅ 매수시점 데이터 캐싱 완료:', timingData.technical_updated,
                 '| kr_stocks:', Object.keys(timingData.kr_stocks||{}).length,
-                '| m7:', Object.keys(timingData.m7||{}).length);
+                '| m7:', Object.keys(timingData.m7||{}).length,
+                '| fair_value_updated:', timingData.fair_value_updated);
     if(document.getElementById('panel-timing')?.classList.contains('active')){
       renderTimingPanel('kr');
     }
