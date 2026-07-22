@@ -664,6 +664,9 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         <tr style="border-bottom:1px solid var(--border);color:var(--text2)">
           <th style="text-align:left;padding:6px 8px;font-weight:500">종목</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">현재가</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">적정주가</th>
+          <th style="text-align:left;padding:6px 8px;font-weight:500">산출식</th>
+          <th style="text-align:right;padding:6px 8px;font-weight:500">괴리율</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA5</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA20</th>
           <th style="text-align:right;padding:6px 8px;font-weight:500">MA50</th>
@@ -677,7 +680,7 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
         </tr>
       </thead>
       <tbody id="timing-body">
-        <tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
+        <tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text2)">데이터 로딩 중...</td></tr>
       </tbody>
     </table>
   </div>
@@ -730,13 +733,29 @@ footer{text-align:center;padding:24px 0 12px;color:var(--text3);font-size:11px;b
           <td style="padding:4px 8px">매일 09:00 KST (평일)</td>
           <td style="padding:4px 8px">MA / RSI / 거래량 / 눌림목</td>
         </tr>
-        <tr>
+        <tr style="border-bottom:1px solid var(--border)">
           <td style="padding:4px 8px"><code>macro_scan.py</code></td>
           <td style="padding:4px 8px">매일 08:30 KST (평일)</td>
           <td style="padding:4px 8px">거시지표 + M7 주가·EPS + 한국 주가 (기술지표도 동일 계산되나 매일 갱신본으로 대체됨)</td>
         </tr>
+        <tr>
+          <td style="padding:4px 8px"><code>fair_value_scan.py</code></td>
+          <td style="padding:4px 8px">매주 월요일 09:20 KST</td>
+          <td style="padding:4px 8px">적정주가(PER/PBR) — 산출식은 아래 비고 참고</td>
+        </tr>
       </tbody>
     </table>
+
+    <div style="font-weight:600;margin:14px 0 6px;color:var(--text)">비고 — 적정주가 산출식</div>
+    <ul style="margin:0;padding-left:18px;line-height:1.7">
+      <li><b>PER(업종PER) 방식</b> — 대부분의 한국 종목 기본값: <code>적정주가 = 추정EPS(내년 컨센서스) × 동일업종 평균PER</code>. 업종PER은 네이버 금융에서 종목별로 개별 조회.</li>
+      <li><b>PER(PEG) 방식</b> — 업종PER을 못 구했을 때만 대체 사용: <code>적정주가 = 추정EPS × 예상 EPS성장률(%)</code>(성장률을 그대로 적정PER로 간주, 5~40% 범위로 제한). 미국 M7+MU 종목은 전부 이 방식(업종PER 미적용).</li>
+      <li><b>PER(PEG,하한)</b> — 업종PER도 없고 성장률도 역성장(음수)이면: <code>적정주가 = 기준EPS(직전 연간 실적) × 5(하한PER)</code>로 보수적 산출.</li>
+      <li><b>PBR 방식</b> — 한국전력 등 자산가치 기반이 더 적합한 종목: <code>적정주가 = BPS × 최근 3년 평균 PBR</code>.</li>
+      <li>EPS 성장률 = (추정EPS − 기준EPS) / 기준EPS × 100. 한국은 WiseReport 연간실적표(직전 실제 연간 vs 익년(E) 추정), 미국은 yfinance 애널리스트 컨센서스(연간 기준) 사용.</li>
+      <li>⚠️ 반도체 등 씨클리컬 업종은 이번 사이클 피크/저점 EPS에 평상시 업종PER을 곱하면 값이 실제보다 과도하게 크거나 작게 나올 수 있음 — 참고용 지표로만 활용 권장.</li>
+      <li>"산정불가"는 추정EPS(컨센서스) 자체가 없는 종목(소형주 등 애널리스트 커버리지 부재)에 해당.</li>
+    </ul>
   </div>
 </div>
 
@@ -1359,6 +1378,55 @@ const LIQUIDITY_URL     = `https://gist.githubusercontent.com/que4321/${GIST_ID}
 const WORLD_RATES_URL   = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/world_rates.json`;
 const GLOBAL_LIQUIDITY_URL = `https://gist.githubusercontent.com/que4321/${GIST_ID}/raw/global_liquidity.json`;
 
+// ── 토스증권 종목 페이지 딥링크 ──
+// 참고: 이 기능은 Toss Open API(TOSS_CLIENT_ID/SECRET) 인증이 필요 없다.
+//      한국 종목은 종목코드(A+6자리)만으로 접근 가능한 공개 URL 패턴을 제공하므로,
+//      단순 새 탭 열기(window.open)만으로 동작한다.
+// 매수시점(kr) 탭 고정 워치리스트의 name→ticker 폴백 맵.
+// timing.json의 kr_stocks[name].ticker 필드가 항상 채워지지 않아, 여기서 직접 보정한다.
+const KR_TICKER_MAP = {
+  '삼성전자':'005930', 'SK하이닉스':'000660', '한미반도체':'042700',
+  '삼성중공업':'010140', '삼성E&A':'028050', 'NAVER':'035420',
+  '한국쉘석유':'002960', '한국전력':'015760', '현대차':'005380',
+  '기아':'000270', '두산에너빌리티':'034020'
+};
+// 미국 M7 종목(고정 8종목, 매수시점 미국 탭 + 미국시장 탭 공용) — 티커→토스 내부 종목코드.
+// ⚠ 미국 종목은 KR과 달리 티커만으로 URL을 만들 수 없다(토스 내부 고유코드 필요, 티커 기호로 직접 매핑 불가).
+//   아래 코드는 실제 토스증권 페이지를 검색해 확인한 값이며, 이 8종목 고정 리스트 밖(예: S&P500 전체)으로는
+//   확장하려면 토스 Open API(TOSS_CLIENT_ID/SECRET)로 종목코드를 조회해 별도 JSON에 저장해두는 절차가 필요하다.
+const US_TICKER_MAP = {
+  'TSLA':'US20100629001', 'AAPL':'US19801212001', 'MSFT':'US19860313001',
+  'NVDA':'US19990122001', 'AMZN':'US19970515001', 'GOOGL':'US20040819002',
+  'META':'US20120518001', 'MU':'US19890516001',
+  'SPCX':'NAS2606012004', 'SKHY':'NAS2607010002', 'NBIS':'US20110524001', 'MRVL':'US20000627001'
+};
+function tossStockUrl(ticker){
+  if(ticker==null) return null;
+  const code = String(ticker).trim().replace(/^A/i,'').replace(/\.[A-Za-z]+$/,'').padStart(6,'0');
+  if(!/^\d{6}$/.test(code)) return null;
+  return `https://www.tossinvest.com/stocks/A${code}/order`;
+}
+function tossUsStockUrl(symbol){
+  if(symbol==null) return null;
+  const code = US_TICKER_MAP[String(symbol).trim().toUpperCase()];
+  return code ? `https://www.tossinvest.com/stocks/${code}/order` : null;
+}
+function resolveTicker(item){
+  return item?.ticker || KR_TICKER_MAP[item?.name] || null;
+}
+function openToss(ticker, ev){
+  if(ev) ev.stopPropagation();
+  const url = tossStockUrl(ticker);
+  if(!url){ return; }
+  window.open(url, '_blank', 'noopener');
+}
+function openTossUs(symbol, ev){
+  if(ev) ev.stopPropagation();
+  const url = tossUsStockUrl(symbol);
+  if(!url){ return; }
+  window.open(url, '_blank', 'noopener');
+}
+
 let dashLoaded=false, histData=[];
 let chartInstances={};
 
@@ -1781,8 +1849,10 @@ function renderUS(d){
     const [rl,rc]=rsiLabel(s.rsi);
     const [pl,pc2]=pcLabel(s.opt_pc);
     const maDir=s.ma200_pct!=null?(s.ma200_pct>0?`<span class="up">200MA +${f(s.ma200_pct,1)}%</span>`:`<span class="down">200MA ${f(s.ma200_pct,1)}%</span>`):'—';
+    const tossUrl = tossUsStockUrl(tk);
+    const headAttrs = tossUrl ? `style="cursor:pointer" title="토스증권에서 보기" onclick="openTossUs('${tk}',event)"` : '';
     return`<div class="scard">
-      <div class="scard-head">
+      <div class="scard-head" ${headAttrs}>
         <div><div class="sticker">${tk}</div><div class="sname">${name}</div></div>
         <div><div class="sprice ${dCls(s.chg)}">${s.price!=null?'$'+f(s.price,2):'—'}</div><div class="schg ${dCls(s.chg)}">${dTxt(s.chg)}</div></div>
       </div>
@@ -3685,13 +3755,15 @@ function switchTimingTab(tab, el){
 
 function renderTimingPanel(tab){
   const macro = cachedData?.macro;
-  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
+  if(!macro){ document.getElementById('timing-body').innerHTML='<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음 — 거시경제 수집 후 확인</td></tr>'; return; }
 
   const ts = document.getElementById('timing-ts');
   if(ts){
     const techUpdated = macro.technical_updated;
+    const fvUpdated = macro.fair_value_updated;
     ts.textContent = techUpdated
       ? '업데이트: ' + techUpdated + ' · 매일 09:00 KST(평일) 자동갱신'
+        + (fvUpdated ? ' · 적정주가 ' + fvUpdated + ' (매주 월요일 09:20 KST)' : '')
       : '업데이트: ' + (macro.updated_at||'-') + ' · 평일 08:30 KST 자동갱신';
   }
 
@@ -3702,7 +3774,7 @@ function renderTimingPanel(tab){
   const tbody = document.getElementById('timing-body');
   const devbar = document.getElementById('timing-devbar');
 
-  if(!items.length){ tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
+  if(!items.length){ tbody.innerHTML='<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text2)">데이터 없음</td></tr>'; return; }
 
   // 정렬: RSI매수신호 → 눌림목 → 정배열 → 완전정배열 → 기타
   items.sort((a,b)=>{
@@ -3761,6 +3833,39 @@ function renderTimingPanel(tab){
     return `<span style="color:${c}">${v}</span>`;
   };
 
+  // 적정주가 괴리율: (현재가-적정주가)/적정주가 → 음수=저평가(현재가가 적정가 아래)
+  const fairGap = (price, fair) => (price==null || fair==null || fair<=0) ? null : (price - fair) / fair * 100;
+  const methodLabel = m => m ? m.replace('PER(PEG,하한)','PER(하한)').replace('PER(업종PER)','PER(업종)').replace('PER(PEG)','PER').replace(/PBR\(\d+Y avg\)/,'PBR') : '';
+  const fairFormula = fv => {
+    if(fv.method === 'PER(업종PER)'){
+      if(fv.industry_per==null || fv.eps==null) return '';
+      return `업종PER ${fv.industry_per}×추정EPS ${fmt(fv.eps)}`;
+    }
+    if(fv.method && fv.method.startsWith('PER')){
+      if(fv.growth_rate_used==null || fv.eps==null) return '';
+      return `PER ${fv.growth_rate_used}×EPS ${fmt(fv.eps)}`;
+    }
+    if(fv.method && fv.method.startsWith('PBR')){
+      if(fv.avg_pbr==null || fv.bps==null) return '';
+      return `PBR ${fv.avg_pbr}×BPS ${fmt(fv.bps)}`;
+    }
+    return '';
+  };
+  const fairBadge = fv => {
+    if(!fv || !fv.valid || fv.fair_price==null) return '<span style="color:var(--text2);font-size:11px">산정불가</span>';
+    return fmt(fv.fair_price);
+  };
+  const fairFormulaCell = fv => {
+    if(!fv || !fv.valid || fv.fair_price==null) return '';
+    const formula = fairFormula(fv);
+    return `<span style="color:var(--text3);font-size:11px;white-space:nowrap">${formula || methodLabel(fv.method)}</span>`;
+  };
+  const gapBadge = gap => {
+    if(gap==null) return '-';
+    const c = gap<=-20 ? '#22c55e;font-weight:700' : gap<=-5 ? '#86efac' : gap>=20 ? '#ef4444' : 'var(--text2)';
+    return `<span style="color:${c}">${(gap>0?'+':'')+gap.toFixed(1)}%</span>`;
+  };
+
   tbody.innerHTML = items.map(item=>{
     const t = item.technical||{};
     const rsiBuy  = t.rsi_buy_signal;
@@ -3782,11 +3887,28 @@ function renderTimingPanel(tab){
     else if(pullback) sigCell = `<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">눌림목(${t.pullback_at||''})</span>`;
     else if(sell)     sigCell = '<span style="background:#ef4444;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">이탈주의</span>';
 
+    // 적정주가 / 괴리율 — 현재가가 적정주가보다 낮으면(저평가) 종목명 옆에 ★ 표시
+    const fv  = item.fair_value || null;
+    const gap = fv && fv.valid ? fairGap(t.price, fv.fair_price) : null;
+    const undervalued = gap != null && gap < 0;
+    const nameStar = undervalued ? '<span style="color:#22c55e;margin-left:4px" title="적정주가 대비 저평가">★</span>' : '';
+    const resolvedTicker = isKR ? resolveTicker(item) : null;
+    const krTossable = resolvedTicker && tossStockUrl(resolvedTicker);
+    const usTossable = !isKR && tossUsStockUrl(item.name);
+    const nameCell = krTossable
+      ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${resolvedTicker}',event)">${item.name}</span>`
+      : usTossable
+      ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openTossUs('${item.name}',event)">${item.name}</span>`
+      : item.name;
+
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
       <td style="padding:7px 8px;font-weight:${rsiBuy||pullback?'600':'400'};white-space:nowrap">
-        <span style="color:${dotColor};margin-right:4px">●</span>${item.name}
+        <span style="color:${dotColor};margin-right:4px">●</span>${nameCell}${nameStar}
       </td>
       <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
+      <td style="text-align:right;padding:7px 8px;font-size:12px">${fairBadge(fv)}</td>
+      <td style="text-align:left;padding:7px 8px">${fairFormulaCell(fv)}</td>
+      <td style="text-align:right;padding:7px 8px">${gapBadge(gap)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma5)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t.ma20)}</td>
       <td style="text-align:right;padding:7px 8px;color:var(--text2);font-size:12px">${fmt(t[ma_mid_key])}</td>
@@ -3949,10 +4071,13 @@ function renderDiscoveryPanel(){
     const pullbackBadge = `<span style="background:#3b82f6;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">${t.pullback_at||'-'}</span>`;
     const rsiCell = t.rsi_weekly==null ? '-' :
       (t.rsi_weekly<=30 ? `<span style="color:#22c55e;font-weight:700">${t.rsi_weekly}</span>` : t.rsi_weekly);
+    const nameCell = tossStockUrl(item.code)
+      ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${item.code}',event)">${item.name}</span>`
+      : item.name;
 
     return `<tr style="border-bottom:1px solid var(--border);${rowBg}">
       <td style="padding:7px 8px;font-weight:${rsiBuy?'700':'600'}">
-        ${rsiBuy?'<span style="color:#22c55e;margin-right:4px">★</span>':''}${item.name}
+        ${rsiBuy?'<span style="color:#22c55e;margin-right:4px">★</span>':''}${nameCell}
         <span style="color:var(--text2);font-size:11px;margin-left:4px">${item.code}</span>
       </td>
       <td style="text-align:right;padding:7px 8px">${fmt(t.price)}</td>
@@ -4168,9 +4293,12 @@ function renderFlowSignal(){
       // 종목명 행 (헤더 역할) — 개인/거래량비율/이격도는 종목 단위 정보이므로 여기 한 번만 표기
       const colspan = show5 ? 10 : 8;
       const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
+      const nameCellCross = tossStockUrl(item.ticker)
+        ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${item.ticker}',event)">${item.name}</span>`
+        : item.name;
       rows.push(`<tr style="background:rgba(56,189,248,0.05);border-top:1px solid var(--border2)">
         <td colspan="${colspan}" style="padding:8px 12px;font-weight:700;font-size:13px">
-          ${item.name} <span style="color:var(--text3);font-size:11px;font-weight:400;margin-left:4px">${item.ticker}</span>
+          ${nameCellCross} <span style="color:var(--text3);font-size:11px;font-weight:400;margin-left:4px">${item.ticker}</span>
           <span style="color:var(--text2);font-size:12px;font-weight:600;margin-left:10px">${closeTxt}</span>
           ${recommendBadge(item)}
         </td>
@@ -4217,8 +4345,11 @@ function renderFlowSignal(){
         }).join('');
         const tc=total>0?'#22c55e':'#ef4444';
         const closeTxt = item.close!=null ? item.close.toLocaleString()+'₩' : '-';
+        const nameCellFlow = tossStockUrl(item.ticker)
+          ? `<span style="cursor:pointer" title="토스증권에서 보기" onclick="openToss('${item.ticker}',event)">${item.name}</span>`
+          : `<span style="font-weight:600">${item.name}</span>`;
         rows.push(`<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:9px 12px"><span style="font-weight:600">${item.name}</span><span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span>${recommendBadge(item)}</td>
+          <td style="padding:9px 12px">${nameCellFlow}<span style="color:var(--text3);font-size:11px;margin-left:5px">${item.ticker}</span>${recommendBadge(item)}</td>
           <td style="padding:9px 12px;text-align:right">${closeTxt}</td>
           <td style="padding:9px 12px;text-align:center"><span style="color:${meta.color};font-size:11px;font-weight:700">${meta.label}</span></td>
           <td style="padding:9px 12px;text-align:center;color:var(--yellow);font-weight:700">${item.consecutive_days}일</td>
