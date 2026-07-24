@@ -2417,6 +2417,13 @@ async function loadMacroFile(){
   }
 }
 
+let timingStaleRetryCount = 0;
+
+/* 현재 시각을 KST 기준 벽시계 값으로 다루기 위한 헬퍼 (Date의 UTC getter를 그대로 사용) */
+function kstWallClockNow(){
+  return new Date(Date.now() + 9*60*60*1000);
+}
+
 async function loadTimingFile(){
   try {
     const url = TIMING_URL + '?nc=' + Date.now();
@@ -2455,6 +2462,23 @@ async function loadTimingFile(){
                 '| kr_stocks:', Object.keys(timingData.kr_stocks||{}).length,
                 '| m7:', Object.keys(timingData.m7||{}).length,
                 '| fair_value_updated:', timingData.fair_value_updated);
+
+    // ── gist raw CDN 캐시 지연 자동 감지/재시도 ──
+    // 평일 10시(KST) 이후인데 기술지표 날짜가 오늘이 아니면, CDN 엣지가 아직 갱신 안 됐을 가능성이 큼.
+    // (스크립트는 평일 09:00 KST 실행되므로 10시 이후엔 오늘자 데이터가 있어야 정상)
+    const kst = kstWallClockNow();
+    const todayStr = kst.toISOString().slice(0,10);
+    const isWeekday = kst.getUTCDay() >= 1 && kst.getUTCDay() <= 5;
+    const pastRunTime = kst.getUTCHours() >= 10;
+    const updatedDateStr = (cachedData.macro.technical_updated || '').slice(0,10);
+    if(isWeekday && pastRunTime && updatedDateStr && updatedDateStr !== todayStr && timingStaleRetryCount < 2){
+      timingStaleRetryCount++;
+      console.log(`⏳ timing.json이 CDN 캐시로 오래된 것 같아 자동 재시도 (${timingStaleRetryCount}/2)...`);
+      setTimeout(()=>loadTimingFile(), 2500);
+      return;
+    }
+    timingStaleRetryCount = 0;
+
     if(document.getElementById('panel-timing')?.classList.contains('active')){
       renderTimingPanel('kr');
     }
