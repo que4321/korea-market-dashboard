@@ -3839,13 +3839,13 @@ function renderTimingPanel(tab){
   const ma_long_label = isKR ? 'MA120' : 'MA200';
   const dev_label     = isKR ? 'MA120이격률' : 'MA200이격률';
 
-  // 헤더 동적 업데이트
+  // 헤더 동적 업데이트 (컬럼 순서: 0종목 1현재가 2적정주가 3산출식 4괴리율 5MA5 6MA20 7MA50/60 8MA200/120 9이격률 ...)
   const thead = document.querySelector('#timing-table thead tr');
   if(thead){
     const ths = thead.querySelectorAll('th');
-    if(ths[4]) ths[4].textContent = ma_mid_label;
-    if(ths[5]) ths[5].textContent = ma_long_label;
-    if(ths[6]) ths[6].innerHTML = dev_label.replace('이격률','<br>이격률');
+    if(ths[7]) ths[7].textContent = ma_mid_label;
+    if(ths[8]) ths[8].textContent = ma_long_label;
+    if(ths[9]) ths[9].innerHTML = dev_label.replace('이격률','<br>이격률');
   }
 
   const isCurrency = isKR;
